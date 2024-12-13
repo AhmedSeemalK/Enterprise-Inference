@@ -1,0 +1,24 @@
+# Source: kray/helm-charts/tei/templates/service.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: tei
+  labels:
+    helm.sh/chart: tei-1.0.0
+    app.kubernetes.io/name: tei
+    app.kubernetes.io/instance: tei
+    app.kubernetes.io/version: "cpu-1.5"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 2081
+      protocol: TCP
+      name: tei
+  selector:
+    app.kubernetes.io/name: tei
+    app.kubernetes.io/instance: tei

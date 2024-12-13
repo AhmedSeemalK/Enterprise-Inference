@@ -1,0 +1,55 @@
+---
+- name: Deploy Keycloak controller
+  hosts: kube_control_plane
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  gather_facts: false
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env | default({}) }}"
+  tasks:
+    - name: Ensure pip is installed
+      ansible.builtin.package:
+        name: python3-pip
+        state: present
+      become: true
+    - name: Install kubernetes library using pip
+      ansible.builtin.pip:
+        name: kubernetes
+        state: present
+        executable: /usr/bin/pip3
+      become: true
+    - name: Install Helm
+      ansible.builtin.shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        executable: /bin/bash
+      become: true
+    - name: Add ingress-nginx repository using Helm module
+      community.kubernetes.helm_repository:
+        name: ingress-nginx
+        repo_url: https://kubernetes.github.io/ingress-nginx
+        state: present
+    - name: Update Helm repositories
+      ansible.builtin.shell: helm repo update
+      become: true
+    - name: Create directory for Keycloak PersistentVolume
+      ansible.builtin.file:
+        path: /mnt/keycloak-vol
+        state: directory
+        mode: '0777'
+      become: true
+    - name: Create PersistentVolume for Keycloak
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: PersistentVolume
+          metadata:
+            name: data-keycloak-postgresql-0
+          spec:
+            capacity:
+              storage: 9Gi
+            accessModes:
+              - ReadWriteOnce
+            hostPath:
+              path: "/mnt/keycloak-vol"

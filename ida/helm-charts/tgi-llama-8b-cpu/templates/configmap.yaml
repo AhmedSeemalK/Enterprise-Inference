@@ -1,0 +1,25 @@
+# Source: kray/helm-charts/tgi-llama-8b-cpu/templates/configmap.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tgi-llama-8b-cpu-config
+  labels:
+    helm.sh/chart: tgi-1.0.0
+    app.kubernetes.io/name: tgillama-8b-cpu
+    app.kubernetes.io/instance: tgillama-8b-cpu
+    app.kubernetes.io/version: "2.1.0"
+    app.kubernetes.io/managed-by: Helm
+data:
+  MODEL_ID: "meta-llama/Meta-Llama-3.1-8B-Instruct"
+  PORT: "2080"
+  HF_TOKEN: "{{ .Values.hfToken }}"
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: ""
+  HABANA_LOGS: "/tmp/habana_logs"
+  NUMBA_CACHE_DIR: "/tmp"
+  HF_HOME: "/tmp/.cache/huggingface"
+  CUDA_GRAPHS: "0"

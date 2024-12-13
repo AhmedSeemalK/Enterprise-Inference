@@ -1,0 +1,23 @@
+# Source: kray/helm-charts/teirerank/templates/configmap.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: teirerank-config
+  labels:
+    helm.sh/chart: teirerank-1.0.0
+    app.kubernetes.io/name: teirerank
+    app.kubernetes.io/instance: teirerank
+    app.kubernetes.io/version: "cpu-1.5"
+    app.kubernetes.io/managed-by: Helm
+data:
+  MODEL_ID: "BAAI/bge-reranker-base"
+  PORT: "2082"
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: ""
+  NUMBA_CACHE_DIR: "/tmp"
+  TRANSFORMERS_CACHE: "/tmp/transformers_cache"
+  HF_HOME: "/tmp/.cache/huggingface"

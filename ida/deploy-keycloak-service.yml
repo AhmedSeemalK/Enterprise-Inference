@@ -1,0 +1,2 @@
+- name: Setup Keycloak Services
+  ansible.builtin.import_playbook: playbooks/deploy-keycloak-controller.yml

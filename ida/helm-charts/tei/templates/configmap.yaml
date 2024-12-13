@@ -1,0 +1,25 @@
+---
+# Source: kray/helm-charts/tei/templates/configmap.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tei-config
+  labels:
+    helm.sh/chart: tei-1.0.0
+    app.kubernetes.io/name: tei
+    app.kubernetes.io/instance: tei
+    app.kubernetes.io/version: "cpu-1.5"
+    app.kubernetes.io/managed-by: Helm
+data:
+  MODEL_ID: "BAAI/bge-base-en-v1.5"
+  PORT: "2081"
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: ""
+  NUMBA_CACHE_DIR: "/tmp"
+  TRANSFORMERS_CACHE: "/tmp/transformers_cache"
+  HF_HOME: "/tmp/.cache/huggingface"
+  MAX_WARMUP_SEQUENCE_LENGTH: "512"

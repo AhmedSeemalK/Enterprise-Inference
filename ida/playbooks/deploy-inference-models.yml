@@ -1,0 +1,415 @@
+---
+- name: Deploy Inference LLM Models
+  hosts: kube_control_plane
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    helm_charts_base: "{{ lookup('env', 'PWD') }}/helm-charts"
+    remote_helm_charts_base: "/tmp/helm-charts"
+    ingress_file: "all_models_apisix_ingres_nginx.yaml"
+    keycloak_url: "https://{{ secret_name }}"    
+    uninstall_true: 'false'
+    install_true: 'false'
+    list_model_true: 'false'
+    model_name_list: 'false'
+  gather_facts: false
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env | default({}) }}"
+  tasks:
+    - name: Ensure pip is installed
+      ansible.builtin.package:
+        name: python3-pip
+        state: present
+      become: true
+    - name: Install kubernetes library using pip
+      ansible.builtin.pip:
+        name: kubernetes
+        state: present
+        executable: /usr/bin/pip3
+      become: true    
+           
+    - name: Copy Helm chart files to node
+      ansible.builtin.copy:
+        src: "{{ helm_charts_base }}/"
+        dest: "{{ remote_helm_charts_base }}/"
+        mode: '0755'
+        owner: ubuntu
+        group: ubuntu
+        remote_src: no
+    
+    - name: Print model_name_list
+      debug:
+        var: model_name_list
+
+    - name: Update Helm dependencies for auth-apisix on nodes
+      ansible.builtin.command: helm dependency update "{{ remote_helm_charts_base }}/apisix-helm/"
+      register: helm_dependency_update
+      failed_when: helm_dependency_update.rc != 0
+        
+    
+    - name: Fetch the keycloak client secret
+      command: "{{ remote_helm_charts_base }}/keycloak-realmcreation.sh {{ secret_name }} {{ keycloak_admin_user }} {{ keycloak_admin_password }} {{ keycloak_client_id }}"
+      register: script_output
+    - name: Set client_secret fact
+      set_fact:
+        client_secret: "{{ script_output.stdout | regex_search('Client secret: (.*)') | join('') | regex_replace('^Client secret: ') }}"
+      when: script_output.stdout is search('Client secret:')
+    - debug:
+        msg: "The client secret is: {{ client_secret }}"
+
+    - name: Print the script output
+      debug:
+        msg: "{{ script_output.stdout }}"
+    
+    - name: Deploy Llama8b LLM Model
+      block:
+        - name: Check if Ingress resource exists Llama8b
+          kubernetes.core.k8s_info:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllmllama8b-authapisix
+          register: ingress_info
+        - name: Delete existing Ingress resource Llama8b
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllmllama8b-authapisix
+            state: absent
+          when: ingress_info.resources | length > 0
+        - name: Deploy LLM model  Llama8b
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-llama-8b "{{ remote_helm_charts_base }}/vllm-llama-8B"
+            --set ingress.host={{ secret_name }}
+            --set secretname={{ secret_name }}
+            --set hfToken={{ hugging_face_token }}
+            --set vllm8b.hostname={{ secret_name }}
+            --set oidc.client_id={{ keycloak_client_id }}
+            --set oidc.client_secret={{ client_secret }}
+            --force
+          register: helm_upgrade_install_model_deployment
+          failed_when: helm_upgrade_install_model_deployment.rc != 0
+      when: 
+        - '"llama-8b" in model_name_list'
+        - install_true == 'true'
+            
+    
+    - name: Deploy Llama70b LLM Model
+      block:
+        - name: Check if Ingress resource exists Llama70b
+          kubernetes.core.k8s_info:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllmllama70b-authapisix
+          register: ingress_info
+        - name: Delete existing Ingress resource Llama70b
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllmllama70b-authapisix
+            state: absent
+          when: ingress_info.resources | length > 0
+        - name: Deploy LLM model  Llama70b
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-llama-70b "{{ remote_helm_charts_base }}/vllm-llama-70B"
+            --set ingress.host={{ secret_name }}
+            --set secretname={{ secret_name }}
+            --set hfToken={{ hugging_face_token }}
+            --set oidc.client_id={{ keycloak_client_id }}
+            --set oidc.client_secret={{ client_secret }}
+            --set vllm70B.hostname={{ secret_name }}
+            --force
+          register: helm_upgrade_install_model_deployment_70b
+          failed_when: helm_upgrade_install_model_deployment_70b.rc != 0
+      when: 
+        - '"llama-70b" in model_name_list'
+        - install_true == 'true'
+    
+    - name: Deploy Mistral7b LLM Model
+      block:
+        - name: Check if Ingress resource exists Mistral7b
+          kubernetes.core.k8s_info:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllmmistral7b-authapisix
+          register: ingress_info
+        - name: Delete existing Ingress resource Mistral7b
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllmmistral7b-authapisix
+            state: absent
+          when: ingress_info.resources | length > 0
+        - name: Deploy LLM model  Mistral7b
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-mistral-7b "{{ remote_helm_charts_base }}/vllm-mistral-7b"
+            --set ingress.host={{ secret_name }}
+            --set secretname={{ secret_name }}
+            --set hfToken={{ hugging_face_token }}
+            --set oidc.client_id={{ keycloak_client_id }}
+            --set oidc.client_secret={{ client_secret }}
+            --set vllmmistral7b.hostname={{ secret_name }}
+            --force
+          register: helm_upgrade_install_model_deployment_mistral
+          failed_when: helm_upgrade_install_model_deployment_mistral.rc != 0
+      when: 
+        - '"mistral" in model_name_list'
+        - install_true == 'true'
+
+
+    - name: Deploy Mixtral7b LLM Model  
+      block:
+        - name: Check if Ingress resource exists Mixtral7b
+          kubernetes.core.k8s_info:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllmmixtral8x7b-authapisix
+          register: ingress_info
+        - name: Delete existing Ingress resource Mixtral7b
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllmmixtral8x7b-authapisix
+            state: absent
+          when: ingress_info.resources | length > 0
+        - name: Deploy LLM model  Mixtral7b
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-mixtral-7b "{{ remote_helm_charts_base }}/vllm-mixtral-7b"
+            --set ingress.host={{ secret_name }}
+            --set secretname={{ secret_name }}
+            --set hfToken={{ hugging_face_token }}
+            --set oidc.client_id={{ keycloak_client_id }}
+            --set oidc.client_secret={{ client_secret }}
+            --set vllmmixtral8x7b.hostname={{ secret_name }}
+            --force
+          register: helm_upgrade_install_model_deployment_mixtral
+          failed_when: helm_upgrade_install_model_deployment_mixtral.rc != 0
+      when: 
+        - '"mixtral" in model_name_list'
+        - install_true == 'true'
+         
+    - name: Deploy codellama LLM Model 
+      block:
+        - name: Check if Ingress resource exists codellama
+          kubernetes.core.k8s_info:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllmcodellama34b-authapisix
+          register: ingress_info
+        - name: Delete existing Ingress resource codellama
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllmcodellama34b-authapisix
+            state: absent
+          when: ingress_info.resources | length > 0
+        - name: Deploy LLM model  codellama
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-codellama "{{ remote_helm_charts_base }}/vllm-codellama-34b"
+            --set ingress.host={{ secret_name }}
+            --set secretname={{ secret_name }}
+            --set hfToken={{ hugging_face_token }}
+            --set oidc.client_id={{ keycloak_client_id }}
+            --set oidc.client_secret={{ client_secret }}
+            --set vllmcodellama34b.hostname={{ secret_name }}
+            --force
+          register: helm_upgrade_install_model_deployment_codellama
+          failed_when: helm_upgrade_install_model_deployment_codellama.rc != 0
+      when: 
+        - '"codellama" in model_name_list'
+        - install_true == 'true'
+  
+    - name: Deploy tei LLM Model
+      block:
+        - name: Check if Ingress resource exists tei
+          kubernetes.core.k8s_info:
+            kind: Ingress
+            namespace: auth-apisix
+            name: tei-authapisix
+          register: ingress_info
+        - name: Delete existing Ingress resource tei
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: tei-authapisix
+            state: absent
+          when: ingress_info.resources | length > 0
+        - name: Deploy LLM model  tei
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-tei "{{ remote_helm_charts_base }}/tei"
+            --set ingress.host={{ secret_name }}
+            --set secretname={{ secret_name }}
+            --set hfToken={{ hugging_face_token }}
+            --set oidc.client_id={{ keycloak_client_id }}
+            --set oidc.client_secret={{ client_secret }}
+            --set tei.hostname={{ secret_name }}
+            --force
+          register: helm_upgrade_install_model_deployment_tei
+          failed_when: helm_upgrade_install_model_deployment_tei.rc != 0
+      when: 
+        - '"tei" in model_name_list' 
+        - install_true == 'true'
+
+    
+    
+    - name: Deploy teirerank LLM Model
+      block:
+        - name: Check if Ingress resource exists teirerank
+          kubernetes.core.k8s_info:
+            kind: Ingress
+            namespace: auth-apisix
+            name: teirerank-authapisix
+          register: ingress_info
+        - name: Delete existing Ingress resource teirerank
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: teirerank-authapisix
+            state: absent
+          when: ingress_info.resources | length > 0
+        - name: Deploy LLM model  teirerank
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-teirerank "{{ remote_helm_charts_base }}/teirerank"
+            --set ingress.host={{ secret_name }}
+            --set secretname={{ secret_name }}
+            --set hfToken={{ hugging_face_token }}
+            --set oidc.client_id={{ keycloak_client_id }}
+            --set oidc.client_secret={{ client_secret }}
+            --set teirerank.hostname={{ secret_name }}
+            --force
+          register: helm_upgrade_install_model_deployment_teirerank
+          failed_when: helm_upgrade_install_model_deployment_teirerank.rc != 0
+      when:
+        - '"tei-rerank" in model_name_list'
+        - install_true == 'true'
+    
+
+    - name: Check if vllm-llama-8b Helm release is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-llama-8b --short"
+      register: helm_release_installed
+      ignore_errors: true
+    - name: Uninstall vllm-llama-8b Helm release
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-llama-8b"
+      when:
+        - "'llama-8b' in model_name_list"
+        - uninstall_true == 'true'
+        - helm_release_installed.stdout != ""
+    
+    - name: Check if vllm-llama-70b Helm release is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-llama-70b --short"
+      register: llama_70b_release_installed
+      ignore_errors: true
+    - name: Uninstall vllm-llama-70b Helm release
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-llama-70b"
+      when:
+        - "'llama-70b' in model_name_list"
+        - uninstall_true == 'true'
+        - llama_70b_release_installed.stdout != ""
+    
+    
+    - name: Check if vllm-mistral-7b Helm release is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-mistral-7b --short"
+      register: mistral_7b_release_installed
+      ignore_errors: true
+    - name: Uninstall vllm-mistral-7b Helm release
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-mistral-7b"
+      when:
+        - "'mistral' in model_name_list"
+        - uninstall_true == 'true'
+        - mistral_7b_release_installed.stdout != ""
+
+    - name: Check if vllm-mixtral-7b Helm release is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-mixtral-7b --short"
+      register: mixtral_7b_release_installed
+      ignore_errors: true
+    - name: Uninstall vllm-mixtral-7b Helm release
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-mixtral-7b"
+      when:
+        - "'mixtral' in model_name_list"
+        - uninstall_true == 'true'
+        - mixtral_7b_release_installed.stdout != ""
+    
+    
+    - name: Check if vllm-codellama Helm release is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-codellama --short"
+      register: codellama_release_installed
+      ignore_errors: true
+    - name: Uninstall vllm-codellama Helm release
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-codellama"
+      when:
+        - "'codellama' in model_name_list"
+        - uninstall_true == 'true'
+        - codellama_release_installed.stdout != ""
+    
+    - name: Check if vllm-teirerank Helm release is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-teirerank --short"
+      register: teirerank_release_installed
+      ignore_errors: true
+    - name: Uninstall vllm-teirerank Helm release
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-teirerank"
+      when:
+        - "'tei-rerank' in model_name_list"
+        - uninstall_true == 'true'
+        - teirerank_release_installed.stdout != ""
+    
+    
+    - name: Print model_name_list 
+      debug:
+        var: model_name_list
+    
+    - name: Print model_name_list before uninstall
+      debug:
+        var: uninstall_true
+
+    - name: Check if vllm-tei Helm release is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-tei --short"
+      register: tei_release_installed
+      ignore_errors: true
+    - name: Uninstall vllm-tei Helm release
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-tei"
+      when:
+        - "'tei' in model_name_list"
+        - uninstall_true == 'true'
+        - tei_release_installed.stdout != ""
+
+    - name: List the Installed Inference Models
+      ansible.builtin.shell:
+        cmd: "helm list --short | grep 'vllm-'"
+      register: inference_models
+      when: list_model_true == 'true'
+    - name: Print Installed Models in Comma Separated Format
+      ansible.builtin.debug:
+        msg: "Installed Models: {{ inference_models.stdout_lines | join(', ') }}"
+      when: inference_models.stdout_lines is defined and inference_models.stdout_lines | length > 0
+    
+    
+    
+    
+    
+               
+
+    - name: Cleanup Helm chart files from master nodes
+      ansible.builtin.file:
+        path: "{{ remote_helm_charts_base }}"
+        state: absent
+    
+    
+    
+    
+    
+
+
+
+

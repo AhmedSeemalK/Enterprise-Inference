@@ -1,0 +1,37 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: tgillama8bcpu-authenticated-endpoints
+  namespace: {{ .Values.tgicpu8b.namespace }}
+spec:
+  http:
+  - name: tgillama8bcpu-query
+    match:
+      hosts:
+      - {{ .Values.tgicpu8b.hostname }}
+      paths:
+      - {{ .Values.tgicpu8b.query_api.path }}
+    backends:
+    - serviceName: {{ .Values.tgicpu8b.query_api.backend_service }}
+      servicePort: {{ .Values.tgicpu8b.query_api.service_port }}
+    plugins:
+    - name: openid-connect
+      enable: true
+      config:
+        client_id: {{ .Values.oidc.client_id }}
+        client_secret: {{ .Values.oidc.client_secret }}
+        discovery: {{ .Values.oidc.discovery }}
+        introspection_endpoint: {{ .Values.oidc.introspection_endpoint }}
+        introspection_endpoint_auth_method: client_secret_basic
+        scope: openid profile email
+        bearer_only: true
+        realm: master
+    - name: proxy-rewrite
+      enable: true
+      config:
+        regex_uri: ["^/Meta-Llama-3.1-8B-Instruct-CPU/(.*)", "/$1"] # This will capture everything after /tgi/ and use it as the new path
+        headers:
+          Content-Type: application/json

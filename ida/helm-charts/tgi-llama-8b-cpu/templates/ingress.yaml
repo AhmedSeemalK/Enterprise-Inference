@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tgillama8bcpu-authapisix
+  namespace: auth-apisix
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /Meta-Llama-3.1-8B-Instruct-CPU/$1
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /Meta-Llama-3.1-8B-Instruct-CPU/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth-apisix-gateway
+                port:
+                  number: 80
+  tls:
+    - hosts:
+      - {{ .Values.ingress.host }}
+      secretName: {{ .Values.secretname }}

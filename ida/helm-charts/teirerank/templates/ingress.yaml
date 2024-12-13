@@ -1,0 +1,39 @@
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    meta.helm.sh/release-name: teirerank
+    meta.helm.sh/release-namespace: default
+    nginx.ingress.kubernetes.io/rewrite-target: /teirerank/$1
+  creationTimestamp: "2024-11-22T03:27:37Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/managed-by: Helm
+  name: teirerank-authapisix
+  namespace: auth-apisix
+  resourceVersion: "244487"
+  uid: df2b31a1-6653-4d71-9de0-4df33cb93ad1
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: auth-apisix-gateway
+            port:
+              number: 80
+        path: /teirerank/(.*)
+        pathType: ImplementationSpecific
+  tls:
+  - hosts:
+    - example.com
+    secretName: example.com
+status:
+  loadBalancer: {}

@@ -1,0 +1,37 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: tei-authenticated-endpoints
+  namespace: {{ .Values.tei.namespace }}
+spec:
+  http:
+  - name: tei-query
+    match:
+      hosts:
+      - {{ .Values.tei.hostname }}
+      paths:
+      - {{ .Values.tei.query_api.path }}
+    backends:
+    - serviceName: {{ .Values.tei.query_api.backend_service }}
+      servicePort: {{ .Values.tei.query_api.service_port }}
+    plugins:
+    - name: openid-connect
+      enable: true
+      config:
+        client_id: {{ .Values.oidc.client_id }}
+        client_secret: {{ .Values.oidc.client_secret }}
+        discovery: {{ .Values.oidc.discovery }}
+        introspection_endpoint: {{ .Values.oidc.introspection_endpoint }}
+        introspection_endpoint_auth_method: client_secret_basic
+        scope: openid profile email
+        bearer_only: true
+        realm: master
+    - name: proxy-rewrite
+      enable: true
+      config:
+        regex_uri: ["^/tei/(.*)", "/$1"]  # This will capture everything after /tei/ and use it as the new path
+        headers:
+          Content-Type: application/json

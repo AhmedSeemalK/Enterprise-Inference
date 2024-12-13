@@ -1,0 +1,84 @@
+# Source: kray/helm-charts/tgi-llama-8b-cpu/templates/deployment.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tgi-llama-8b-cpu
+  labels:
+    helm.sh/chart: tgi-1.0.0
+    app.kubernetes.io/name: tgillama-8b-cpu
+    app.kubernetes.io/instance: tgillama-8b-cpu
+    app.kubernetes.io/version: "2.1.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  # use explicit replica counts only of HorizontalPodAutoscaler is disabled
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tgillama-8b-cpu
+      app.kubernetes.io/instance: tgillama-8b-cpu
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tgillama-8b-cpu
+        app.kubernetes.io/instance: tgillama-8b-cpu
+    spec:
+      securityContext:
+        {}
+      containers:
+        - name: tgi
+          envFrom:
+            - configMapRef:
+                name: tgi-llama-8b-cpu-config
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          image: "ghcr.io/huggingface/text-generation-inference:2.4.0-intel-cpu"
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /data
+              name: model-volume
+            - mountPath: /tmp
+              name: tmp
+          ports:
+            - name: http
+              containerPort: 2080
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 24
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            tcpSocket:
+              port: http
+          readinessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            tcpSocket:
+              port: http
+          startupProbe:
+            failureThreshold: 120
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            tcpSocket:
+              port: http
+          resources:
+            limits:
+              cpu: "96"
+              memory: 128G
+            requests:
+              cpu: "96"
+              memory: 32G
+      volumes:
+        - name: model-volume
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

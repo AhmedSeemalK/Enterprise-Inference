@@ -1,0 +1,78 @@
+---
+- name: Deploy Ingress NGINX using Helm
+  hosts: kube_control_plane
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  gather_facts: false
+  any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
+  environment: "{{ proxy_disable_env | default({}) }}"
+  tasks:
+    - name: Ensure pip is installed
+      ansible.builtin.package:
+        name: python3-pip
+        state: present
+      become: true
+    - name: Install kubernetes library using pip
+      ansible.builtin.pip:
+        name: kubernetes
+        state: present
+        executable: /usr/bin/pip3
+      become: true
+    - name: Install Helm
+      ansible.builtin.shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        executable: /bin/bash
+      become: true
+    - name: Add ingress-nginx repository using Helm module
+      community.kubernetes.helm_repository:
+        name: ingress-nginx
+        repo_url: https://kubernetes.github.io/ingress-nginx
+        state: present
+    - name: Update Helm repositories
+      ansible.builtin.shell: helm repo update
+      become: true
+    
+    - name: Gather Kubernetes node facts
+      kubernetes.core.k8s_info:
+        kind: Node
+      register: nodes_info
+    - name: Set node_selector and tolerations based on the number of nodes
+      set_fact:
+        node_selector: "{{ {} if nodes_info.resources | length == 1 else {'node-role.kubernetes.io/control-plane': ''} }}"
+        tolerations: "{{ [] if nodes_info.resources | length == 1 else [{'key': 'node-role.kubernetes.io/control-plane', 'operator': 'Exists', 'effect': 'NoSchedule'}] }}"
+    - name: Install ingress-nginx chart using Helm module
+      community.kubernetes.helm:
+        name: ingress-nginx
+        chart_ref: ingress-nginx/ingress-nginx
+        release_namespace: ingress-nginx
+        create_namespace: true
+        state: present
+        values:
+          controller:
+            hostPort:
+              enabled: true
+              ports:
+                http: 80
+                https: 443
+            nodeSelector: "{{ node_selector }}"
+            tolerations: "{{ tolerations }}"
+
+    - name: wait for ingress-nginx pods to be running
+      pause:
+        seconds: 30
+      register: initial_pause
+    - name: Ensure all ingress-nginx pods are running and ready
+      shell: |
+        kubectl get pods -n ingress-nginx -o json | jq -r '
+          .items[] |
+          select(.status.phase != "Running" or (.status.containerStatuses[] | select(.ready != true))) |
+          .metadata.name' | wc -l
+      register: pod_status
+      until: pod_status.stdout == "0" and pod_status.rc == 0
+      retries: 160
+      delay: 10
+      failed_when: pod_status.rc != 0 and pod_status.stdout != "0"
+    - name: Output the result
+      debug:
+        msg: "All ingress-nginx pods are running and ready."
