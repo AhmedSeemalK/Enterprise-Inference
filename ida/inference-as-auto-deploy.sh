@@ -144,6 +144,18 @@ setup_initial_env() {\
         echo "Kubespray directory already exists, skipping clone."
         cd $KUBESPRAYDIR
     fi
+     # Install pip if not present
+    if ! command -v pip &> /dev/null && ! command -v pip3 &> /dev/null; then
+        echo "pip not found, attempting to install..."
+        curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+        python3 get-pip.py --user
+        rm get-pip.py
+    elif command -v pip3 &> /dev/null; then
+        echo "pip3 is already installed."        
+    else
+        echo "pip is already installed."
+        
+    fi
     # Create and activate virtual environment within Kubespray directory
     VENVDIR="$KUBESPRAYDIR/venv"
     if [ ! -d "$VENVDIR" ]; then
@@ -168,8 +180,10 @@ setup_initial_env() {\
     # Move deploy files to Kubespray directory
     cp -r "$HOMEDIR"/deploy-* $KUBESPRAYDIR/
     cp -r "$HOMEDIR"/helm-charts $KUBESPRAYDIR/       
+    cp -r "$HOMEDIR"/scripts $KUBESPRAYDIR/       
     cp -r "$KUBESPRAYDIR"/inventory/sample/ "$KUBESPRAYDIR"/inventory/mycluster
     cp  "$HOMEDIR"/inventory/hosts.yaml $KUBESPRAYDIR/inventory/mycluster/
+    
     # Copy playbooks directory
     cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/    
     echo "Additional files and directories copied to Kubespray directory."
@@ -178,21 +192,24 @@ setup_initial_env() {\
 
 
 read_config_file() {
-    local config_file="$HOMEDIR/inference-config.cfg"    
+    local config_file="$HOMEDIR/inference-config.cfg"
     if [ -f "$config_file" ]; then
         echo "Configuration file found, setting vars!"
         echo "---------------------------------------"
         while IFS='=' read -r key value || [ -n "$key" ]; do
             # Trim leading/trailing whitespace
             key=$(echo "$key" | xargs)
-            # Set the variable
-            declare -g "$key"="$value"
+            value=$(echo "$value" | xargs)
+            # Set the variable using a temporary file
+            printf "%s=%s\n" "$key" "$value" >> temp_env_vars
         done < "$config_file"
+        # Load the environment variables from the temporary file
+        source temp_env_vars        
+        rm temp_env_vars
     else
         echo "Configuration file not found. Using default values or prompting for input."
     fi    
 }
-
 
 check_cluster_state() {
     echo "Checking the state of the Kubernetes cluster..."
@@ -315,9 +332,16 @@ deploy_inference_llm_models_playbook() {
     echo "Deploying Inference LLM Models playbook..."
     # Read existing parameters
     # Execute the Ansible playbook with all parameters    
-    install_true="true"        
+    install_true="true"    
+    if [ "$cpu_or_gpu" == "cpu" ]; then
+        cpu_playbook="true"
+        gpu_playbook="false"
+    else
+        cpu_playbook="false"
+        gpu_playbook="true"
+    fi  
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}'"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3}"
 }
 
 remove_inference_llm_models_playbook() {
@@ -329,6 +353,22 @@ remove_inference_llm_models_playbook() {
     uninstall_true="true"       
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
         --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} model_name_list='${model_name_list//\ /,}'"
+}
+
+add_inference_nodes_playbook() {
+    echo "Add Inference LLM Nodes playbook..."
+    # Read existing parameters
+    # Execute the Ansible playbook with all parameters       
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/facts.yml    
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/scale.yml
+}
+
+remove_inference_nodes_playbook() {
+    echo "Remove Inference LLM Nodes playbook..."
+    # Read existing parameters
+    # Execute the Ansible playbook with all parameters       
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/remove-node.yml  
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/scale.yml
 }
 
 list_inference_llm_models_playbook() {
@@ -409,29 +449,6 @@ prompt_for_input() {
         echo "Using provided Keycloak admin password"
     fi
     
-    if [ "$list_model_menu" != "skip" ]; then
-        if [ -z "$hugging_face_token" ] && [ "$deploy_llm_models" = "yes" ]; then
-            read -p "Enter the token for Huggingface: " hugging_face_token
-        else
-            echo "Using provided Huggingface token"
-        fi
-
-        if [ -z "$models" ] && [ "$deploy_llm_models" = "yes" ]; then
-            # Prompt for models
-            echo "Available models:"
-            echo "1. llama-8b"
-            echo "2. llama-70b"
-            echo "3. codellama"
-            echo "4. mixtral"
-            echo "5. mistral"
-            echo "6. tei"
-            echo "7. tei-rerank"
-            read -p "Enter the numbers of the models you want to deploy/remove (comma-separated, e.g., 1,3,5): " models
-        elif [ -n "$models" ]; then
-            echo "Using provided models: $models"
-        fi
-    fi
-            
     if [[ -z "$cpu_or_gpu" ]]; then
         read -p "Do you want to run on CPU or GPU? (c/g): " cpu_or_gpu
         case "$cpu_or_gpu" in
@@ -451,8 +468,51 @@ prompt_for_input() {
     else
         echo "cpu_or_gpu is already set to $cpu_or_gpu"
     fi
-
     
+    if [ "$list_model_menu" != "skip" ]; then
+        if [ -z "$hugging_face_token" ] && [ "$deploy_llm_models" = "yes" ]; then
+            read -p "Enter the token for Huggingface: " hugging_face_token
+        else
+            echo "Using provided Huggingface token"
+        fi
+
+        if [ "$deploy_llm_models" = "yes" ]; then
+            if [ -z "$models" ]; then
+                if [ "$cpu_or_gpu" = "gpu" ]; then
+                    # Prompt for GPU models
+                    echo "Available GPU models:"
+                    echo "1. llama-8b"
+                    echo "2. llama-70b"
+                    echo "3. codellama-34b"
+                    echo "4. mixtral-8x-7b"
+                    echo "5. mistral-7b"
+                    echo "6. tei"
+                    echo "7. tei-rerank"
+                    echo "8. falcon3-7b"
+                    read -p "Enter the numbers of the GPU models you want to deploy/remove (comma-separated, e.g., 1,3,5): " models
+                else
+                    # Prompt for CPU models
+                    echo "Available CPU models:"
+                    echo "9. cpu-llama-8b"
+                    read -p "Enter the number of the CPU model you want to deploy/remove: " cpu_model
+                    models="$cpu_model"
+                fi
+            else
+                echo "Using provided models: $models"
+            fi
+            model_names=$(get_model_names)
+            
+            if [ -n "$model_names" ]; then
+                if [ "$cpu_or_gpu" = "gpu" ]; then
+                    echo "Deploying/removing GPU models: $model_names"                    
+                else
+                    echo "Deploying/removing CPU models: $model_names"                    
+                fi
+            fi
+        else
+            echo "Skipping model deployment/removal."
+        fi        
+    fi
 
 }
 
@@ -484,27 +544,91 @@ get_model_names() {
     read -ra model_array <<< "$models"
     for model in "${model_array[@]}"; do
         case "$model" in
-            1) model_names+=("llama-8b") ;;
-            2) model_names+=("llama-70b") ;;
-            3) model_names+=("codellama") ;;
-            4) model_names+=("mixtral") ;;
-            5) model_names+=("mistral") ;;
-            6) model_names+=("tei") ;;
-            7) model_names+=("tei-rerank") ;;
-            "llama-8b") model_names+=("llama-8b") ;;
-            "llama-70b") model_names+=("llama-70b") ;;
-            "codellama") model_names+=("codellama") ;;
-            "mixtral") model_names+=("mixtral") ;;
-            "mistral") model_names+=("mistral") ;;
-            "tei") model_names+=("tei") ;;
-            "tei-rerank") model_names+=("tei-rerank") ;;
-            *) echo "Invalid model identifier: $model" ;;            
+            1)
+                if [ "$cpu_or_gpu" = "cpu" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("llama-8b")
+                ;;
+            2)
+                if [ "$cpu_or_gpu" = "cpu" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("llama-70b")
+                ;;
+            3)
+                if [ "$cpu_or_gpu" = "cpu" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("codellama-34b")
+                ;;
+            4)
+                if [ "$cpu_or_gpu" = "cpu" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("mixtral-8x-7b")
+                ;;
+            5)
+                if [ "$cpu_or_gpu" = "cpu" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("mistral-7b")
+                ;;
+            6)
+                if [ "$cpu_or_gpu" = "cpu" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("tei")
+                ;;
+            7)
+                if [ "$cpu_or_gpu" = "cpu" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("tei-rerank")
+                ;;
+            8)
+                if [ "$cpu_or_gpu" = "cpu" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("falcon3-7b")
+                ;;
+            9)
+                if [ "$cpu_or_gpu" = "gpu" ]; then
+                    echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("cpu-llama-8b")
+                ;;
+            "llama-8b"|"llama-70b"|"codellama-34b"|"mixtral-8x-7b"|"mistral-7b"|"tei"|"tei-rerank"|"falcon3-7b")
+                if [ "$cpu_or_gpu" = "cpu" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("$model")
+                ;;
+            "cpu-llama-8b")
+                if [ "$cpu_or_gpu" = "gpu" ]; then
+                    echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("cpu-llama-8b")
+                ;;
+            *)
+                echo "Error: Invalid model identifier: $model" >&2
+                exit 1
+                ;;
         esac
     done
-    echo "${model_names[@]}"    
-
+    echo "${model_names[@]}"
 }
-
 
 
 install_kubernetes() {
@@ -565,7 +689,11 @@ fresh_installation() {
                 echo "Skipping Keycloak deployment..."
             fi
             if [[ "$deploy_llm_models" == "yes" ]]; then
-                model_name_list=$(get_model_names)
+                model_name_list=$(get_model_names)                
+                if [ -z "$model_name_list" ]; then
+                    echo "No models provided. Exiting..."
+                    exit 1
+                fi
                 execute_and_check "Deploying Inference LLM Models..." deploy_inference_llm_models_playbook "$@" \
                     "Inference LLM Model is deployed successfully." \
                     "Failed to deploy Inference LLM Model Exiting!."
@@ -574,7 +702,13 @@ fresh_installation() {
             fi
             echo "-------------------------------------------------------"
             echo "|     Deployment Complete! Enjoy Inference as Service! |"
-            echo "-------------------------------------------------------"                        
+            echo "-------------------------------------------------------" 
+            echo ""
+            echo "Accessing Deployed Models for Inference"
+            echo "https://github.com/intel-innersource/applications.ai.erag.infra-automation/tree/main/ida#accessing-deployed-models-for-inference"
+            echo ""
+            echo "Please refer to this comprehensive guide for detailed instructions." 
+            echo ""                      
         else
             echo "-------------------------------------------------------"
             echo "|     Deployment Skipped for Inference as Service!    |"
@@ -595,7 +729,7 @@ update_cluster() {
     read -p "> " update_choice
     case $update_choice in
         1)
-            manage_worker_nodes
+            manage_worker_nodes "$@"
             ;;
         2)
             manage_models "$@"
@@ -617,10 +751,10 @@ manage_worker_nodes() {
     read -p "> " worker_choice
     case $worker_choice in
         1)
-            add_worker_node
+            add_worker_node "$@"
             ;;
         2)
-            remove_worker_node
+            remove_worker_node "$@"
             ;;
         *)
             echo "Invalid option. Please enter 1 or 2."
@@ -690,7 +824,13 @@ add_model() {
             "Failed to deploy Inference LLM Model Exiting!." 
         echo "-------------------------------------------------------"
         echo "|     Deployment Complete! Enjoy Inference as Service! |"
-        echo "-------------------------------------------------------"          
+        echo "-------------------------------------------------------"
+        echo ""
+        echo "Accessing Deployed Models for Inference"
+        echo "https://github.com/intel-innersource/applications.ai.erag.infra-automation/tree/main/ida#accessing-deployed-models-for-inference"
+        echo ""
+        echo "Please refer to this comprehensive guide for detailed instructions."          
+        echo ""
     fi
 }
 
@@ -720,12 +860,25 @@ remove_model() {
 
 add_worker_node() {
     echo "Adding a new worker node to the Inference as Service cluster..."
-    
+    setup_initial_env
+    execute_and_check "Adding new worker nodes..." add_inference_nodes_playbook "$@" \
+            "Adding a new worker node is successful." \
+            "Failed to add worker node Exiting!."
+        echo "-----------------------------------------------------------"
+        echo "|     Node is Added for Inference as Service Cluster!    |"
+        echo "-----------------------------------------------------------"
 }
 
 
 remove_worker_node() {
     echo "Removing a worker node from the Inference as Service cluster..."
+    setup_initial_env
+    execute_and_check "Removing worker nodes..." remove_inference_nodes_playbook "$@" \
+            "Removing  worker node is successful." \
+            "Failed to remove worker node Exiting!."
+    echo "-----------------------------------------------------------"
+    echo "|     Node is Removed for Inference as Service Cluster!    |"
+    echo "-----------------------------------------------------------"
     
 }
 

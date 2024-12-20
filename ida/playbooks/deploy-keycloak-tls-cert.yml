@@ -4,6 +4,7 @@
   vars:
     ansible_python_interpreter: /usr/bin/python3
     helm_charts_base: "{{ lookup('env', 'PWD') }}/helm-charts"
+    remote_home_dir: "{{ lookup('env', 'PWD') }}/scripts"
     remote_helm_charts_base: "/tmp/helm-charts"
     ingress_file: "all_models_apisix_ingres_nginx.yaml"
     keycloak_url: "https://{{ secret_name }}"
@@ -163,6 +164,15 @@
     - name: Copy Helm chart files to node
       ansible.builtin.copy:
         src: "{{ helm_charts_base }}/"
+        dest: "{{ remote_helm_charts_base }}/"
+        mode: '0755'
+        owner: ubuntu
+        group: ubuntu
+        remote_src: no
+    
+    - name: Copy Helm chart keycloak-realcreation file to node
+      ansible.builtin.copy:
+        src: "{{ remote_home_dir }}/"
         dest: "{{ remote_helm_charts_base }}/"
         mode: '0755'
         owner: ubuntu

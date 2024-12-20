@@ -1,0 +1,5 @@
+apiVersion: v2
+name: falcon7b
+description: A Helm chart for deploying Falcon3 models
+version: 0.1.0
+type: application

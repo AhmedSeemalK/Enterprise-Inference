@@ -32,6 +32,11 @@
     - name: Update Helm repositories
       ansible.builtin.shell: helm repo update
       become: true
+    - name: Delete existing Keycloak PersistentVolume data directory
+      ansible.builtin.file:
+        path: /mnt/keycloak-vol/data
+        state: absent
+      become: true
     - name: Create directory for Keycloak PersistentVolume
       ansible.builtin.file:
         path: /mnt/keycloak-vol

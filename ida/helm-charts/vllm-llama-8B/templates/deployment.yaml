@@ -42,14 +42,17 @@ spec:
               add:
                 - SYS_NICE
             readOnlyRootFilesystem: false
-            runAsNonRoot: false
-            runAsUser: 0
+            runAsNonRoot: true
+            runAsUser: 1001
             seccompProfile:
               type: RuntimeDefault
           image: "opea/vllm-gaudi:latest"
           env:
             - name: HF_TOKEN
-              value: '{{ .Values.hfToken }}'
+              valueFrom:
+                secretKeyRef:
+                  name: hugging-face-token
+                  key: hugging-face-token
             - name: MODEL_ID
               value: '$(LLM_MODEL_ID)'
           command:
@@ -60,6 +63,8 @@ spec:
               export PT_HPU_ENABLE_LAZY_COLLECTIVES=$(PT_HPU_ENABLE_LAZY_COLLECTIVES) && \
               export HABANA_VISIBLE_DEVICES=$(HABANA_VISIBLE_DEVICES) && \
               export runtime=$(RUNTIME) && \
+              export VLLM_NO_USAGE_STATS=1 && \
+              export DO_NOT_TRACK=1 && \
               export VLLM_CPU_KVCACHE_SPACE=$(VLLM_CPU_KVCACHE_SPACE) && \
               python3 -m vllm.entrypoints.openai.api_server --dtype $(DTYPE)  --model $(LLM_MODEL_ID) --port $(PORT) --tensor-parallel-size $(TENSOR_PARALLEL_SIZE) --disable-log-requests --block-size $(BLOCK_SIZE) --max-model-len $(MAX_MODEL_LEN)
           imagePullPolicy: IfNotPresent

@@ -3,7 +3,8 @@
   hosts: kube_control_plane
   vars:
     ansible_python_interpreter: /usr/bin/python3
-    helm_charts_base: "{{ lookup('env', 'PWD') }}/helm-charts"
+    helm_charts_base: "{{ lookup('env', 'PWD') }}/helm-charts"    
+    remote_home_dir: "{{ lookup('env', 'PWD') }}/scripts"
     remote_helm_charts_base: "/tmp/helm-charts"
     ingress_file: "all_models_apisix_ingres_nginx.yaml"
     keycloak_url: "https://{{ secret_name }}"    
@@ -11,6 +12,8 @@
     install_true: 'false'
     list_model_true: 'false'
     model_name_list: 'false'
+    gpu_playbook: 'false'
+    cpu_playbook: 'false'
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default({}) }}"
@@ -26,7 +29,18 @@
         state: present
         executable: /usr/bin/pip3
       become: true    
-           
+    - name: Create Kubernetes Secret for Hugging Face Token
+      kubernetes.core.k8s:
+        name: hugging-face-token
+        namespace: default        
+        kind: Secret
+        definition:
+          stringData:
+            hugging-face-token: "{{ hugging_face_token }}"
+        apply: yes
+        state: present
+      when: hugging_face_token is defined
+    
     - name: Copy Helm chart files to node
       ansible.builtin.copy:
         src: "{{ helm_charts_base }}/"
@@ -35,6 +49,22 @@
         owner: ubuntu
         group: ubuntu
         remote_src: no
+    
+    - name: Copy Helm chart keycloak-realcreation file to node
+      ansible.builtin.copy:
+        src: "{{ remote_home_dir }}/"
+        dest: "{{ remote_helm_charts_base }}/"
+        mode: '0755'
+        owner: ubuntu
+        group: ubuntu
+        remote_src: no
+    
+    - name: Ensure the script is executable
+      file:
+        path: "{{ remote_helm_charts_base }}/keycloak-realmcreation.sh"
+        mode: '0755'
+        owner: ubuntu
+        group: ubuntu
     
     - name: Print model_name_list
       debug:
@@ -151,7 +181,7 @@
           register: helm_upgrade_install_model_deployment_mistral
           failed_when: helm_upgrade_install_model_deployment_mistral.rc != 0
       when: 
-        - '"mistral" in model_name_list'
+        - '"mistral-7b" in model_name_list'
         - install_true == 'true'
 
 
@@ -172,7 +202,7 @@
           when: ingress_info.resources | length > 0
         - name: Deploy LLM model  Mixtral7b
           ansible.builtin.command: >-
-            helm upgrade --install vllm-mixtral-7b "{{ remote_helm_charts_base }}/vllm-mixtral-7b"
+            helm upgrade --install vllm-mixtral-7b "{{ remote_helm_charts_base }}/vllm-mixtral-8x7B"
             --set ingress.host={{ secret_name }}
             --set secretname={{ secret_name }}
             --set hfToken={{ hugging_face_token }}
@@ -183,7 +213,7 @@
           register: helm_upgrade_install_model_deployment_mixtral
           failed_when: helm_upgrade_install_model_deployment_mixtral.rc != 0
       when: 
-        - '"mixtral" in model_name_list'
+        - '"mixtral-8x-7b" in model_name_list'
         - install_true == 'true'
          
     - name: Deploy codellama LLM Model 
@@ -201,7 +231,7 @@
             name: vllmcodellama34b-authapisix
             state: absent
           when: ingress_info.resources | length > 0
-        - name: Deploy LLM model  codellama
+        - name: Deploy LLM model  codellama-34b
           ansible.builtin.command: >-
             helm upgrade --install vllm-codellama "{{ remote_helm_charts_base }}/vllm-codellama-34b"
             --set ingress.host={{ secret_name }}
@@ -214,7 +244,7 @@
           register: helm_upgrade_install_model_deployment_codellama
           failed_when: helm_upgrade_install_model_deployment_codellama.rc != 0
       when: 
-        - '"codellama" in model_name_list'
+        - '"codellama-34b" in model_name_list'
         - install_true == 'true'
   
     - name: Deploy tei LLM Model
@@ -280,7 +310,100 @@
       when:
         - '"tei-rerank" in model_name_list'
         - install_true == 'true'
-    
+
+    # - name: Deploy teirerank LLM Model
+    #   block:
+    #     - name: Check if Ingress resource exists teirerank
+    #       kubernetes.core.k8s_info:
+    #         kind: Ingress
+    #         namespace: auth-apisix
+    #         name: teirerank-authapisix
+    #       register: ingress_info
+    #     - name: Delete existing Ingress resource teirerank
+    #       kubernetes.core.k8s:
+    #         kind: Ingress
+    #         namespace: auth-apisix
+    #         name: teirerank-authapisix
+    #         state: absent
+    #       when: ingress_info.resources | length > 0
+    #     - name: Deploy LLM model  teirerank
+    #       ansible.builtin.command: >-
+    #         helm upgrade --install vllm-teirerank "{{ remote_helm_charts_base }}/teirerank"
+    #         --set ingress.host={{ secret_name }}
+    #         --set secretname={{ secret_name }}
+    #         --set hfToken={{ hugging_face_token }}
+    #         --set oidc.client_id={{ keycloak_client_id }}
+    #         --set oidc.client_secret={{ client_secret }}
+    #         --set teirerank.hostname={{ secret_name }}
+    #         --force
+    #       register: helm_upgrade_install_model_deployment_teirerank
+    #       failed_when: helm_upgrade_install_model_deployment_teirerank.rc != 0
+    #   when:
+    #     - '"tei-rerank" in model_name_list'
+    #     - install_true == 'true'
+
+
+    - name: Deploy Faclon3 7b LLM Model
+      block:
+        - name: Check if Ingress resource exists Faclon3
+          kubernetes.core.k8s_info:
+            kind: Ingress
+            namespace: auth-apisix
+            name: falcon-authapisix
+          register: ingress_info
+        - name: Delete existing Ingress resource Faclon3
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: falcon-authapisix
+            state: absent
+          when: ingress_info.resources | length > 0
+        - name: Deploy LLM model  Faclon3
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-falcon3-7b "{{ remote_helm_charts_base }}/falcon3-7b"
+            --set ingress.host={{ secret_name }}
+            --set secretname={{ secret_name }}
+            --set hfToken={{ hugging_face_token_falcon3 }}
+            --set oidc.client_id={{ keycloak_client_id }}
+            --set oidc.client_secret={{ client_secret }}
+            --set falcon3.hostname={{ secret_name }}
+            --force
+          register: helm_upgrade_install_model_deployment_falcon
+          failed_when: helm_upgrade_install_model_deployment_falcon.rc != 0
+      when:
+        - '"falcon3-7b" in model_name_list'
+        - install_true == 'true'  
+
+    - name: Deploy CPU based LLM model  llama 8b
+      block:
+        - name: Check if Ingress resource exists cpu-llama8b
+          kubernetes.core.k8s_info:
+            kind: Ingress
+            namespace: auth-apisix
+            name: tgillama8bcpu-authapisix
+          register: ingress_info
+        - name: Delete existing Ingress resource cpu-llama8b
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: tgillama8bcpu-authapisix
+            state: absent
+          when: ingress_info.resources | length > 0
+        - name: Deploy CPU based LLM model  llama 8b
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-cpu-llama8b "{{ remote_helm_charts_base }}/tgi-llama-8b-cpu"
+            --set ingress.host={{ secret_name }}
+            --set secretname={{ secret_name }}
+            --set hfToken={{ hugging_face_token }}
+            --set oidc.client_id={{ keycloak_client_id }}
+            --set oidc.client_secret={{ client_secret }}
+            --set tgicpu8b.hostname={{ secret_name }}
+            --force
+          register: helm_upgrade_install_model_deployment_cpu_llama8b
+          failed_when: helm_upgrade_install_model_deployment_cpu_llama8b.rc != 0
+      when:
+        - cpu_playbook == 'true'
+        - install_true == 'true'                      
 
     - name: Check if vllm-llama-8b Helm release is installed
       ansible.builtin.command:
@@ -318,7 +441,7 @@
       ansible.builtin.command:
         cmd: "helm uninstall vllm-mistral-7b"
       when:
-        - "'mistral' in model_name_list"
+        - "'mistral-7b' in model_name_list"
         - uninstall_true == 'true'
         - mistral_7b_release_installed.stdout != ""
 
@@ -331,7 +454,7 @@
       ansible.builtin.command:
         cmd: "helm uninstall vllm-mixtral-7b"
       when:
-        - "'mixtral' in model_name_list"
+        - "'mixtral-8x-7b' in model_name_list"
         - uninstall_true == 'true'
         - mixtral_7b_release_installed.stdout != ""
     
@@ -345,7 +468,7 @@
       ansible.builtin.command:
         cmd: "helm uninstall vllm-codellama"
       when:
-        - "'codellama' in model_name_list"
+        - "'codellama-34b' in model_name_list"
         - uninstall_true == 'true'
         - codellama_release_installed.stdout != ""
     
@@ -383,6 +506,32 @@
         - "'tei' in model_name_list"
         - uninstall_true == 'true'
         - tei_release_installed.stdout != ""
+
+    - name: Check if vllm-falcon3-7b is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-falcon3-7b --short"
+      register: falcon3_7b_release_installed
+      ignore_errors: true
+    - name: Uninstall vllm-falcon3-7b Helm release
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-falcon3-7b"
+      when:
+        - "'falcon3-7b' in model_name_list"
+        - uninstall_true == 'true'
+        - falcon3_7b_release_installed.stdout != ""
+
+    - name: Check if vllm_cpu_llama8b is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm_cpu_llama8b --short"
+      register: vllm_cpu_llama8b_release_installed
+      ignore_errors: true
+    - name: Uninstall vllm_cpu_llama8b Helm release
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm_cpu_llama8b"
+      when:
+        - "'cpu-llama8b' in model_name_list"
+        - uninstall_true == 'true'
+        - vllm_cpu_llama8b_release_installed.stdout != ""
 
     - name: List the Installed Inference Models
       ansible.builtin.shell:

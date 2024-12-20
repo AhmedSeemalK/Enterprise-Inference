@@ -1,0 +1,34 @@
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falcon-three-7b-config
+  labels:
+    app.kubernetes.io/name: falcon-three-7b
+    app.kubernetes.io/instance: falcon-three-7b
+data:
+  PORT: "2080"
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: ""
+  HABANA_LOGS: "/tmp/habana_logs"
+  NUMBA_CACHE_DIR: "/tmp"
+  HF_HOME: "/tmp/.cache/huggingface"
+  MAX_INPUT_LENGTH: "1024"
+  MAX_TOTAL_TOKENS: "2048"
+  TRANSFORMERS_CACHE: "/tmp/transformers_cache"
+  NUM_SHARD: "8"
+  SHARDED: "true"
+  OMPI_MCA_btl_vader_single_copy_mechanism: "none"
+  PT_HPU_ENABLE_LAZY_COLLECTIVES: "true"
+  HABANA_VISIBLE_DEVICES: "all"
+  VLLM_CPU_KVCACHE_SPACE: "40"
+  TENSOR_PARALLEL_SIZE: "1"
+  BLOCK_SIZE: "128"
+  DTYPE: "bfloat16"
+  MAX_MODEL_LEN: "5120"
+  RUNTIME: "habana"
+  LLM_MODEL_ID: "tiiuae/Falcon3-7B-Instruct"

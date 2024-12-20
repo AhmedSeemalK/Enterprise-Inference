@@ -1,0 +1,37 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: falcon-authenticated-endpoints
+  namespace: {{ .Values.falcon3.namespace }}
+spec:
+  http:
+  - name: falcon3-query
+    match:
+      hosts:
+      - {{ .Values.falcon3.hostname }}
+      paths:
+      - {{ .Values.falcon3.query_api.path }}
+    backends:
+    - serviceName: {{ .Values.falcon3.query_api.backend_service }}
+      servicePort: {{ .Values.falcon3.query_api.service_port }}
+    plugins:
+    - name: openid-connect
+      enable: true
+      config:
+        client_id: {{ .Values.oidc.client_id }}
+        client_secret: {{ .Values.oidc.client_secret }}
+        discovery: {{ .Values.oidc.discovery }}
+        introspection_endpoint: {{ .Values.oidc.introspection_endpoint }}
+        introspection_endpoint_auth_method: client_secret_basic
+        scope: openid profile email
+        bearer_only: true
+        realm: master
+    - name: proxy-rewrite
+      enable: true
+      config:
+        regex_uri: ["^/Falcon3-7B-Instruct/(.*)", "/$1"] # This will capture everything after /Falcon3-7B-Instruct/ and use it as the new path
+        headers:
+          Content-Type: application/json

@@ -39,7 +39,7 @@ spec:
               - ALL
             readOnlyRootFilesystem: true
             runAsNonRoot: true
-            runAsUser: 1000
+            runAsUser: 1001
             seccompProfile:
               type: RuntimeDefault
           image: "ghcr.io/huggingface/text-embeddings-inference:cpu-1.5"

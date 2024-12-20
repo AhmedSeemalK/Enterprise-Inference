@@ -1,5 +1,12 @@
 # Inference as a Service Deployment Automation
-This automates the setup, reset, and update of a Kubernetes cluster with Inference as a Service using Ansible playbooks. It includes functions for setting up   environment, installing Kubernetes, deploying various components (e.g., Habana AI Operator, Ingress NGINX Controller, Keycloak, APISIX), and managing models and worker nodes.
+   This automates the setup, reset, and update of a Inference as Service kubernetes cluster using playbooks. It includes functions for setting up   
+environment, deploying various components 
+   - Kubernetes 
+   - Habana AI Operator
+   - Ingress NGINX Controller
+   - Keycloak
+   - APISIX
+   - Model Deployments
 
 # Table of Contents
 1. [Inference as a Service Deployment Automation](#inference-as-a-service-deployment-automation)
@@ -27,30 +34,86 @@ This automates the setup, reset, and update of a Kubernetes cluster with Inferen
 
 ## Supported Models
 The following models are supported by this Inference as a Service automation:
-1. **llama-8b**
-2. **llama-70b**
-3. **codellama-34b**
-4. **mixtral-8x7b**
-5. **mistral-7b**
-6. **tei**
-7. **tei-rerank**
+1. [**llama-8b**](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct)
+2. [**llama-70b**](https://huggingface.co/meta-llama/Llama-3.1-70B-Instruct)
+3. [**codellama-34b**](https://huggingface.co/codellama/CodeLlama-34b-Instruct-hf)
+4. [**mixtral-8x7b**](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1)
+5. [**mistral-7b**](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3)
+6. [**tei**](https://github.com/huggingface/tei-gaudi/pkgs/container/tei-gaudi)
+7. [**tei-rerank**](https://github.com/huggingface/text-embeddings-inference/pkgs/container/text-embeddings-inference)
+8. [**falcon3-7b**](https://huggingface.co/tiiuae/Falcon3-7B-Instruct)   
+9. [**cpu-llama-8b**](https://github.com/huggingface/text-generation-inference/pkgs/container/text-generation-inference)
    
 These models can be deployed, providing a range of inference capabilities to suit various needs and applications.
 
-## Prerequisites for Setting Up Inference as a Service Cluster
-1. **Gaudi Driver update, Firmware update, and Reboot.**
-2. **Update the `ida/inventory/hosts.yaml` file with the private IP addresses of the nodes.**
-3. **This automation needs to be invoked from a linux bastion host with keyless SSH access.**
-4. **DNS entry for the master node IP (e.g., example.com resolves to 127.0.0.1).**
-5. **Certificate file, including the full chain file and key file (Certfile).**
-6. **Hugging Face token. For instructions on generating the Hugging Face token, please refer to the [Hugging Face documentation](https://huggingface.co/docs/hub/security-tokens).**
 
+
+## Prerequisites for Setting Up Inference as a Service Cluster
+1. **Gaudi VM should be available with firmware version 1.18 or later.**
+      Verify the firmware version by running the below command:
+    ```commandline
+    hl-smi
+    ```
+2. Fetch the private IPs and ssh keys file path for all nodes in cluster and update the host.yml file located at below path
+    ```text
+    ida/inventory/hosts.yaml
+    ```
+      ##### Please find below sample of hosts.yml file
+   ```yaml
+      all:
+        hosts:
+          master:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: ubuntu
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+          worker1:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: ubuntu
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+          worker2:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: ubuntu
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+        children:
+          kube_control_plane:
+            hosts:
+              master:
+          kube_node:
+            hosts:
+              worker1:
+              worker2:
+          etcd:
+            hosts:
+              master:
+          k8s_cluster:
+            children:
+              kube_control_plane:
+              kube_node:
+          calico_rr:
+            hosts: {}
+   ```
+
+   2. **In Kubernetes cluster setup, perform below steps for master node to communicate with other nodes without ssh key.**
+         1. On master node, open termnial and copy the output of id_rsa.pub file
+       ```commandline
+       cat ~/.ssh/id_rsa.pub
+       ```
+       2. On each worker node, perform below action:
+       ```commandline
+        echo "TOKEN_FROM_ABOVE_COMAMAND" >> ~/.ssh/authorized_keys
+       ```
+
+4. **Setup the DNS to access the service:**
+      1. DNS name should be created for the master node IP (e.g., example.com resolves to 127.0.0.1).
+      2. Certificate files should be created, including the full chain file and key file (Certfile).
+5. **User needs to have huggingface token generated.**
+     Please refer to the [Hugging Face documentation](https://huggingface.co/docs/hub/security-tokens) for more assistance.
 
 
 ## Usage
 ### Running the Automation
 To run the automation, execute the following command in your terminal:
-./inference-as-auto-deploy.sh [OPTIONS]
+bash inference-as-auto-deploy.sh [OPTIONS]
 ### Options
 `````
 The automation accepts the following command-line options:
@@ -65,112 +128,8 @@ The automation accepts the following command-line options:
 --cpu-or-gpu <c/g>: Specify whether to run on CPU or GPU.
 `````
 
-### Main Menu
-When you run the automation, you will be presented with a main menu with the following options:
-1. Setup k8s Cluster with Inference as Service: Perform a fresh installation of the Kubernetes cluster with Inference as a Service.
-2. K8sPurgeCluster: Reset the existing Kubernetes cluster.
-3. Update Existing Cluster: Update the existing Kubernetes cluster.
-
-### Fresh Installation
-If you choose to perform a fresh installation, the automation will prompt you for the necessary inputs and proceed with the following steps:
-1. Prompt for Input: Collects the required inputs from the user.
-2. Setup Initial Environment: Sets up the virtual environment and installs necessary dependencies.
-3. Install Kubernetes: Installs Kubernetes and sets up the kubeconfig for the user.
-4. Deploy Components: Deploys the selected components (Habana AI Operator, Ingress NGINX Controller, Keycloak, and models).
-### Example
-`````
-To perform a fresh installation with specific parameters, you can run:
-bash inference-as-auto-deploy.sh --cluster-url "https://example.com" --cert-file "/path/to/cert.pem" --key-file "/path/to/key.pem" --keycloak-client-id "my-client-id" --keycloak-admin-user "user" --keycloak-admin-password "password" --hugging-face-token "token" --models "1,3,5" --cpu-or-gpu "g"
-
-or
-
-with inference-config.cfg file configured, run
-bash inference-as-auto-deploy.sh
-`````
-
-#### Reset Cluster
-If you choose to reset the cluster, the automation will:
-1. Prompt for Confirmation: Asks for confirmation before proceeding with the reset.
-2. Setup Initial Environment: Sets up the virtual environment and installs necessary dependencies.
-3. Run Reset Playbook: Executes the Ansible playbook to reset the cluster.
-### Example
-`````
-Run:
-bash inference-as-auto-deploy.sh
-
-Please select the following option:
-   2) K8sPurgeCluster
-Acknowledge it with "yes".
-`````
-
-#### Update Existing Cluster
-If you choose to update the existing cluster, the automation will present you with the following options:
-1. Manage Worker Nodes: Add or remove worker nodes.
-2. Manage Models: Add or remove models.
-`````
-Run:
-bash inference-as-auto-deploy.sh
-
-Please select the following option:
-   3) Update Existing Cluster
-
-`````
-
-
-#### Manage Models: Add or remove models.
-
-#### Add LLM Model
-This option allows you to deploy a new LLM model on the Kubernetes cluster.
-
-#### Example:
-`````
-Run:
-bash inference-as-auto-deploy.sh
-Please select the following options:
-   3) Update Existing Cluster
-   then select,
-   2) Manage LLM Models
-   then select,
-   1) Deploy Model
-Follow the prompts to provide the necessary information for deploying the model.
-`````
-
-#### Remove LLM Model
-This option allows you to remove deployed LLM model on the Kubernetes cluster.
-
-#### Example:
-`````
-Run:
-bash inference-as-auto-deploy.sh
-Please select the following options:
-   3) Update Existing Cluster
-   then select,
-   2) Manage LLM Models
-   then select,
-   2) Undeploy Model
-Follow the prompts to select the model you want to undeploy.
-`````
-
-
-#### List LLM Model
-This option allows you to list deployed LLM model on the Kubernetes cluster.
-
-#### Example:
-`````
-Run:
-bash inference-as-auto-deploy.sh
-Please select the following options:
-   3) Update Existing Cluster
-   then select,
-   2) Manage LLM Models
-   then select,
-   3) List Installed Models
-The script will display a list of all the installed LLM models on the cluster.
-`````
-
-
 ### Using the inference-config.cfg File
-If you don't want to be prompted for the required parameters, you can use the inference-config.cfg file to provide the necessary values. The automation will read the values from this file if it exists.
+If you don't want to be prompted for the required parameters, you can use the inference-config.cfg file to provide the necessary values. The automation will read the values from this file.
 Here's an example of the inference-config.cfg file:
 `````
 cluster_url=example.com
@@ -190,6 +149,116 @@ deploy_llm_models=yes
 `````
 Make sure to update the values in the inference-config.cfg file according to your requirements before running the automation.
 
+
+And then execute the script.
+```commandline
+bash inference-as-auto-deploy.sh
+```
+
+
+## Main Menu
+When you run the automation, you will be presented with a main menu with the following options:
+1. Setup k8s Cluster with Inference as Service: Perform a fresh installation of the Kubernetes cluster with Inference as a Service.
+2. K8sPurgeCluster: Reset the existing Kubernetes cluster.
+3. Update Existing Cluster: Update the existing Kubernetes cluster.
+
+### Fresh Installation:
+If you choose to perform a fresh installation, the automation will prompt you for the necessary inputs and proceed with the following steps:
+1. Prompt for Input: Collects the required inputs from the user.
+2. Setup Initial Environment: Sets up the virtual environment and installs necessary dependencies.
+3. Install Kubernetes: Installs Kubernetes and sets up the kubeconfig for the user.
+4. Deploy Components: Deploys the selected components (Habana AI Operator, Ingress NGINX Controller, Keycloak, and models).
+#### Example
+`````
+To perform a fresh installation with specific parameters, you can run:
+bash inference-as-auto-deploy.sh --cluster-url "https://example.com" --cert-file "/path/to/cert.pem" --key-file "/path/to/key.pem" --keycloak-client-id "my-client-id" --keycloak-admin-user "user" --keycloak-admin-password "password" --hugging-face-token "token" --models "1,3,5" --cpu-or-gpu "g"
+
+or
+
+with inference-config.cfg file configured, run
+bash inference-as-auto-deploy.sh
+`````
+
+### Reset Cluster:
+If you choose to reset the cluster, the automation will:
+1. Prompt for Confirmation: Asks for confirmation before proceeding with the reset.
+2. Setup Initial Environment: Sets up the virtual environment and installs necessary dependencies.
+3. Run Reset Playbook: Executes the Ansible playbook to reset the cluster.
+#### Example
+`````
+Run:
+bash inference-as-auto-deploy.sh
+
+Please select the following option:
+   2) K8sPurgeCluster
+Acknowledge it with "yes".
+`````
+
+### Update Existing Cluster:
+If you choose to update the existing cluster, the automation will present you with the following options:
+1. Manage Worker Nodes: Add or remove worker nodes.
+2. Manage Models: Add or remove models.
+`````
+Run:
+bash inference-as-auto-deploy.sh
+
+Please select the following option:
+   3) Update Existing Cluster
+
+`````
+
+
+## Manage Models: Add or remove models.
+
+### Add LLM Model
+This option allows you to deploy a new LLM model on the Kubernetes cluster.
+
+#### Example:
+`````
+Run:
+bash inference-as-auto-deploy.sh
+Please select the following options:
+   3) Update Existing Cluster
+   then select,
+   2) Manage LLM Models
+   then select,
+   1) Deploy Model
+Follow the prompts to provide the necessary information for deploying the model.
+`````
+
+### Remove LLM Model
+This option allows you to remove deployed LLM model on the Kubernetes cluster.
+
+#### Example:
+`````
+Run:
+bash inference-as-auto-deploy.sh
+Please select the following options:
+   3) Update Existing Cluster
+   then select,
+   2) Manage LLM Models
+   then select,
+   2) Undeploy Model
+Follow the prompts to select the model you want to undeploy.
+`````
+
+
+### List LLM Model
+This option allows you to list deployed LLM model on the Kubernetes cluster.
+
+#### Example:
+`````
+Run:
+bash inference-as-auto-deploy.sh
+Please select the following options:
+   3) Update Existing Cluster
+   then select,
+   2) Manage LLM Models
+   then select,
+   3) List Installed Models
+The script will display a list of all the installed LLM models on the cluster.
+`````
+
 ## Accessing Deployed Models for Inference
 
 ### Export user credentials
@@ -200,8 +269,36 @@ export KEYCLOAK_ADDR=https://example.com
 export KEYCLOAK_REALM=<your_keycloak_realm>
 export KEYCLOAK_CLIENT_ID=<your_keycloak_client_id>
 export KEYCLOAK_CLIENT_SECRET=<your_keycloak_client_secret>
+
 # Obtain access token
 export TOKEN=$(curl -k -X POST $KEYCLOAK_ADDR/token  -H 'Content-Type: application/x-www-form-urlencoded' -d "grant_type=password&client_id=${KEYCLOAK_CLIENT_ID}&client_secret=${KEYCLOAK_CLIENT_SECRET}&username=${USER}&password=${PASSWORD}" | jq -r .access_token)
+
+For inferencing with Llama-3-8b:
+curl -k ${KEYCLOAK_ADDR}/Meta-Llama-3.1-8B-Instruct/v1/chat/completions -X POST -d '{"messages": [{"role": "system","content": "You are helpful assistant"},{"role": "user","content": "what is API"}],"model": "meta-llama/Meta-Llama-3.1-8B-Instruct","max_tokens": 32,"temperature": 0.4}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+
+For inferencing with Llama-3-70b:
+curl -k ${KEYCLOAK_ADDR}/Meta-Llama-3.1-70B-Instruct/v1/chat/completions -X POST -d '{"messages": [{"role": "system","content": "You are helpful assistant"},{"role": "user","content": "what is Cloud"}],"model": "meta-llama/Meta-Llama-3.1-70B-Instruct","max_tokens": 32,"temperature": 0.4}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+
+For inferencing with Codellama-34b:
+curl -k ${KEYCLOAK_ADDR}/CodeLlama-34b-Instruct/v1/chat/completions -X POST -d '{"messages": [{"role": "system","content": "You are helpful assistant"},{"role": "user","content": "what is Go Programming lang"}],"model": "codellama/CodeLlama-34b-Instruct-hf","max_tokens": 32,"temperature": 0.4}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+
+For inferencing with Mistral-7b:
+curl -k ${KEYCLOAK_ADDR}/Mistral-7B-Instruct/v1/chat/completions -X POST -d '{"messages": [{"role": "system","content": "You are helpful assistant"},{"role": "user","content": "what is API"}],"model": "mistralai/Mistral-7B-Instruct-v0.3","max_tokens": 32,"temperature": 0.4}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+
+For inferencing with Mixtral-8x-7b:
+curl -k  ${KEYCLOAK_ADDR}/Mixtral-7B-Instruct/v1/chat/completions -X POST -d '{"messages": [{"role": "system","content": "You are helpful assistant"},{"role": "user","content": "what is programming"}],"model": "mistralai/Mixtral-8x7B-Instruct-v0.1","max_tokens": 32,"temperature": 0.4}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+
+For inferencing with Falcon3-7b:
+curl -k  ${KEYCLOAK_ADDR}/Falcon3-7B-Instruct/v1/chat/completions -X POST -d '{"messages": [{"role": "system","content": "You are helpful assistant"},{"role": "user","content": "what is programming"}],"model": "mistralai/Mixtral-8x7B-Instruct-v0.1","max_tokens": 32,"temperature": 0.4}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+
+For inferencing with Tei:
+curl -k ${KEYCLOAK_ADDR}/tei/embed -X POST -d '{"inputs":"What is Deep Learning?"}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+
+For inferencing with Tei-reranking:
+curl -k -X POST ${KEYCLOAK_ADDR}/teirerank/rerank -d '{"query":"What is Deep Learning?", "texts": ["Deep Learning is not...", "Deep learning is..."], "raw_scores": false}' -sS -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+
+For inferencing with Llama-3-8b-CPU
+curl -k $KEYCLOAK_ADDR/Meta-Llama-3.1-8B-Instruct-CPU/generate_stream -X POST -d '{"inputs":"What is Deep Learning?","parameters":{"max_new_tokens":20}}' -H "Authorization: Bearer $TOKEN"
 
 `````
 
