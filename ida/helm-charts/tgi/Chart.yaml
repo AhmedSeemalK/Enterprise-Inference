@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 apiVersion: v2
-name: tei
-description: The Helm chart for HuggingFace Text Embedding Inference Server
+name: tgi
+description: The Helm chart for HuggingFace Text Generation Inference Server
 type: application
 version: 0-latest
-# The HF TEI version
-appVersion: "cpu-1.5"
+# The HF TGI version
+appVersion: "2.1.0"

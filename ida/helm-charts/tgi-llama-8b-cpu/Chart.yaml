@@ -1,6 +1,0 @@
-apiVersion: v2
-appVersion: 1.16.0
-description: A Helm chart for deploying tgi-llama-8B-cpu model on Kubernetes
-name: tgi-llama-8B-cpu
-type: application
-version: 0.1.0

@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Colors
+RED=$(tput setaf 1)
+GREEN=$(tput setaf 2)
+YELLOW=$(tput setaf 3)
+NC=$(tput sgr0)  # Reset color
+
+# ©2024 Intel Corporation
+# Permission is granted for recipient to internally use and modify this software for purposes of benchmarking and testing on Intel architectures. 
+# This software is provided "AS IS" possibly with faults, bugs or errors; it is not intended for production use, and recipient uses this design at their own risk with no liability to Intel.
+# Intel disclaims all warranties, express or implied, including warranties of merchantability, fitness for a particular purpose, and non-infringement. 
+# Recipient agrees that any feedback it provides to Intel about this software is licensed to Intel for any purpose worldwide. No permission is granted to use Intel’s trademarks.
+# The above copyright notice and this permission notice shall be included in all copies or substantial portions of the code.
+
+
 #############################################################################
 # Usage Documentation
 #############################################################################
@@ -132,6 +146,12 @@ deploy_ingress_controller=""
 deploy_keycloak_and_apisix=""
 deploy_llm_models=""
 list_model_menu=""
+apisix_enabled=""
+ingress_enabled=""
+deploy_keycloak=""
+deploy_apisix=""
+delete_pv_on_purge=""
+prereq_executed=0
 
 
 setup_initial_env() {\
@@ -206,9 +226,41 @@ read_config_file() {
         # Load the environment variables from the temporary file
         source temp_env_vars        
         rm temp_env_vars
+        case "$deploy_keycloak_apisix" in
+            "no")
+                deploy_apisix="no"
+                deploy_keycloak="no"
+                echo "deploy_apisix and deploy_keycloak are set to 'no'"
+                ;;
+            "yes")
+                deploy_apisix="yes"
+                deploy_keycloak="yes"
+                echo "deploy_apisix and deploy_keycloak are set to 'yes'"
+                ;;
+            *)
+                echo "Incorrect value for deploy_keycloak_apisix"
+                exit 1
+                ;;
+        esac
     else
         echo "Configuration file not found. Using default values or prompting for input."
     fi    
+}
+
+
+invoke_prereq_workflows() {
+    if [ $prereq_executed -eq 0 ]; then
+        read_config_file
+        if [ -z "$cluster_url" ] || [ -z "$cert_file" ] || [ -z "$key_file" ] || [ -z "$keycloak_client_id" ] || [ -z "$keycloak_admin_user" ] || [ -z "$keycloak_admin_password" ]; then
+            echo "Some required arguments are missing. Prompting for input..."
+            prompt_for_input
+        fi
+        setup_initial_env
+        # Set the flag to 1 (executed)
+        prereq_executed=1
+    else
+        echo "Prerequisites have already been executed. Skipping..."
+    fi
 }
 
 check_cluster_state() {
@@ -224,7 +276,9 @@ check_cluster_state() {
 }
 
 run_reset_playbook() {
-    echo "Running the Ansible playbook to reset the cluster..."        
+    echo "Running the Ansible playbook to reset the cluster..."  
+    delete_pv_on_purge="yes"      
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-keycloak-controller.yml --extra-vars "delete_pv_on_purge=${delete_pv_on_purge}"
     ansible-playbook -i "${INVENTORY_PATH}" --become --become-user=root reset.yml -e "confirm_reset=yes"  
     # Check the exit status of the Ansible playbook command
     if [ $? -eq 0 ]; then
@@ -299,7 +353,7 @@ install_ansible_collection() {
 
 run_keycloak_playbook() {
     echo "Deploying Keycloak using Ansible playbook..."
-    install_ansible_collection
+    install_ansible_collection    
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-keycloak-controller.yml
 }
 
@@ -323,9 +377,12 @@ create_keycloak_tls_secret_playbook() {
     # Read existing parameters
     # Execute the Ansible playbook with all parameters
     #echo $model_name_list
-    echo "************************************"
+    echo "************************************"    
+    #deploy_keycloak=""
+    #deploy_apisix=""
+    
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-keycloak-tls-cert.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} model_name_list='${model_name_list//\ /,}'"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} model_name_list='${model_name_list//\ /,}'  deploy_keycloak=${deploy_keycloak}  deploy_apisix=${deploy_apisix} "
 }
 
 deploy_inference_llm_models_playbook() {
@@ -336,12 +393,29 @@ deploy_inference_llm_models_playbook() {
     if [ "$cpu_or_gpu" == "cpu" ]; then
         cpu_playbook="true"
         gpu_playbook="false"
+        gaudi_deployment="false"
     else
         cpu_playbook="false"
         gpu_playbook="true"
-    fi  
+        gaudi_deployment="true"
+    fi
+    if [ "$deploy_apisix" == "no" ]; then        
+        apisix_enabled="false"
+    else        
+        apisix_enabled="true"
+    fi
+    if [ "$deploy_keycloak" == "no" ]; then
+        ingress_enabled="true"        
+    else
+        ingress_enabled="false"        
+    fi
+        
+    echo "ingress enabled $ingress_enabled"
+    echo "apisix enabled $apisix_enabled"
+    echo "keycloak enabled $deploy_keycloak"    
+    echo "gaudi deployment $gaudi_deployment"
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3}"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment}"
 }
 
 remove_inference_llm_models_playbook() {
@@ -355,19 +429,40 @@ remove_inference_llm_models_playbook() {
         --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} model_name_list='${model_name_list//\ /,}'"
 }
 
-add_inference_nodes_playbook() {
-    echo "Add Inference LLM Nodes playbook..."
-    # Read existing parameters
-    # Execute the Ansible playbook with all parameters       
+add_inference_nodes_playbook() {    
+    echo "Add Inference LLM Nodes playbook..."    
+    # Prompt the user for the worker node name
+    read -p "Enter the name of the worker node to be added (as defined in hosts.yml): " worker_node_name    
+    if [ -z "$worker_node_name" ]; then
+        echo "Error: No worker node names provided."
+        return 1
+    fi
+    # Check if the input contains invalid characters
+    if ! [[ "$worker_node_name" =~ ^[a-zA-Z0-9,-]+$ ]]; then
+        echo "Error: Invalid characters in worker node names. Only alphanumeric characters, commas, and hyphens are allowed."
+        return 1
+    fi
+    invoke_prereq_workflows   
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/facts.yml    
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/scale.yml
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/scale.yml --limit="$worker_node_name"
 }
 
 remove_inference_nodes_playbook() {
     echo "Remove Inference LLM Nodes playbook..."
-    # Read existing parameters
-    # Execute the Ansible playbook with all parameters       
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/remove-node.yml  
+    # Prompt the user for the worker node names to be removed
+    read -p "Enter the names of the worker nodes to be removed (comma-separated, as defined in hosts.yml): " worker_nodes_to_remove            
+    if [ -z "$worker_nodes_to_remove" ]; then
+        echo "Error: No worker node names provided."
+        return 1
+    fi
+    # Check if the input contains invalid characters
+    if ! [[ "$worker_nodes_to_remove" =~ ^[a-zA-Z0-9,-]+$ ]]; then
+        echo "Error: Invalid characters in worker node names. Only alphanumeric characters, commas, and hyphens are allowed."
+        return 1
+    fi
+    invoke_prereq_workflows
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/remove-node.yml --limit="$worker_nodes_to_remove"
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/remove-node.yml --limit="$worker_nodes_to_remove" --flush-cache
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/scale.yml
 }
 
@@ -400,12 +495,20 @@ prompt_for_input() {
     else
         echo "Proceeding with the setup of Ingress Controller: $deploy_ingress_controller"
     fi
-    if [ -z "$deploy_keycloak_and_apisix" ]; then
-        read -p "Do you want to proceed with deploying Keycloak & APISIX? (yes/no): " deploy_keycloak_and_apisix
+    if [ -z "$deploy_keycloak" ]; then
+        read -p "Do you want to proceed with deploying Keycloak & APISIX? (yes/no): " deploy_keycloak
         
     else
-        echo "Proceeding with the setup of Keycloak and Apisix: $deploy_keycloak_and_apisix"
+        echo "Proceeding with the setup of Keycloak : $deploy_keycloak"
     fi
+    if [ -z "$deploy_apisix" ]; then
+        read -p "Do you want to proceed with deploying Keycloak & APISIX? (yes/no): " deploy_apisix
+        
+    else
+        echo "Proceeding with the setup of Apisix: $deploy_apisix"
+    fi
+    
+
     if [ -z "$deploy_llm_models" ]; then
         read -p "Do you want to proceed with deploying Large Language Model (LLM)? (yes/no): " deploy_llm_models
         if [ "$deploy_llm_models" == "yes" ]; then
@@ -644,12 +747,9 @@ install_kubernetes() {
         "Failed to set up kubeconfig for the user. Exiting."
 }
 
-
-
-
 fresh_installation() {    
     read_config_file        
-    if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak_and_apisix" == "no" && "$deploy_llm_models" == "no" ]]; then
+    if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak" == "no" && "$deploy_apisix" == "no" && "$deploy_llm_models" == "no" ]]; then
         echo "No installation or deployment steps selected. Skipping setup_initial_env..."
         echo "-------------------------------------------------------"
         echo "|     Deployment Skipped for Inference as Service!    |"
@@ -678,7 +778,8 @@ fresh_installation() {
             else
                 echo "Skipping Ingress NGINX Controller deployment..."
             fi
-            if [[ "$deploy_keycloak_and_apisix" == "yes" ]]; then
+            
+            if [[ "$deploy_keycloak" == "yes" || "$deploy_apisix" == "yes" ]]; then        
                 execute_and_check "Deploying Keycloak..." run_keycloak_playbook \
                     "Keycloak is deployed successfully." \
                     "Failed to deploy Keycloak. Exiting."
@@ -693,7 +794,7 @@ fresh_installation() {
                 if [ -z "$model_name_list" ]; then
                     echo "No models provided. Exiting..."
                     exit 1
-                fi
+                    fi
                 execute_and_check "Deploying Inference LLM Models..." deploy_inference_llm_models_playbook "$@" \
                     "Inference LLM Model is deployed successfully." \
                     "Failed to deploy Inference LLM Model Exiting!."
@@ -717,6 +818,93 @@ fresh_installation() {
     fi
 }
 
+update_gaudi_drivers() {
+    read -p "WARNING: Updating Gaudi drivers may cause system downtime. Do you want to proceed? (yes/no) " -r
+    echo
+    if [[ $REPLY =~ ^(yes|y|Y)$ ]]; then
+        echo "Initiating Gaudi driver update process..."
+        execute_and_check "Deploying Drivers..." update_drivers \
+                        "Gaudi Driver updated successfully. Please reboot the machine for changes to take effect." \
+                        "Failed to update Gaudi driver. Exiting."
+    else
+        echo "Gaudi driver update cancelled."
+    fi
+}
+update_gaudi_firmware() {
+    read -p "WARNING: Updating Gaudi firmware may cause system downtime. Do you want to proceed? (yes/no) " -r
+    echo
+    if [[ $REPLY =~ ^(yes|y|Y)$ ]]; then
+        echo "Initiating Gaudi firmware update process..."
+        execute_and_check "Deploying Firmware..." update_firmware \
+                        "Gaudi Firmware updated successfully. Please reboot the machine for changes to take effect." \
+                        "Failed to update Gaudi Firmware. Exiting."
+    else
+        echo "Gaudi firmware update cancelled."
+    fi
+}
+update_gaudi_driver_and_firmware_both() {
+    read -p "WARNING: Updating Gaudi drivers and firmware may cause system downtime. Do you want to proceed? (yes/no) " -r
+    echo
+    if [[ $REPLY =~ ^(yes|y|Y)$ ]]; then
+        echo "Initiating Gaudi driver and firmware update process..."
+        execute_and_check "Deploying Driver,Firmware..." update_drivers_and_firmware_both \
+                        "Gaudi Driver,Firmware updated successfully. Please reboot the machine for changes to take effect." \
+                        "Failed to update Gaudi Driver,Firmware. Exiting."
+    else
+        echo "Gaudi driver and firmware update cancelled."
+    fi
+}
+
+# Update drivers
+update_drivers() {
+    invoke_prereq_workflows
+    echo "${YELLOW}Updating drivers...${NC}"
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-gaudi-firmware-driver.yml \
+        --extra-vars "update_type=drivers"    
+    echo "${GREEN}Drivers updated successfully!${NC}"
+}
+
+# Update firmware
+update_firmware() {
+    invoke_prereq_workflows
+    echo "${YELLOW}Updating firmware...${NC}"
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-gaudi-firmware-driver.yml \
+        --extra-vars "update_type=firmware"  
+    echo "${GREEN}Firmware updated successfully!${NC}"
+}
+
+# Update both drivers and firmware
+update_drivers_and_firmware_both() {
+    update_drivers
+    update_firmware
+}
+
+update_drivers_and_firmware() {    
+    echo "-------------------------------------------------"
+    echo "|        Update Drivers and Firmware             |"
+    echo "|------------------------------------------------|"
+    echo "| 1) Update Drivers                              |"
+    echo "| 2) Update Firmware                             |"
+    echo "| 3) Update Both Drivers and Firmware            |"
+    echo "|------------------------------------------------|"
+    echo "Please choose an option (1, 2, or 3):"
+    read -p "> " update_choice
+    case $update_choice in
+        1)
+            update_gaudi_drivers
+            ;;
+        2)
+            update_gaudi_firmware
+            ;;
+        3)
+            update_gaudi_driver_and_firmware_both
+            ;;
+        *)
+            echo "Invalid option. Please enter 1, 2, or 3."
+            update_drivers_and_firmware
+            ;;
+    esac
+}
 
 update_cluster() {          
     echo "-------------------------------------------------"
@@ -740,6 +928,7 @@ update_cluster() {
             ;;
     esac
 }
+
 manage_worker_nodes() {
     echo "-------------------------------------------------"
     echo "| Manage Worker Nodes                            |"
@@ -859,8 +1048,7 @@ remove_model() {
 }
 
 add_worker_node() {
-    echo "Adding a new worker node to the Inference as Service cluster..."
-    setup_initial_env
+    echo "Adding a new worker node to the Inference as Service cluster..."    
     execute_and_check "Adding new worker nodes..." add_inference_nodes_playbook "$@" \
             "Adding a new worker node is successful." \
             "Failed to add worker node Exiting!."
@@ -871,8 +1059,7 @@ add_worker_node() {
 
 
 remove_worker_node() {
-    echo "Removing a worker node from the Inference as Service cluster..."
-    setup_initial_env
+    echo "Removing a worker node from the Inference as Service cluster..."    
     execute_and_check "Removing worker nodes..." remove_inference_nodes_playbook "$@" \
             "Removing  worker node is successful." \
             "Failed to remove worker node Exiting!."
@@ -890,6 +1077,7 @@ main_menu() {
     echo "| 1) Setup k8s Cluster with Inference as Service   |"
     echo "| 2) K8sPurgeCluster                               |"
     echo "| 3) Update Existing Cluster                       |"
+    echo "| 4) Update Driver and Firmware                    |"
     echo "|--------------------------------------------------|"
     echo "Please choose an option (1, 2, or 3):"
     read -p "> " user_choice
@@ -898,10 +1086,13 @@ main_menu() {
             fresh_installation "$@"
             ;;
         2)
-            reset_cluster
+            reset_cluster "$@"
             ;;
         3)
             update_cluster "$@"
+            ;;
+        4)
+            update_drivers_and_firmware "$@"
             ;;
         *)
             echo "Invalid option. Please enter 1, 2, or 3."

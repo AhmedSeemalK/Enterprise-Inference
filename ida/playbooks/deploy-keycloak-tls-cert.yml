@@ -8,6 +8,8 @@
     remote_helm_charts_base: "/tmp/helm-charts"
     ingress_file: "all_models_apisix_ingres_nginx.yaml"
     keycloak_url: "https://{{ secret_name }}"
+    deploy_keycloak: "no"
+    deploy_apisix: "no"
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default({}) }}"
@@ -68,6 +70,8 @@
             tls.crt: "{{ lookup('file', cert_file) | b64encode }}"
             tls.key: "{{ lookup('file', key_file) | b64encode }}"
       register: kubectl_output    
+      when: deploy_apisix == "yes"
+
     - name: Display the output
       debug:
         msg: "Secret {{ secret_name }} created."
@@ -101,16 +105,19 @@
             annotations:
               nginx.ingress.kubernetes.io/ssl-redirect: "true"
               nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-
             extraTls:
               - hosts:
                   - "{{ secret_name }}"
                 secretName: "{{ secret_name }}"
         state: present
       register: helm_output
+      when: deploy_keycloak == "yes"
+
     - name: Display Helm output
       debug:
         msg: "{{ helm_output }}"
+      when: deploy_keycloak == "yes"
+
     - name: Check Keycloak StatefulSet is ready
       community.kubernetes.k8s_info:
         kind: StatefulSet
@@ -123,6 +130,8 @@
       retries: 60
       delay: 10
       changed_when: false
+      when: deploy_keycloak == "yes"
+
     - name: Wait for Keycloak pods to be ready
       kubernetes.core.k8s_info:
         kind: Pod
@@ -135,6 +144,7 @@
         - keycloak_pods.resources | map('select', 'status.containerStatuses') | sum(attribute='ready', start=0) == keycloak_pods.resources | length
       retries: 60
       delay: 5
+      when: deploy_keycloak == "yes"
     
   
     - name: Wait for a short delay to allow pods to terminate
@@ -190,21 +200,24 @@
       ansible.builtin.command: helm dependency update "{{ remote_helm_charts_base }}/apisix-helm/"
       register: helm_dependency_update
       failed_when: helm_dependency_update.rc != 0
+      when: deploy_apisix == "yes"
     
 
       
-    - name: Update Helm dependencies for auth-apisix on nodes
+    - name: Update Helm dependencies for auth-apisix on nodes search
       community.kubernetes.helm:
         name: auth-apisix
         chart_ref: "{{ remote_helm_charts_base }}/apisix-helm/"
         update_repo_cache: yes
         release_namespace: auth-apisix
+      when: deploy_apisix == "yes"
     - name: Install auth-apisix Helm chart on nodes
       community.kubernetes.helm:
         name: auth-apisix
         chart_ref: "{{ remote_helm_charts_base }}/apisix-helm/"
         create_namespace: yes
         release_namespace: auth-apisix
+      when: deploy_apisix == "yes"
     
     - name: Print model_name_list
       debug:
@@ -229,21 +242,32 @@
         secret_name: "{{ secret_name }}"
       register: keycloak_ingress_register_msg_in
       failed_when: keycloak_ingress_register_msg_in.rc != 0
+      when: deploy_keycloak == "yes"
                   
     - name: Execute the Keycloak Realm Creation Script
       command: "{{ remote_helm_charts_base }}/keycloak-realmcreation.sh {{ secret_name }} {{ keycloak_admin_user }} {{ keycloak_admin_password }} {{ keycloak_client_id }}"
       register: script_output
+      when: deploy_keycloak == "yes"
+
     - name: Set client_secret fact
       set_fact:
         client_secret: "{{ script_output.stdout | regex_search('Client secret: (.*)') | join('') | regex_replace('^Client secret: ') }}"
-      when: script_output.stdout is search('Client secret:')
+      when:
+        - script_output is defined
+        - script_output.stdout is defined
+        - script_output.stdout is search('Client secret:')
+        - deploy_keycloak == "yes"
+
+
+
     - debug:
         msg: "The client secret is: {{ client_secret }}"
-
+      when: deploy_keycloak == "yes"
     - name: Print the script output
       debug:
         msg: "{{ script_output.stdout }}"    
-    
+      when: deploy_keycloak == "yes"
+
     - name: Cleanup Helm chart files from master nodes
       ansible.builtin.file:
         path: "{{ remote_helm_charts_base }}"

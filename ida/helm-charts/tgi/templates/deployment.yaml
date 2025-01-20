@@ -4,9 +4,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "tei.fullname" . }}
+  name: {{ include "tgi.fullname" . }}
   labels:
-    {{- include "tei.labels" . | nindent 4 }}
+    {{- include "tgi.labels" . | nindent 4 }}
 spec:
   {{- if ne (int .Values.replicaCount) 1 }}
   # remove if replica count should not be reset on pod update with HPA
@@ -14,7 +14,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "tei.selectorLabels" . | nindent 6 }}
+      {{- include "tgi.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -22,20 +22,20 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "tei.selectorLabels" . | nindent 8 }}
+        {{- include "tgi.selectorLabels" . | nindent 8 }}
     spec:
       # {{- with .Values.imagePullSecrets }}
       # imagePullSecrets:
       #   {{- toYaml . | nindent 8 }}
       # {{- end }}
-      # serviceAccountName: {{ include "tei.serviceAccountName" . }}
+      # serviceAccountName: {{ include "tgi.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
           envFrom:
             - configMapRef:
-                name: {{ include "tei.fullname" . }}-config
+                name: {{ include "tgi.fullname" . }}-config
             {{- if .Values.global.extraEnvConfig }}
             - configMapRef:
                 name: {{ .Values.global.extraEnvConfig }}
@@ -47,8 +47,12 @@ spec:
           {{- if .Values.image.pullPolicy }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{- end }}
+          {{- if .Values.extraCmdArgs }}
           args:
-            - "--auto-truncate"
+            {{- range .Values.extraCmdArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          {{- end }}
           volumeMounts:
             - mountPath: /data
               name: model-volume
@@ -56,6 +60,8 @@ spec:
             #   name: shm
             - mountPath: /tmp
               name: tmp
+            - mountPath: /usr/src/out
+              name: tokenizer
           ports:
             - name: http
               containerPort: {{ .Values.port }}
@@ -78,7 +84,7 @@ spec:
         - name: model-volume
           {{- if .Values.pvc.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "tei.fullname" . }}-pvc
+            claimName: {{ include "tgi.fullname" . }}-pvc
           {{- else if .Values.global.modelUseHostPath }}
           hostPath:
             path: {{ .Values.global.modelUseHostPath }}
@@ -91,6 +97,8 @@ spec:
         #     medium: Memory
         #     sizeLimit: {{ .Values.shmSize }}
         - name: tmp
+          emptyDir: {}
+        - name: tokenizer
           emptyDir: {}
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -106,7 +114,7 @@ spec:
       {{- end }}
       {{- if not .Values.accelDevice }}
       # extra time to finish processing buffered requests on CPU before pod is forcibly terminated
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: 120
       {{- end }}
       {{- if .Values.evenly_distributed }}
       topologySpreadConstraints:
@@ -115,5 +123,5 @@ spec:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              {{- include "tei.selectorLabels" . | nindent 14 }}
+              {{- include "tgi.selectorLabels" . | nindent 14 }}
       {{- end }}

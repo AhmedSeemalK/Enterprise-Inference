@@ -1,6 +1,0 @@
-apiVersion: v2
-appVersion: 1.16.0
-description: A Helm chart for deploying vllm-mixtral8x7b model on Kubernetes
-name: vllm-mixtral8x7b
-type: application
-version: 0.1.0

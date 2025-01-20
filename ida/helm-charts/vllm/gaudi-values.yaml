@@ -1,0 +1,69 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+# Default values for vllm.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# User-configurable parameters (can be set via --set during helm install)
+tensor_parallel_size: 1  # Default value for tensor-parallel-size (user input)
+
+# Internal variable that maps user input to tensor_parallel_size
+#tensor_parallel_size: "{{ .Values['tensor-parallel-size'] }}"  # This maps to internal variable used for resources
+block_size: 128          # Default KV cache block size
+max_num_seqs: 256        # Default maximum number of sequences
+max_seq_len_to_capture: 2048 # Default maximum sequence length
+d_type: "bfloat16"
+max_model_len: 5120
+
+accelDevice: "gaudi"
+
+image:
+  repository: opea/vllm-gaudi
+  tag: "1.1"
+  pullPolicy: IfNotPresent
+
+# OMPI Configuration
+OMPI_MCA_btl_vader_single_copy_mechanism: none
+PT_HPU_ENABLE_LAZY_COLLECTIVES: "true"
+VLLM_CPU_KVCACHE_SPACE: "40"
+VLLM_NO_USAGE_STATS: 1
+DO_NOT_TRACK: 1
+runtime: "habana"
+HABANA_VISIBLE_DEVICES: "all"
+
+# Command Arguments for vLLM
+# extraCmdArgs:
+#   - "--tensor-parallel-size"
+#   - "{{ .Values['tensor-parallel-size'] }}"
+#   - "--block-size"
+#   - "{{ .Values.block-size }}"
+#   - "--max-num-seqs"
+#   - "{{ .Values.max-num-seqs }}"
+#   - "--max-seq-len-to-capture"
+#   - "{{ .Values.max-seq-len-to-capture }}"
+#   - "--dtype"
+#   - "{{ .Values.dtype }}"
+#   - "--max-model-len"
+#   - "{{ .Values.max-model-len }}"
+
+# resources:
+#   limits:
+#     habana.ai/gaudi: {{ .Values['tensor-parallel-size'] }}
+
+resources: 
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  limits:
+    cpu: "96"
+    memory: 128G
+  requests:
+    cpu: "96"
+    memory: 128G
+
+# Command Arguments for vLLM
+#extraCmdArgs: ["--tensor-parallel-size","1","--block-size","128","--max-num-seqs","256","--max-seq_len-to-capture","2048"]
+extraCmdArgs: ["--block-size","128","--dtype","bfloat16","--max-model-len","5120"]
+

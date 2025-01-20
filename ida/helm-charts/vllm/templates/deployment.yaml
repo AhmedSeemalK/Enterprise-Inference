@@ -4,17 +4,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "tei.fullname" . }}
+  name: {{ include "vllm.fullname" . }}
   labels:
-    {{- include "tei.labels" . | nindent 4 }}
+    {{- include "vllm.labels" . | nindent 4 }}
 spec:
   {{- if ne (int .Values.replicaCount) 1 }}
-  # remove if replica count should not be reset on pod update with HPA
+  # remove if replica count should not be reset on pod update (e.g. with HPA)
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "tei.selectorLabels" . | nindent 6 }}
+      {{- include "vllm.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -22,20 +22,20 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "tei.selectorLabels" . | nindent 8 }}
+        {{- include "vllm.selectorLabels" . | nindent 8 }}
     spec:
       # {{- with .Values.imagePullSecrets }}
       # imagePullSecrets:
       #   {{- toYaml . | nindent 8 }}
       # {{- end }}
-      # serviceAccountName: {{ include "tei.serviceAccountName" . }}
+      # serviceAccountName: {{ include "vllm.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
           envFrom:
             - configMapRef:
-                name: {{ include "tei.fullname" . }}-config
+                name: {{ include "vllm.fullname" . }}-config
             {{- if .Values.global.extraEnvConfig }}
             - configMapRef:
                 name: {{ .Values.global.extraEnvConfig }}
@@ -47,8 +47,26 @@ spec:
           {{- if .Values.image.pullPolicy }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{- end }}
+          # command:
+          #   - /bin/bash
+          #   - -c
+          #   - |
+          #     python3 -m vllm.entrypoints.openai.api_server --dtype {{ .Values.d_type }}  --model {{ .Values.LLM_MODEL_ID }} --port {{ .Values.port }} --tensor-parallel-size {{ .Values.tensor_parallel_size }} --block-size {{ .Values.block_size }} --max-model-len {{ .Values.max_model_len }} --disable-log-requests
           args:
-            - "--auto-truncate"
+          {{- if .Values.extraCmdArgs }}
+            {{- range .Values.extraCmdArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          {{- end }}
+            - "--model"
+            - {{ .Values.LLM_MODEL_ID | quote }}
+            {{- if .Values.accelDevice }}
+            - "--tensor-parallel-size"
+            - {{ .Values.tensor_parallel_size | quote }}
+            {{- end }}
+            - "--port"
+            - {{ .Values.port | quote }}
+            - "--disable-log-requests"
           volumeMounts:
             - mountPath: /data
               name: model-volume
@@ -73,12 +91,17 @@ spec:
             {{- toYaml .Values.startupProbe | nindent 12 }}
           {{- end }}
           resources:
+            {{- if not .Values.accelDevice }}
             {{- toYaml .Values.resources | nindent 12 }}
+            {{- else }}
+            limits:
+              habana.ai/gaudi: {{ .Values.tensor_parallel_size | quote }}
+            {{- end }}
       volumes:
         - name: model-volume
           {{- if .Values.pvc.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "tei.fullname" . }}-pvc
+            claimName: {{ include "vllm.fullname" . }}-pvc
           {{- else if .Values.global.modelUseHostPath }}
           hostPath:
             path: {{ .Values.global.modelUseHostPath }}
@@ -104,10 +127,6 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if not .Values.accelDevice }}
-      # extra time to finish processing buffered requests on CPU before pod is forcibly terminated
-      terminationGracePeriodSeconds: 60
-      {{- end }}
       {{- if .Values.evenly_distributed }}
       topologySpreadConstraints:
         - maxSkew: 1
@@ -115,5 +134,9 @@ spec:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              {{- include "tei.selectorLabels" . | nindent 14 }}
+              {{- include "vllm.selectorLabels" . | nindent 14 }}
+      {{- end }}
+      {{- if not .Values.accelDevice }}
+      # extra time to finish processing buffered requests on CPU before pod is forcibly terminated
+      terminationGracePeriodSeconds: 120
       {{- end }}

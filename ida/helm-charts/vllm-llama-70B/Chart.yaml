@@ -1,6 +1,0 @@
-apiVersion: v2
-appVersion: 1.16.0
-description: A Helm chart for deploying vllm-llama-70B model on Kubernetes
-name: vllm-llama-70B
-type: application
-version: 0.1.0

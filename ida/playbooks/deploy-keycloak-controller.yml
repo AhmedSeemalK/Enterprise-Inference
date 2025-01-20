@@ -3,6 +3,7 @@
   hosts: kube_control_plane
   vars:
     ansible_python_interpreter: /usr/bin/python3
+    delete_pv_on_purge: 'no'
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default({}) }}"
@@ -29,20 +30,24 @@
         name: ingress-nginx
         repo_url: https://kubernetes.github.io/ingress-nginx
         state: present
+      when: delete_pv_on_purge == "no"
     - name: Update Helm repositories
       ansible.builtin.shell: helm repo update
       become: true
+      when: delete_pv_on_purge == "no"
     - name: Delete existing Keycloak PersistentVolume data directory
       ansible.builtin.file:
         path: /mnt/keycloak-vol/data
         state: absent
       become: true
+      when: delete_pv_on_purge == "yes"
     - name: Create directory for Keycloak PersistentVolume
       ansible.builtin.file:
         path: /mnt/keycloak-vol
         state: directory
         mode: '0777'
       become: true
+      when: delete_pv_on_purge == "no"
     - name: Create PersistentVolume for Keycloak
       community.kubernetes.k8s:
         state: present
@@ -58,3 +63,4 @@
               - ReadWriteOnce
             hostPath:
               path: "/mnt/keycloak-vol"
+      when: delete_pv_on_purge == "no"

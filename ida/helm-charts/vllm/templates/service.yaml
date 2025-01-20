@@ -4,15 +4,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "teirerank.fullname" . }}-service
+  name: {{ include "vllm.fullname" . }}-service
   labels:
-    {{- include "teirerank.labels" . | nindent 4 }}
+    {{- include "vllm.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
     - port: 80
       targetPort: {{ .Values.port }}
       protocol: TCP
-      name: teirerank
+      name: vllm
   selector:
-    {{- include "teirerank.selectorLabels" . | nindent 4 }}
+    {{- include "vllm.selectorLabels" . | nindent 4 }}

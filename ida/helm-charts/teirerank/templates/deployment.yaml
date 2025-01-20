@@ -1,90 +1,123 @@
-# Source: kray/helm-charts/teirerank/templates/deployment.yaml
 # Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: teirerank
+  name: {{ include "teirerank.fullname" . }}
   labels:
-    helm.sh/chart: teirerank-1.0.0
-    app.kubernetes.io/name: teirerank
-    app.kubernetes.io/instance: teirerank
-    app.kubernetes.io/version: "cpu-1.5"
-    app.kubernetes.io/managed-by: Helm
+    {{- include "teirerank.labels" . | nindent 4 }}
 spec:
-  # use explicit replica counts only of HorizontalPodAutoscaler is disabled
-  replicas: 2
+  {{- if ne (int .Values.replicaCount) 1 }}
+  # remove if replica count should not be reset on pod update with HPA
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: teirerank
-      app.kubernetes.io/instance: teirerank
+      {{- include "teirerank.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       labels:
-        app.kubernetes.io/name: teirerank
-        app.kubernetes.io/instance: teirerank
+        {{- include "teirerank.selectorLabels" . | nindent 8 }}
     spec:
+      # {{- with .Values.imagePullSecrets }}
+      # imagePullSecrets:
+      #   {{- toYaml . | nindent 8 }}
+      # {{- end }}
+      # serviceAccountName: {{ include "teirerank.serviceAccountName" . }}
       securityContext:
-        {}
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: teirerank
+        - name: {{ .Chart.Name }}
           envFrom:
             - configMapRef:
-                name: teirerank-config
+                name: {{ include "teirerank.fullname" . }}-config
+            {{- if .Values.global.extraEnvConfig }}
+            - configMapRef:
+                name: {{ .Values.global.extraEnvConfig }}
+                optional: true
+            {{- end }}
           securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-              - ALL
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            runAsUser: 1001
-            seccompProfile:
-              type: RuntimeDefault
-          image: "ghcr.io/huggingface/text-embeddings-inference:cpu-1.5"
-          imagePullPolicy: IfNotPresent
+            {{- if .Values.global.modelUseHostPath }}
+            {}
+            {{- else }}
+            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          {{- if .Values.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- end }}
           args:
             - "--auto-truncate"
           volumeMounts:
             - mountPath: /data
               name: model-volume
-            - mountPath: /dev/shm
-              name: shm
+            # - mountPath: /dev/shm
+            #   name: shm
             - mountPath: /tmp
               name: tmp
           ports:
             - name: http
-              containerPort: 2082
+              containerPort: {{ .Values.port }}
               protocol: TCP
+          {{- if .Values.livenessProbe }}
           livenessProbe:
-            failureThreshold: 24
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe }}
           readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.startupProbe }}
           startupProbe:
-            failureThreshold: 120
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+          {{- end }}
           resources:
-            {}
+            {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: model-volume
+          {{- if .Values.pvc.enabled }}
+          persistentVolumeClaim:
+            claimName: name: {{ include "teirerank.fullname" . }}-pvc
+          {{- else if .Values.global.modelUseHostPath }}
+          hostPath:
+            path: {{ .Values.global.modelUseHostPath }}
+            type: Directory
+          {{- else }}
           emptyDir: {}
-        - name: shm
-          emptyDir:
-            medium: Memory
-            sizeLimit: 1Gi
+          {{- end }}
+        # - name: shm
+        #   emptyDir:
+        #     medium: Memory
+        #     sizeLimit: {{ .Values.shmSize }}
         - name: tmp
           emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if not .Values.accelDevice }}
+      # extra time to finish processing buffered requests on CPU before pod is forcibly terminated
+      terminationGracePeriodSeconds: 60
+      {{- end }}
+      {{- if .Values.evenly_distributed }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "teirerank.selectorLabels" . | nindent 14 }}
+      {{- end }}

@@ -1,25 +1,36 @@
----
-# Source: kray/helm-charts/tei/templates/configmap.yaml
 # Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: tei-config
+  name: {{ include "tei.fullname" . }}-config
   labels:
-    helm.sh/chart: tei-1.0.0
-    app.kubernetes.io/name: tei
-    app.kubernetes.io/instance: tei
-    app.kubernetes.io/version: "cpu-1.5"
-    app.kubernetes.io/managed-by: Helm
+    {{- include "tei.labels" . | nindent 4 }}
 data:
-  MODEL_ID: "BAAI/bge-base-en-v1.5"
-  PORT: "2081"
-  http_proxy: ""
-  https_proxy: ""
-  no_proxy: ""
+  MODEL_ID: {{ .Values.EMBEDDING_MODEL_ID | quote }}
+  PORT: {{ .Values.port | quote }}
+  http_proxy: {{ .Values.global.http_proxy | quote }}
+  https_proxy: {{ .Values.global.https_proxy | quote }}
+  no_proxy: {{ .Values.global.no_proxy | quote }}
   NUMBA_CACHE_DIR: "/tmp"
   TRANSFORMERS_CACHE: "/tmp/transformers_cache"
   HF_HOME: "/tmp/.cache/huggingface"
-  MAX_WARMUP_SEQUENCE_LENGTH: "512"
+  HF_HUB_CACHE: "/tmp/.cache/huggingface/hub"
+  {{- if .Values.global.HF_ENDPOINT }}
+  HF_ENDPOINT: {{ .Values.global.HF_ENDPOINT | quote}}
+  {{- end }}
+  {{- if .Values.HF_HUB_DISABLE_PROGRESS_BARS }}
+  HF_HUB_DISABLE_PROGRESS_BARS: {{ .Values.HF_HUB_DISABLE_PROGRESS_BARS | quote }}
+  {{- end }}
+  {{- if .Values.HF_HUB_ENABLE_HF_TRANSFER }}
+  HF_HUB_ENABLE_HF_TRANSFER: {{ .Values.HF_HUB_ENABLE_HF_TRANSFER | quote }}
+  {{- end }}
+  # More options for HPU
+  {{- if .Values.OMPI_MCA_btl_vader_single_copy_mechanism }}
+  OMPI_MCA_btl_vader_single_copy_mechanism: {{ .Values.OMPI_MCA_btl_vader_single_copy_mechanism | quote }}
+  {{- end }}
+  {{- if .Values.MAX_WARMUP_SEQUENCE_LENGTH }}
+  MAX_WARMUP_SEQUENCE_LENGTH: {{ .Values.MAX_WARMUP_SEQUENCE_LENGTH | quote }}
+  {{- end }}
+  HF_TOKEN: {{ .Values.global.HUGGINGFACEHUB_API_TOKEN | quote}}
