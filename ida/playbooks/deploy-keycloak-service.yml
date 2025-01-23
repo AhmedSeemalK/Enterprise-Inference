@@ -29,6 +29,11 @@
         name: ingress-nginx
         repo_url: https://kubernetes.github.io/ingress-nginx
         state: present
+    - name: Check if Helm repositories exist
+      ansible.builtin.command: helm repo list
+      register: helm_repo_list    
+      failed_when: false
+      changed_when: false  
     - name: Update Helm repositories
-      ansible.builtin.shell: helm repo update
-      become: true    
+      ansible.builtin.shell: helm repo update      
+      when: helm_repo_list.stdout != ""

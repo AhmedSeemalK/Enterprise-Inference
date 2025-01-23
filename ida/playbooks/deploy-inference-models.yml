@@ -546,6 +546,19 @@
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""
 
+    - name: Check if CPU Model is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-llama8b-cpu --short"
+      register: helm_release_installed
+      ignore_errors: true
+    - name: Uninstall CPU  Model
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-llama8b-cpu"
+      when:
+        - "'cpu-llama-8b' in model_name_list"
+        - uninstall_true == 'true'
+        - helm_release_installed.stdout != ""        
+    
     - name: Deploy CPU based LLM model  llama 8b
       block:        
         - name: Delete Ingress resource Llama8b from default namespace

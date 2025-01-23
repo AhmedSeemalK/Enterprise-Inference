@@ -203,6 +203,7 @@ setup_initial_env() {\
     cp -r "$HOMEDIR"/scripts $KUBESPRAYDIR/       
     cp -r "$KUBESPRAYDIR"/inventory/sample/ "$KUBESPRAYDIR"/inventory/mycluster
     cp  "$HOMEDIR"/inventory/hosts.yaml $KUBESPRAYDIR/inventory/mycluster/
+    cp "$HOMEDIR"/inventory/addons.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/k8s_cluster/addons.yml
     
     # Copy playbooks directory
     cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/    
@@ -442,9 +443,9 @@ add_inference_nodes_playbook() {
         echo "Error: Invalid characters in worker node names. Only alphanumeric characters, commas, and hyphens are allowed."
         return 1
     fi
-    invoke_prereq_workflows   
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/facts.yml    
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/scale.yml --limit="$worker_node_name"
+    invoke_prereq_workflows     
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/facts.yml --become --become-user=root    
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/scale.yml --become --become-user=root --limit="$worker_node_name"
 }
 
 remove_inference_nodes_playbook() {
@@ -461,9 +462,7 @@ remove_inference_nodes_playbook() {
         return 1
     fi
     invoke_prereq_workflows
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/remove-node.yml --limit="$worker_nodes_to_remove"
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/remove-node.yml --limit="$worker_nodes_to_remove" --flush-cache
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/scale.yml
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/remove_node.yml --become --become-user=root -e node="$worker_node_name" -e allow_ungraceful_removal=true
 }
 
 list_inference_llm_models_playbook() {
@@ -1102,5 +1101,3 @@ main_menu() {
 }
 
 main_menu "$@"
-
-
