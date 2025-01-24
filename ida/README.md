@@ -1,13 +1,20 @@
-# Inference as a Service Deployment Automation
-   This automates the setup, reset, and update of a Inference as Service kubernetes cluster using playbooks. It includes functions for setting up   
-environment, deploying various components 
-   - Kubernetes 
-   - Habana AI Operator
-   - Ingress NGINX Controller
-   - Keycloak
-   - APISIX
-   - Model Deployments
+# AI Inference as a Service Deployment Automation
+Unleash the Power of AI Inference:
 
+   The Inference as a Service Deployment Automation suite is your ultimate companion for harnessing the full potential of AI inference capabilities. 
+   
+   Imagine a world where deploying and managing AI inference services is as effortless as a few keystrokes. With this automation suite, you can bid farewell to the complexities of manual configurations and embrace a future where agility and operational excellence are the norms.
+   
+   Powered by Kubernetes infrastructure.This automation suite empowers enterprises to seamlessly provision, reconfigure, and evolve their AI inference infrastructure with unparalleled agility.
+
+#### Key Components:
+   - **Kubernetes**: A powerful container orchestration platform that automates the deployment, scaling, and management of containerized applications, ensuring high availability and efficient resource utilization.
+   - **Habana AI Operator**: A specialized operator that manages the lifecycle of Habana AI resources within the Kubernetes cluster, enabling efficient utilization of hardware for AI workloads.
+   - **Ingress NGINX Controller**: A high-performance reverse proxy and load balancer for traffic, responsible for routing incoming requests to the appropriate services within the Kubernetes cluster, ensuring seamless access to deployed AI models.
+   - **Keycloak**: An open-source identity and access management solution that provides robust authentication and authorization capabilities, ensuring secure access to AI services and resources within the cluster.
+   - **APISIX**: A cloud-native API gateway, handling API traffic and providing advanced features caching, and authentication, enabling efficient and secure access to deployed AI models.
+   - **Model Deployments**: Automated deployment and management of llm models within the Kubernetes cluster, enabling scalable and reliable AI inference capabilities.
+   
 # Table of Contents
 1. [Inference as a Service Deployment Automation](#inference-as-a-service-deployment-automation)
 2. [Supported Models](#supported-models)
@@ -148,6 +155,12 @@ deploy_keycloak_apisix=no
 deploy_llm_models=yes
 `````
 Make sure to update the values in the inference-config.cfg file according to your requirements before running the automation.
+
+#### Deployment Authentication:   
+   - **With Keycloak and APISIX**:      
+      -  In this flow, Keycloak and APISIX are deployed to provide authentication, authorization, and API gateway functionality, ensuring secure and controlled access to the deployed AI models.
+   - **Without Keycloak and APISIX**:
+      - In this flow, the AI models are deployed directly within the Kubernetes cluster, without the additional security and API gateway layers provided by Keycloak and APISIX. This deployment option is suitable for scenarios where these components are not required or are handled separately.
 
 
 And then execute the script.
