@@ -390,8 +390,8 @@ deploy_inference_llm_models_playbook() {
     echo "Deploying Inference LLM Models playbook..."
     # Read existing parameters
     # Execute the Ansible playbook with all parameters    
-    install_true="true"    
-    if [ "$cpu_or_gpu" == "cpu" ]; then
+    install_true="true"        
+    if [ "$cpu_or_gpu" == "c" ]; then
         cpu_playbook="true"
         gpu_playbook="false"
         gaudi_deployment="false"
@@ -555,16 +555,16 @@ prompt_for_input() {
         read -p "Do you want to run on CPU or GPU? (c/g): " cpu_or_gpu
         case "$cpu_or_gpu" in
             c|C)
-                cpu_or_gpu="cpu"
+                cpu_or_gpu="c"
                 echo "Running on CPU"
                 ;;
             g|G)
-                cpu_or_gpu="gpu"
+                cpu_or_gpu="g"
                 echo "Running on GPU"
                 ;;
             *)
                 echo "Invalid option. Defaulting to CPU."
-                cpu_or_gpu="cpu"
+                cpu_or_gpu="c"
                 ;;
         esac
     else
@@ -580,7 +580,7 @@ prompt_for_input() {
 
         if [ "$deploy_llm_models" = "yes" ]; then
             if [ -z "$models" ]; then
-                if [ "$cpu_or_gpu" = "gpu" ]; then
+                if [ "$cpu_or_gpu" = "g" ]; then
                     # Prompt for GPU models
                     echo "Available GPU models:"
                     echo "1. llama-8b"
@@ -605,7 +605,7 @@ prompt_for_input() {
             model_names=$(get_model_names)
             
             if [ -n "$model_names" ]; then
-                if [ "$cpu_or_gpu" = "gpu" ]; then
+                if [ "$cpu_or_gpu" = "g" ]; then
                     echo "Deploying/removing GPU models: $model_names"                    
                 else
                     echo "Deploying/removing CPU models: $model_names"                    
@@ -647,81 +647,81 @@ get_model_names() {
     for model in "${model_array[@]}"; do
         case "$model" in
             1)
-                if [ "$cpu_or_gpu" = "cpu" ]; then
+                if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1
                 fi
                 model_names+=("llama-8b")
                 ;;
             2)
-                if [ "$cpu_or_gpu" = "cpu" ]; then
+                if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1
                 fi
                 model_names+=("llama-70b")
                 ;;
             3)
-                if [ "$cpu_or_gpu" = "cpu" ]; then
+                if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1
                 fi
                 model_names+=("codellama-34b")
                 ;;
             4)
-                if [ "$cpu_or_gpu" = "cpu" ]; then
+                if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1
                 fi
                 model_names+=("mixtral-8x-7b")
                 ;;
             5)
-                if [ "$cpu_or_gpu" = "cpu" ]; then
+                if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1
                 fi
                 model_names+=("mistral-7b")
                 ;;
             6)
-                if [ "$cpu_or_gpu" = "cpu" ]; then
+                if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1
                 fi
                 model_names+=("tei")
                 ;;
             7)
-                if [ "$cpu_or_gpu" = "cpu" ]; then
+                if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1
                 fi
-                model_names+=("tei-rerank")
+                model_names+=("rerank")
                 ;;
             8)
-                if [ "$cpu_or_gpu" = "cpu" ]; then
+                if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1
                 fi
                 model_names+=("falcon3-7b")
                 ;;
             9)
-                if [ "$cpu_or_gpu" = "gpu" ]; then
+                if [ "$cpu_or_gpu" = "g" ]; then
                     echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
                     exit 1
                 fi
-                model_names+=("cpu-llama-8b")
+                model_names+=("cpu-llama")
                 ;;
             "llama-8b"|"llama-70b"|"codellama-34b"|"mixtral-8x-7b"|"mistral-7b"|"tei"|"tei-rerank"|"falcon3-7b")
-                if [ "$cpu_or_gpu" = "cpu" ]; then
+                if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1
                 fi
                 model_names+=("$model")
                 ;;
             "cpu-llama-8b")
-                if [ "$cpu_or_gpu" = "gpu" ]; then
+                if [ "$cpu_or_gpu" = "g" ]; then
                     echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
                     exit 1
                 fi
-                model_names+=("cpu-llama-8b")
+                model_names+=("cpu-llama")
                 ;;
             *)
                 echo "Error: Invalid model identifier: $model" >&2
@@ -1099,4 +1099,7 @@ main_menu() {
             ;;
     esac
 }
+
 main_menu "$@"
+
+

@@ -137,8 +137,8 @@
             --force   
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
-      when:
-        - model_name_list == "llama-8b"
+      when:                
+        - "'llama-8b' in model_name_list"
         - install_true == 'true'
 
 
@@ -476,7 +476,7 @@
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
       when:
-        - '"tei" in model_name_list'
+        - "'tei' in model_name_list"
         - install_true == 'true'
     - name: Check if tei Helm release is installed
       ansible.builtin.command:
@@ -486,7 +486,7 @@
     - name: Uninstall tei Helm release
       ansible.builtin.command:
         cmd: "helm uninstall vllm-tei"
-      when:
+      when:        
         - "'tei' in model_name_list"
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""
@@ -531,7 +531,7 @@
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
       when:
-        - '"tei-rerank" in model_name_list'
+        - "'rerank' in model_name_list"        
         - install_true == 'true'
     - name: Check if teirerank Helm release is installed
       ansible.builtin.command:
@@ -541,8 +541,8 @@
     - name: Uninstall teirerank Helm release
       ansible.builtin.command:
         cmd: "helm uninstall vllm-teirerank"
-      when:
-        - "'tei-rerank' in model_name_list"
+      when:        
+        - "'rerank' in model_name_list"   
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""
 
@@ -555,7 +555,7 @@
       ansible.builtin.command:
         cmd: "helm uninstall vllm-llama8b-cpu"
       when:
-        - "'cpu-llama-8b' in model_name_list"
+        - "'cpu-llama' in model_name_list"
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""        
     
@@ -573,7 +573,7 @@
             namespace: auth-apisix
             name: vllm-llama8b-cpu-ingress
             state: absent
-        - name: Deploy CPU based LLM model  llama 8b
+        - name: Deploy CPU based LLM model  llama 8b Installation
           ansible.builtin.command: >-
             helm upgrade --install vllm-llama8b-cpu "{{ remote_helm_charts_base }}/vllm"
             --set LLM_MODEL_ID="meta-llama/Meta-Llama-3.1-8B-Instruct"
@@ -604,6 +604,14 @@
     - name: Print model_name_list before uninstall
       debug:
         var: uninstall_true
+    
+    - name: Print model_name_list before uninstall
+      debug:
+        var: install_true
+
+    - name: Print model_name_list before uninstall
+      debug:
+        var: cpu_playbook
 
     - name: List the Installed Inference Models
       ansible.builtin.shell:
