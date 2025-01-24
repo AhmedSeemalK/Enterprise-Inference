@@ -462,7 +462,7 @@ remove_inference_nodes_playbook() {
         return 1
     fi
     invoke_prereq_workflows
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/remove_node.yml --become --become-user=root -e node="$worker_node_name" -e allow_ungraceful_removal=true
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/remove_node.yml --become --become-user=root -e node="$worker_nodes_to_remove" -e allow_ungraceful_removal=true
 }
 
 list_inference_llm_models_playbook() {
@@ -1099,5 +1099,4 @@ main_menu() {
             ;;
     esac
 }
-
 main_menu "$@"
