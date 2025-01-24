@@ -911,6 +911,7 @@ update_cluster() {
     echo "|------------------------------------------------|"
     echo "| 1) Manage Worker Nodes                         |"
     echo "| 2) Manage LLM Models                           |"
+    echo "| 3) Update Driver and Firmware                  |"
     echo "|------------------------------------------------|"    
     echo "Please choose an option (1 or 2):"
     read -p "> " update_choice
@@ -920,6 +921,9 @@ update_cluster() {
             ;;
         2)
             manage_models "$@"
+            ;;
+        3)
+            update_drivers_and_firmware "$@"
             ;;
         *)
             echo "Invalid option. Please enter 1 or 2."
@@ -1070,14 +1074,13 @@ remove_worker_node() {
 
 main_menu() {
     parse_arguments "$@"
-    echo "---------------------------------------------------"
-    echo "|  Inference as Service Deployment Automation      |"
-    echo "|--------------------------------------------------|"
-    echo "| 1) Setup k8s Cluster with Inference as Service   |"
-    echo "| 2) K8sPurgeCluster                               |"
-    echo "| 3) Update Existing Cluster                       |"
-    echo "| 4) Update Driver and Firmware                    |"
-    echo "|--------------------------------------------------|"
+    echo "----------------------------------------------------------"
+    echo "|  AI Inference as Service Deployment Automation          |"
+    echo "|---------------------------------------------------------|"
+    echo "| 1) Provision Inference as Service Cluster               |"
+    echo "| 2) Decommission Existing Cluster                        |"
+    echo "| 3) Update Deployed Inference Cluster                    |"    
+    echo "|---------------------------------------------------------|"
     echo "Please choose an option (1, 2, or 3):"
     read -p "> " user_choice
     case $user_choice in
@@ -1089,10 +1092,7 @@ main_menu() {
             ;;
         3)
             update_cluster "$@"
-            ;;
-        4)
-            update_drivers_and_firmware "$@"
-            ;;
+            ;;        
         *)
             echo "Invalid option. Please enter 1, 2, or 3."
             main_menu

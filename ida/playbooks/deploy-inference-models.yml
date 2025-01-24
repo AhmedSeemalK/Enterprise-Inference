@@ -497,13 +497,13 @@
           kubernetes.core.k8s:
             kind: Ingress
             namespace: default
-            name: vllm-tei-ingress
+            name: vllm-teirerank-ingress
             state: absent
         - name: Delete Ingress resource Teirerank from auth-apisix namespace
           kubernetes.core.k8s:
             kind: Ingress
             namespace: auth-apisix
-            name: vllm-tei-ingress
+            name: vllm-teirerank-ingress
             state: absent
         - name: Deploy LLM model teirerank
           ansible.builtin.command: >-

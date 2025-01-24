@@ -139,12 +139,12 @@ keycloak_client_id=my-client-id
 keycloak_admin_user=your-keycloak-admin-user
 keycloak_admin_password=changeme
 hugging_face_token=your_hugging_face_token
-models=6,7
-cpu_or_gpu=gpu
+models=1,3,5
+cpu_or_gpu=g
 deploy_kubernetes_fresh=no
 deploy_habana_ai_operator=no
 deploy_ingress_controller=no
-deploy_keycloak_and_apisix=no
+deploy_keycloak_apisix=no
 deploy_llm_models=yes
 `````
 Make sure to update the values in the inference-config.cfg file according to your requirements before running the automation.
@@ -158,9 +158,16 @@ bash inference-as-auto-deploy.sh
 
 ## Main Menu
 When you run the automation, you will be presented with a main menu with the following options:
-1. Setup k8s Cluster with Inference as Service: Perform a fresh installation of the Kubernetes cluster with Inference as a Service.
-2. K8sPurgeCluster: Reset the existing Kubernetes cluster.
-3. Update Existing Cluster: Update the existing Kubernetes cluster.
+```
+----------------------------------------------------------
+|  AI Inference as Service Deployment Automation          |
+|---------------------------------------------------------|
+| 1) Provision Inference as Service Cluster               |
+| 2) Decommission Existing Cluster                        |
+| 3) Update Deployed Inference Cluster                    |
+|---------------------------------------------------------|
+Please choose an option (1, 2, or 3):
+```
 
 ### Fresh Installation:
 If you choose to perform a fresh installation, the automation will prompt you for the necessary inputs and proceed with the following steps:
@@ -178,6 +185,30 @@ or
 with inference-config.cfg file configured, run
 bash inference-as-auto-deploy.sh
 `````
+### Example Fresh Installation Screen:
+```
+Configuration file found, setting vars!
+---------------------------------------
+deploy_apisix and deploy_keycloak are set to 'yes'
+Proceeding with the setup of Fresh Kubernetes cluster: yes
+Proceeding with the setup of Habana AI Operator: yes
+Proceeding with the setup of Ingress Controller: yes
+Proceeding with the setup of Keycloak : yes
+Proceeding with the setup of Apisix: yes
+Proceeding with the setup of Large Language Model (LLM): yes
+----- Input -----
+Using provided CLUSTER URL: example.com
+Using provided certificate file: /path/to/cert/file.pem
+Using provided key file: /path/to/key/file.pem
+Using provided keycloak client id: my-client-id
+Using provided Keycloak admin username: your-keycloak-admin-user
+Using provided Keycloak admin password
+cpu_or_gpu is already set to c
+Using provided Huggingface token
+Using provided models: 6,7
+Deploying/removing GPU models: llama-8b codellama-34b mistral-7b
+Proceed with the inference cluster setup using the provided configurations? (yes/no)
+```
 
 ### Reset Cluster:
 If you choose to reset the cluster, the automation will:
@@ -187,10 +218,18 @@ If you choose to reset the cluster, the automation will:
 #### Example
 `````
 Run:
-bash inference-as-auto-deploy.sh
-
-Please select the following option:
-   2) K8sPurgeCluster
+----------------------------------------------------------
+|  AI Inference as Service Deployment Automation          |
+|---------------------------------------------------------|
+| 1) Provision Inference as Service Cluster               |
+| 2) Decommission Existing Cluster                        |
+| 3) Update Deployed Inference Cluster                    |
+|---------------------------------------------------------|
+Please choose an option (1, 2, or 3):
+> 2
+You are about to reset the existing Inference as service cluster.
+This will remove all the current configurations and data.
+Are you sure you want to proceed? (yes/no): 
 Acknowledge it with "yes".
 `````
 
@@ -202,9 +241,22 @@ If you choose to update the existing cluster, the automation will present you wi
 Run:
 bash inference-as-auto-deploy.sh
 
-Please select the following option:
-   3) Update Existing Cluster
-
+----------------------------------------------------------
+|  AI Inference as Service Deployment Automation          |
+|---------------------------------------------------------|
+| 1) Provision Inference as Service Cluster               |
+| 2) Decommission Existing Cluster                        |
+| 3) Update Deployed Inference Cluster                    |
+|---------------------------------------------------------|
+Please choose an option (1, 2, or 3):
+> 3
+-------------------------------------------------
+|             Update Existing Cluster            |
+|------------------------------------------------|
+| 1) Manage Worker Nodes                         |
+| 2) Manage LLM Models                           |
+|------------------------------------------------|
+Please choose an option (1 or 2):
 `````
 
 
@@ -217,13 +269,35 @@ This option allows you to deploy a new LLM model on the Kubernetes cluster.
 `````
 Run:
 bash inference-as-auto-deploy.sh
-Please select the following options:
-   3) Update Existing Cluster
-   then select,
-   2) Manage LLM Models
-   then select,
-   1) Deploy Model
-Follow the prompts to provide the necessary information for deploying the model.
+----------------------------------------------------------
+|  AI Inference as Service Deployment Automation          |
+|---------------------------------------------------------|
+| 1) Provision Inference as Service Cluster               |
+| 2) Decommission Existing Cluster                        |
+| 3) Update Deployed Inference Cluster                    |
+|---------------------------------------------------------|
+Please choose an option (1, 2, or 3):
+> 3
+-------------------------------------------------
+|             Update Existing Cluster            |
+|------------------------------------------------|
+| 1) Manage Worker Nodes                         |
+| 2) Manage LLM Models                           |
+| 3) Update Driver and Firmware                  |
+|------------------------------------------------|
+Please choose an option (1 or 2):
+> 2
+-------------------------------------------------
+| Manage LLM Models                                  |
+|------------------------------------------------|
+| 1) Deploy Model                                |
+| 2) Undeploy Model                              |
+| 3) List Installed Models                       |
+|------------------------------------------------|
+Please choose an option (1, 2, or 3):
+> 1
+Follow the prompts to provide the necessary information for deploying the model if model is not set in inference-config.cfg.
+If model is set in inference-config.cfg automation will proceed to deploy the model.
 `````
 
 ### Remove LLM Model
@@ -233,13 +307,35 @@ This option allows you to remove deployed LLM model on the Kubernetes cluster.
 `````
 Run:
 bash inference-as-auto-deploy.sh
-Please select the following options:
-   3) Update Existing Cluster
-   then select,
-   2) Manage LLM Models
-   then select,
-   2) Undeploy Model
-Follow the prompts to select the model you want to undeploy.
+----------------------------------------------------------
+|  AI Inference as Service Deployment Automation          |
+|---------------------------------------------------------|
+| 1) Provision Inference as Service Cluster               |
+| 2) Decommission Existing Cluster                        |
+| 3) Update Deployed Inference Cluster                    |
+|---------------------------------------------------------|
+Please choose an option (1, 2, or 3):
+> 3
+-------------------------------------------------
+|             Update Existing Cluster            |
+|------------------------------------------------|
+| 1) Manage Worker Nodes                         |
+| 2) Manage LLM Models                           |
+| 3) Update Driver and Firmware                  |
+|------------------------------------------------|
+Please choose an option (1 or 2):
+> 2
+-------------------------------------------------
+| Manage LLM Models                                  |
+|------------------------------------------------|
+| 1) Deploy Model                                |
+| 2) Undeploy Model                              |
+| 3) List Installed Models                       |
+|------------------------------------------------|
+Please choose an option (1, 2, or 3):
+> 2
+Follow the prompts to select the model you want to undeploy if model is not set in inference-config.cfg.
+If model is set in inference-config.cfg automation will proceed to remove the model.
 `````
 
 
@@ -259,7 +355,7 @@ Please select the following options:
 The script will display a list of all the installed LLM models on the cluster.
 `````
 
-## Accessing Deployed Models for Inference
+## Accessing Deployed Models from Inference Cluster
 
 ### Export user credentials
 `````
@@ -274,31 +370,41 @@ export KEYCLOAK_CLIENT_SECRET=<your_keycloak_client_secret>
 export TOKEN=$(curl -k -X POST $KEYCLOAK_ADDR/token  -H 'Content-Type: application/x-www-form-urlencoded' -d "grant_type=password&client_id=${KEYCLOAK_CLIENT_ID}&client_secret=${KEYCLOAK_CLIENT_SECRET}&username=${USER}&password=${PASSWORD}" | jq -r .access_token)
 
 For inferencing with Llama-3-8b:
-curl -k ${KEYCLOAK_ADDR}/Meta-Llama-3.1-8B-Instruct/v1/chat/completions -X POST -d '{"messages": [{"role": "system","content": "You are helpful assistant"},{"role": "user","content": "what is API"}],"model": "meta-llama/Meta-Llama-3.1-8B-Instruct","max_tokens": 32,"temperature": 0.4}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+curl -k ${KEYCLOAK_ADDR}/Meta-Llama-3.1-8B-Instruct/v1/completions -X POST -d '{"model": "meta-llama/Meta-Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
 
 For inferencing with Llama-3-70b:
-curl -k ${KEYCLOAK_ADDR}/Meta-Llama-3.1-70B-Instruct/v1/chat/completions -X POST -d '{"messages": [{"role": "system","content": "You are helpful assistant"},{"role": "user","content": "what is Cloud"}],"model": "meta-llama/Meta-Llama-3.1-70B-Instruct","max_tokens": 32,"temperature": 0.4}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+curl -k ${KEYCLOAK_ADDR}/Meta-Llama-3.1-70B-Instruct/v1/completions -X POST -d '{"model": "meta-llama/Meta-Llama-3.1-70B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
 
 For inferencing with Codellama-34b:
-curl -k ${KEYCLOAK_ADDR}/CodeLlama-34b-Instruct/v1/chat/completions -X POST -d '{"messages": [{"role": "system","content": "You are helpful assistant"},{"role": "user","content": "what is Go Programming lang"}],"model": "codellama/CodeLlama-34b-Instruct-hf","max_tokens": 32,"temperature": 0.4}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+curl -k ${KEYCLOAK_ADDR}/CodeLlama-34b-Instruct-hf/v1/completions -X POST -d '{"model": "codellama/CodeLlama-34b-Instruct-hf", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
 
 For inferencing with Mistral-7b:
-curl -k ${KEYCLOAK_ADDR}/Mistral-7B-Instruct/v1/chat/completions -X POST -d '{"messages": [{"role": "system","content": "You are helpful assistant"},{"role": "user","content": "what is API"}],"model": "mistralai/Mistral-7B-Instruct-v0.3","max_tokens": 32,"temperature": 0.4}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+curl -k ${KEYCLOAK_ADDR}/Mistral-7B-Instruct-v0.3/v1/completions -X POST -d '{"model": "mistralai/Mistral-7B-Instruct-v0.3", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
 
 For inferencing with Mixtral-8x-7b:
-curl -k  ${KEYCLOAK_ADDR}/Mixtral-7B-Instruct/v1/chat/completions -X POST -d '{"messages": [{"role": "system","content": "You are helpful assistant"},{"role": "user","content": "what is programming"}],"model": "mistralai/Mixtral-8x7B-Instruct-v0.1","max_tokens": 32,"temperature": 0.4}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+curl -k ${KEYCLOAK_ADDR}/Mixtral-8x7B-Instruct-v0.1/v1/completions -X POST -d '{"model": "mistralai/Mixtral-8x7B-Instruct-v0.1", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
 
 For inferencing with Falcon3-7b:
-curl -k  ${KEYCLOAK_ADDR}/Falcon3-7B-Instruct/v1/chat/completions -X POST -d '{"messages": [{"role": "system","content": "You are helpful assistant"},{"role": "user","content": "what is programming"}],"model": "mistralai/Mixtral-8x7B-Instruct-v0.1","max_tokens": 32,"temperature": 0.4}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+curl -k ${KEYCLOAK_ADDR}/Falcon3-7B-Instruct/v1/completions -X POST -d '{"model": "tiiuae/Falcon3-7B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
 
 For inferencing with Tei:
-curl -k ${KEYCLOAK_ADDR}/tei/embed -X POST -d '{"inputs":"What is Deep Learning?"}' -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+curl -k ${KEYCLOAK_ADDR}/bge-base-en-v1.5/v1/completions -X POST -d '{"model": "meta-llama/Meta-Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
 
 For inferencing with Tei-reranking:
-curl -k -X POST ${KEYCLOAK_ADDR}/teirerank/rerank -d '{"query":"What is Deep Learning?", "texts": ["Deep Learning is not...", "Deep learning is..."], "raw_scores": false}' -sS -H 'Content-Type: application/json' -sS -H "Authorization: Bearer $TOKEN"
+curl -k ${KEYCLOAK_ADDR}/bge-reranker-base/v1/completions -X POST -d '{"model": "meta-llama/Meta-Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
 
 For inferencing with Llama-3-8b-CPU
-curl -k $KEYCLOAK_ADDR/Meta-Llama-3.1-8B-Instruct-CPU/generate_stream -X POST -d '{"inputs":"What is Deep Learning?","parameters":{"max_new_tokens":20}}' -H "Authorization: Bearer $TOKEN"
+curl -k ${KEYCLOAK_ADDR}/Meta-Llama-3.1-8B-Instruct-vllmcpu/v1/completions -X POST -d '{"model": "meta-llama/Meta-Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
+`````
+#### Accessing the model from Inference Cluster deployed without APISIX and Keycloak
+`````
+When deploying models for inference without Keycloak and APISIX,
+you can directly invoke the model inference API without the need for additional bearer token header.
+
+Here's an example of how you can make the request:
+
+For inferencing with Llama-3-8b:
+curl -k ${KEYCLOAK_ADDR}/Meta-Llama-3.1-8B-Instruct/v1/completions -X POST -d '{"model": "meta-llama/Meta-Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json'
 
 `````
 
