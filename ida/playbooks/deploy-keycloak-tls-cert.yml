@@ -108,8 +108,9 @@
             extraTls:
               - hosts:
                   - "{{ secret_name }}"
-                secretName: "{{ secret_name }}"
+                secretName: "{{ secret_name }}"      
         state: present
+      run_once: true
       register: helm_output
       when: deploy_keycloak == "yes"
 
@@ -210,6 +211,7 @@
         chart_ref: "{{ remote_helm_charts_base }}/apisix-helm/"
         update_repo_cache: yes
         release_namespace: auth-apisix
+      run_once: true
       when: deploy_apisix == "yes"
     - name: Install auth-apisix Helm chart on nodes
       community.kubernetes.helm:
@@ -240,6 +242,7 @@
         --set ingress.secretName={{ secret_name }}
       environment:
         secret_name: "{{ secret_name }}"
+      run_once: true
       register: keycloak_ingress_register_msg_in
       failed_when: keycloak_ingress_register_msg_in.rc != 0
       when: deploy_keycloak == "yes"
@@ -247,6 +250,7 @@
     - name: Execute the Keycloak Realm Creation Script
       command: "{{ remote_helm_charts_base }}/keycloak-realmcreation.sh {{ secret_name }} {{ keycloak_admin_user }} {{ keycloak_admin_password }} {{ keycloak_client_id }}"
       register: script_output
+      run_once: true
       when: deploy_keycloak == "yes"
 
     - name: Set client_secret fact

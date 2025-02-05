@@ -4,7 +4,9 @@
 RED=$(tput setaf 1)
 GREEN=$(tput setaf 2)
 YELLOW=$(tput setaf 3)
+BLUE=$(tput setaf 4)
 NC=$(tput sgr0)  # Reset color
+
 
 # ©2024 Intel Corporation
 # Permission is granted for recipient to internally use and modify this software for purposes of benchmarking and testing on Intel architectures. 
@@ -152,7 +154,11 @@ deploy_keycloak=""
 deploy_apisix=""
 delete_pv_on_purge=""
 prereq_executed=0
-
+hugging_face_model_deployment=""
+huggingface_model_id=""
+huggingface_model_deployment_name=""
+hugging_face_model_remove_deployment=""
+hugging_face_model_remove_name=""
 
 setup_initial_env() {\
     # Pull Kubespray repository
@@ -227,16 +233,28 @@ read_config_file() {
         # Load the environment variables from the temporary file
         source temp_env_vars        
         rm temp_env_vars
+        case "$cpu_or_gpu" in
+            "c" | "cpu")
+                cpu_or_gpu="c"
+                deploy_habana_ai_operator="no"
+                ;;
+            "g" | "gpu")
+                cpu_or_gpu="g"
+                deploy_habana_ai_operator="yes"
+                ;;
+            *)
+                echo "Invalid value for cpu_or_gpu. It should be either 'c' or 'cpu' for CPU, or 'g' or 'gpu' for GPU."
+                exit 1
+                ;;
+        esac
         case "$deploy_keycloak_apisix" in
             "no")
                 deploy_apisix="no"
-                deploy_keycloak="no"
-                echo "deploy_apisix and deploy_keycloak are set to 'no'"
+                deploy_keycloak="no"                
                 ;;
             "yes")
                 deploy_apisix="yes"
-                deploy_keycloak="yes"
-                echo "deploy_apisix and deploy_keycloak are set to 'yes'"
+                deploy_keycloak="yes"                
                 ;;
             *)
                 echo "Incorrect value for deploy_keycloak_apisix"
@@ -280,7 +298,7 @@ run_reset_playbook() {
     echo "Running the Ansible playbook to reset the cluster..."  
     delete_pv_on_purge="yes"      
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-keycloak-controller.yml --extra-vars "delete_pv_on_purge=${delete_pv_on_purge}"
-    ansible-playbook -i "${INVENTORY_PATH}" --become --become-user=root reset.yml -e "confirm_reset=yes"  
+    ansible-playbook -i "${INVENTORY_PATH}" --become --become-user=root reset.yml -e "confirm_reset=yes reset_nodes=false"  
     # Check the exit status of the Ansible playbook command
     if [ $? -eq 0 ]; then
         echo "Cluster reset playbook execution completed successfully."
@@ -291,10 +309,12 @@ run_reset_playbook() {
 }
 
 reset_cluster() {
-    
-    echo "You are about to reset the existing Inference as service cluster."
-    echo "This will remove all the current configurations and data."
-    read -p "Are you sure you want to proceed? (yes/no): " confirm_reset
+    echo "-------------------------------------------------------"
+    echo "|     Purge Cluster! Inference as Service!             |"
+    echo "-------------------------------------------------------"
+    echo "${YELLOW}NOTICE: You are initiating a reset of the existing Inference Service Cluster."
+    echo "This action will erase all current configurations, services and resources. Potentially causing service interruptions and data loss. This operation cannot be undone. ${NC}"
+    read -p "Are you sure you want to proceed? (yes/no): " confirm_reset        
     if [ "$confirm_reset" = "yes" ]; then
         echo "Resetting the existing Inference as service cluster..."
         setup_initial_env
@@ -302,9 +322,13 @@ reset_cluster() {
         # Check if the playbook execution was successful
         if [ $? -eq 0 ]; then
             echo "Cluster reset completed."
-            echo "-------------------------------------------------------"
-            echo "|     Purge Cluster! Enjoy Inference as Service! |"
-            echo "-------------------------------------------------------"
+            echo -e "${BLUE}-----------------------------------------------------------------${NC}"
+            echo -e "${GREEN}|  Cluster Purge Initiated!                                       |${NC}"
+            echo -e "${GREEN}|  Preparing to transition the system.                            |${NC}"
+            echo -e "${GREEN}|  This process may take some time depending on system resources  |${NC}"
+            echo -e "${GREEN}|  and other factors. Please standby...                           |${NC}"
+            echo -e "${BLUE}------------------------------------------------------------------${NC}"
+            echo ""
         else
             echo "Cluster reset failed."
         fi
@@ -374,22 +398,15 @@ execute_and_check() {
 }
 
 create_keycloak_tls_secret_playbook() {
-    echo "Deploying Keycloak TLS secret playbook..."
-    # Read existing parameters
-    # Execute the Ansible playbook with all parameters
-    #echo $model_name_list
-    echo "************************************"    
-    #deploy_keycloak=""
-    #deploy_apisix=""
+    echo "Deploying Keycloak TLS secret playbook..."    
+    echo "************************************"        
     
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-keycloak-tls-cert.yml \
         --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} model_name_list='${model_name_list//\ /,}'  deploy_keycloak=${deploy_keycloak}  deploy_apisix=${deploy_apisix} "
 }
 
 deploy_inference_llm_models_playbook() {
-    echo "Deploying Inference LLM Models playbook..."
-    # Read existing parameters
-    # Execute the Ansible playbook with all parameters    
+    echo "Deploying Inference LLM Models playbook..."    
     install_true="true"        
     if [ "$cpu_or_gpu" == "c" ]; then
         cpu_playbook="true"
@@ -409,25 +426,21 @@ deploy_inference_llm_models_playbook() {
         ingress_enabled="true"        
     else
         ingress_enabled="false"        
-    fi
-        
-    echo "ingress enabled $ingress_enabled"
-    echo "apisix enabled $apisix_enabled"
-    echo "keycloak enabled $deploy_keycloak"    
-    echo "gaudi deployment $gaudi_deployment"
+    fi        
+    echo "Ingress based Deployment: $ingress_enabled"
+    echo "APISIX Enabled: $apisix_enabled"
+    echo "Keycloak Enabled: $deploy_keycloak"    
+    echo "Gaudi based: $gaudi_deployment"
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment}"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name}"
 }
 
 remove_inference_llm_models_playbook() {
-    echo "Removing Inference LLM Models playbook..."
-    # Read existing parameters
-    # Execute the Ansible playbook with all parameters
-    echo $model_name_list
+    echo "Removing Inference LLM Models playbook..."        
     echo "Uninstalling the models..."
-    uninstall_true="true"       
+    uninstall_true="true"               
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} model_name_list='${model_name_list//\ /,}'"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} model_name_list='${model_name_list//\ /,}' hugging_face_model_remove_deployment=${hugging_face_model_remove_deployment} hugging_face_model_remove_name=${hugging_face_model_remove_name} "
 }
 
 add_inference_nodes_playbook() {    
@@ -444,7 +457,7 @@ add_inference_nodes_playbook() {
         return 1
     fi
     invoke_prereq_workflows     
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/facts.yml --become --become-user=root    
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/facts.yml --become --become-user=root       
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/scale.yml --become --become-user=root --limit="$worker_node_name"
 }
 
@@ -476,9 +489,7 @@ list_inference_llm_models_playbook() {
         --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} list_model_true='${list_model_true//\ /,}'"
 }
 
-
-
-prompt_for_input() {
+prompt_for_input() {   
     if [ -z "$deploy_kubernetes_fresh" ]; then
         read -p "Do you want to proceed with deploying fresh Kubernetes cluster setup? (yes/no): " deploy_kubernetes_fresh
     else
@@ -507,17 +518,8 @@ prompt_for_input() {
         echo "Proceeding with the setup of Apisix: $deploy_apisix"
     fi
     
+    model_selection "$@"
 
-    if [ -z "$deploy_llm_models" ]; then
-        read -p "Do you want to proceed with deploying Large Language Model (LLM)? (yes/no): " deploy_llm_models
-        if [ "$deploy_llm_models" == "yes" ]; then
-            model_name_list=$(get_model_names)    
-            echo "Proceeding to deploy models: $model_name_list"
-        fi
-    else
-        model_name_list=$(get_model_names) 
-        echo "Proceeding with the setup of Large Language Model (LLM): $deploy_llm_models"
-    fi
     echo "----- Input -----"
     if [ -z "$cluster_url" ]; then
         read -p "Enter the CLUSTER URL (FQDN): " cluster_url
@@ -571,14 +573,27 @@ prompt_for_input() {
         echo "cpu_or_gpu is already set to $cpu_or_gpu"
     fi
     
+}
+
+model_selection(){
+    
     if [ "$list_model_menu" != "skip" ]; then
         if [ -z "$hugging_face_token" ] && [ "$deploy_llm_models" = "yes" ]; then
             read -p "Enter the token for Huggingface: " hugging_face_token
         else
-            echo "Using provided Huggingface token"
+            echo "Using provided Huggingface token"            
         fi
-
-        if [ "$deploy_llm_models" = "yes" ]; then
+        if [ -z "$deploy_llm_models" ]; then
+            read -p "Do you want to proceed with deploying Large Language Model (LLM)? (yes/no): " deploy_llm_models
+            if [ "$deploy_llm_models" == "yes" ]; then
+                model_name_list=$(get_model_names)    
+                echo "Proceeding to deploy models: $model_name_list"
+            fi
+        else
+            model_name_list=$(get_model_names)                       
+            echo "Proceeding with the setup of Large Language Model (LLM): $deploy_llm_models"
+        fi
+        if [ "$deploy_llm_models" = "yes" ]; then                        
             if [ -z "$models" ]; then
                 if [ "$cpu_or_gpu" = "g" ]; then
                     # Prompt for GPU models
@@ -591,33 +606,44 @@ prompt_for_input() {
                     echo "6. tei"
                     echo "7. tei-rerank"
                     echo "8. falcon3-7b"
+                    echo "9. deepseek-r1-distill-qwen-32b"
+                    echo "10. deepseek-r1-distill-llama8b"
                     read -p "Enter the numbers of the GPU models you want to deploy/remove (comma-separated, e.g., 1,3,5): " models
                 else
                     # Prompt for CPU models
                     echo "Available CPU models:"
-                    echo "9. cpu-llama-8b"
+                    echo "11. cpu-llama-8b"
+                    echo "12. cpu-deepseek-r1-distill-qwen-32b"
+                    echo "13. cpu-deepseek-r1-distill-llama8b"
                     read -p "Enter the number of the CPU model you want to deploy/remove: " cpu_model
                     models="$cpu_model"
                 fi
             else
-                echo "Using provided models: $models"
-            fi
-            model_names=$(get_model_names)
-            
-            if [ -n "$model_names" ]; then
-                if [ "$cpu_or_gpu" = "g" ]; then
-                    echo "Deploying/removing GPU models: $model_names"                    
-                else
-                    echo "Deploying/removing CPU models: $model_names"                    
+                if [ "$hugging_face_model_deployment" != "true" ]; then
+                    echo "Using provided models: $models"
                 fi
             fi
+            
+            model_names=$(get_model_names)                        
+            if [ "$hugging_face_model_remove_deployment" != "true" ]; then
+                if [ -n "$model_names" ]; then
+                    if [ "$hugging_face_model_deployment" != "true" ]; then                    
+                        if [ "$cpu_or_gpu" = "g" ]; then
+                            echo "Deploying/removing GPU models: $model_names"                    
+                        else
+                            echo "Deploying/removing CPU models: $model_names"                    
+                        fi
+                    fi
+                fi
+            fi            
         else
             echo "Skipping model deployment/removal."
-        fi        
+        fi
+
+        
     fi
-
+    
 }
-
 
 parse_arguments() {
     while [[ "$#" -gt 0 ]]; do
@@ -703,25 +729,53 @@ get_model_names() {
                 model_names+=("falcon3-7b")
                 ;;
             9)
+                if [ "$cpu_or_gpu" = "c" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("deepseek-r1-distill-qwen-32b")
+                ;;
+            10)
+                if [ "$cpu_or_gpu" = "c" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("deepseek-r1-distill-llama8b")
+                ;;
+            11)
                 if [ "$cpu_or_gpu" = "g" ]; then
                     echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
                     exit 1
                 fi
-                model_names+=("cpu-llama")
+                model_names+=("cpu-llama-8b")
                 ;;
-            "llama-8b"|"llama-70b"|"codellama-34b"|"mixtral-8x-7b"|"mistral-7b"|"tei"|"tei-rerank"|"falcon3-7b")
+            12)
+                if [ "$cpu_or_gpu" = "g" ]; then
+                    echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("cpu-deepseek-r1-distill-qwen-32b")
+                ;;
+            13)
+                if [ "$cpu_or_gpu" = "g" ]; then
+                    echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("cpu-deepseek-r1-distill-llama8b")
+                ;;
+            "llama-8b"|"llama-70b"|"codellama-34b"|"mixtral-8x-7b"|"mistral-7b"|"tei"|"tei-rerank"|"falcon3-7b"|"deepseek-r1-distill-qwen-32b"|"deepseek-r1-distill-llama8b")
                 if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1
                 fi
                 model_names+=("$model")
                 ;;
-            "cpu-llama-8b")
+            "cpu-llama-8b"|"cpu-deepseek-r1-distill-qwen-32b"|"cpu-deepseek-r1-distill-llama8b")
                 if [ "$cpu_or_gpu" = "g" ]; then
                     echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
                     exit 1
                 fi
-                model_names+=("cpu-llama")
+                model_names+=("$model")
                 ;;
             *)
                 echo "Error: Invalid model identifier: $model" >&2
@@ -754,9 +808,9 @@ fresh_installation() {
         echo "|     Deployment Skipped for Inference as Service!    |"
         echo "-------------------------------------------------------"
     else
-        prompt_for_input         
-        read -p "Proceed with the inference cluster setup using the provided configurations? (yes/no)" proceed_with_installation            
-        if [[ "$proceed_with_installation" == "yes" ]]; then            
+        prompt_for_input                        
+        read -p "${YELLOW}ATTENTION: Ensure that the nodes do not contain existing workloads. If necessary, please purge any previous cluster configurations before initiating a fresh installation to avoid an inappropriate cluster state. Proceeding without this precaution could lead to service disruptions or data loss. Do you wish to continue with the setup? (yes/no) ${NC}" -r proceed_with_installation
+        if [[ "$proceed_with_installation" =~ ^([yY][eE][sS]|[yY])+$ ]]; then      
             echo "Starting fresh installation of Inference as a Service Cluster..."    
             setup_initial_env        
             if [[ "$deploy_kubernetes_fresh" == "yes" ]]; then
@@ -800,9 +854,12 @@ fresh_installation() {
             else
                 echo "Skipping LLM Model deployment..."
             fi
-            echo "-------------------------------------------------------"
-            echo "|     Deployment Complete! Enjoy Inference as Service! |"
-            echo "-------------------------------------------------------" 
+            echo -e "${BLUE}-------------------------------------------------------------------------------------${NC}"
+            echo -e "${GREEN}|  LLM Model Deployment Complete!                                                   |${NC}"        
+            echo -e "${GREEN}|  The model is transitioning to a state ready for inference.                       |${NC}"
+            echo -e "${GREEN}|  This may take some time depending on system resources and other factors.         |${NC}"
+            echo -e "${GREEN}|  Please standby...                                                                |${NC}"
+            echo -e "${BLUE}--------------------------------------------------------------------------------------${NC}"
             echo ""
             echo "Accessing Deployed Models for Inference"
             echo "https://github.com/intel-innersource/applications.ai.erag.infra-automation/tree/main/ida#accessing-deployed-models-for-inference"
@@ -954,16 +1011,21 @@ manage_worker_nodes() {
             ;;
     esac
 }
+
+
+
 manage_models() {
     
     echo "-------------------------------------------------"
-    echo "| Manage LLM Models                                  |"
+    echo "| Manage LLM Models                               "
     echo "|------------------------------------------------|"
     echo "| 1) Deploy Model                                |"
     echo "| 2) Undeploy Model                              |"
     echo "| 3) List Installed Models                       |"
+    #echo "| 4) Deploy Model from Hugging Face              |"
+    #echo "| 5) Remove Model using deployment name          |"
     echo "|------------------------------------------------|"
-    echo "Please choose an option (1, 2, or 3):"
+    echo "Please choose an option (1, 2, 3, or 4):"
     read -p "> " model_choice
     case $model_choice in
         1)
@@ -975,12 +1037,19 @@ manage_models() {
         3)
             list_models "$@"
             ;;
+        # 4)
+        #     deploy_from_huggingface "$@"
+        #     ;;
+        # 5)
+        #     remove_model_deployed_via_huggingface "$@"
+        #     ;;
         *)
-            echo "Invalid option. Please enter 1, 2, or 3."
+            echo "Invalid option. Please enter 1, 2, 3, or 4."
             manage_models
             ;;
     esac
 }
+
 
 list_models() {
     list_model_menu="skip"
@@ -996,12 +1065,86 @@ list_models() {
         "Failed to list Inference LLM Model Exiting!."    
 }
 
-add_model() {
-    read_config_file        
-    prompt_for_input    
+remove_model_deployed_via_huggingface(){
+    echo "-------------------------------------------------"
+    echo "|         Removing Model using Deployment name   |"
+    echo "|------------------------------------------------|"
+    hugging_face_model_remove_deployment="true"
+    read_config_file "$@"       
+    prompt_for_input "$@"    
+    if [ -z "$cluster_url" ] || [ -z "$cert_file" ] || [ -z "$key_file" ] || [ -z "$keycloak_client_id" ] || [ -z "$keycloak_admin_user" ] || [ -z "$keycloak_admin_password" ] || [ -z "$hugging_face_token" ] || [ -z "$models" ]; then
+        echo "Some required arguments are missing. Prompting for input..."
+        prompt_for_input "$@"
+    fi
+    read -p "${YELLOW}CAUTION: Removing the Inference LLM Model will also remove its associated services and resources, which may cause service downtime and potential data loss. This action is irreversible. Are you absolutely certain you want to proceed? (y/n) ${NC}" -r user_response    
+    echo ""
+    if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
+        echo "Aborting LLM Model removal process. Exiting!!"
+        exit 1
+    fi        
+    read -p "Enter the deployment name of the model you wish to deprovision: " hugging_face_model_remove_name
+    if [ -n "$hugging_face_model_remove_name" ]; then
+        setup_initial_env                
+        execute_and_check "Removing Inference LLM Models..." remove_inference_llm_models_playbook "$@" \
+            "Inference LLM Model is removed successfully." \
+            "Failed to remove Inference LLM Model Exiting!."
+        echo "-----------------------------------------------------------"
+        echo "|     LLM Model Removed for Inference as Service Cluster! |"
+        echo "-----------------------------------------------------------"
+        echo ""        
+    else
+        echo "Required huggingface model name and model id not provided. Exiting!!"
+    fi
+}
+
+deploy_from_huggingface() {
+    echo "-------------------------------------------------"
+    echo "|         Deploy Model from Huggingface          |"
+    echo "|------------------------------------------------|"    
+    hugging_face_model_deployment="true"
+    read_config_file "$@"        
+    prompt_for_input "$@"    
     if [ -z "$cluster_url" ] || [ -z "$cert_file" ] || [ -z "$key_file" ] || [ -z "$keycloak_client_id" ] || [ -z "$keycloak_admin_user" ] || [ -z "$keycloak_admin_password" ] || [ -z "$hugging_face_token" ] || [ -z "$models" ]; then
         echo "Some required arguments are missing. Prompting for input..."
         prompt_for_input
+    fi        
+    read -p "Enter the Huggingface Model ID: " huggingface_model_id
+    read -p "Enter the name of the model deployment name: " huggingface_model_deployment_name
+    echo "Deploying models: $huggingface_model_id"    
+    if [ -n "$huggingface_model_deployment_name" ] && [ -n "$huggingface_model_id" ]; then
+        read -p "${YELLOW}NOTICE: You are initiating a model deployment. This will create the required services. Do you wish to continue? (y/n) ${NC}" -r user_response
+        echo ""
+        if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then        
+            echo "Deployment process has been cancelled. Exiting!!"
+            exit 1
+        fi
+        setup_initial_env                
+        execute_and_check "Deploying Inference LLM Models..." deploy_inference_llm_models_playbook "$@" \
+            "Inference LLM Model is deployed successfully." \
+            "Failed to deploy Inference LLM Model Exiting!." 
+        echo -e "${BLUE}-------------------------------------------------------------------------------------${NC}"
+        echo -e "${GREEN}|  LLM Model Deployment Complete!                                                   |${NC}"        
+        echo -e "${GREEN}|  The model is transitioning to a state ready for inference.                       |${NC}"
+        echo -e "${GREEN}|  This may take some time depending on system resources and other factors.         |${NC}"
+        echo -e "${GREEN}|  Please standby...                                                                |${NC}"
+        echo -e "${BLUE}--------------------------------------------------------------------------------------${NC}"
+        echo ""
+        echo "Accessing Deployed Models for Inference"
+        echo "https://github.com/intel-innersource/applications.ai.erag.infra-automation/tree/main/ida#accessing-deployed-models-for-inference"
+        echo ""
+        echo "Please refer to this comprehensive guide for detailed instructions."          
+        echo ""
+    else
+        echo "Required huggingface model name and model id not provided. Exiting!!"
+    fi
+}
+
+add_model() {
+    read_config_file "$@"        
+    prompt_for_input "$@"    
+    if [ -z "$cluster_url" ] || [ -z "$cert_file" ] || [ -z "$key_file" ] || [ -z "$keycloak_client_id" ] || [ -z "$keycloak_admin_user" ] || [ -z "$keycloak_admin_password" ] || [ -z "$hugging_face_token" ] || [ -z "$models" ]; then
+        echo "Some required arguments are missing. Prompting for input..."
+        prompt_for_input "$@"
     fi    
     model_name_list=$(get_model_names)
     if [ -z "$model_name_list" ]; then
@@ -1010,13 +1153,22 @@ add_model() {
     fi
     echo "Deploying models: $model_name_list"
     if [ -n "$models" ]; then
+        read -p "${YELLOW}NOTICE: You are initiating a model deployment. This will create the required services. Do you wish to continue? (y/n) ${NC}" -r user_response
+        echo ""
+        if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
+            echo "Deployment process has been cancelled. Exiting!!"
+            exit 1
+        fi
         setup_initial_env                
         execute_and_check "Deploying Inference LLM Models..." deploy_inference_llm_models_playbook "$@" \
             "Inference LLM Model is deployed successfully." \
             "Failed to deploy Inference LLM Model Exiting!." 
-        echo "-------------------------------------------------------"
-        echo "|     Deployment Complete! Enjoy Inference as Service! |"
-        echo "-------------------------------------------------------"
+        echo -e "${BLUE}-------------------------------------------------------------------------------------${NC}"
+        echo -e "${GREEN}|  LLM Model Deployment Complete!                                                   |${NC}"        
+        echo -e "${GREEN}|  The model is transitioning to a state ready for inference.                       |${NC}"
+        echo -e "${GREEN}|  This may take some time depending on system resources and other factors.         |${NC}"
+        echo -e "${GREEN}|  Please standby...                                                                |${NC}"
+        echo -e "${BLUE}--------------------------------------------------------------------------------------${NC}"
         echo ""
         echo "Accessing Deployed Models for Inference"
         echo "https://github.com/intel-innersource/applications.ai.erag.infra-automation/tree/main/ida#accessing-deployed-models-for-inference"
@@ -1027,8 +1179,8 @@ add_model() {
 }
 
 remove_model() {
-    read_config_file        
-    prompt_for_input    
+    read_config_file "$@"        
+    prompt_for_input "$@"    
     if [ -z "$cluster_url" ] || [ -z "$cert_file" ] || [ -z "$key_file" ] || [ -z "$keycloak_client_id" ] || [ -z "$keycloak_admin_user" ] || [ -z "$keycloak_admin_password" ] || [ -z "$hugging_face_token" ] || [ -z "$models" ]; then
         echo "Some required arguments are missing. Prompting for input..."
         prompt_for_input
@@ -1040,42 +1192,60 @@ remove_model() {
     fi
     echo "Removing models: $model_name_list"
     if [ -n "$models" ]; then
+        read -p "${YELLOW}CAUTION: Removing the Inference LLM Model will also remove its associated services and resources, which may cause service downtime and potential data loss. This action is irreversible. Are you absolutely certain you want to proceed? (y/n)${NC} " -r user_response
+        echo ""
+        if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
+            echo "Aborting LLM Model removal process. Exiting!!"
+            exit 1
+        fi
         setup_initial_env       
         execute_and_check "Removing Inference LLM Models..." remove_inference_llm_models_playbook "$@" \
             "Inference LLM Model is removed successfully." \
             "Failed to remove Inference LLM Model Exiting!."
-        echo "-----------------------------------------------------------"
-        echo "|     LLM Model Removed for Inference as Service Cluster! |"
-        echo "-----------------------------------------------------------"
+        echo -e "${BLUE}-----------------------------------------------------------------------${NC}"
+        echo -e "${GREEN}|     LLM Model is being removed from Inference as Service Cluster!    |${NC}"
+        echo -e "${BLUE}-----------------------------------------------------------------------${NC}"
     fi
 }
 
 add_worker_node() {
     echo "Adding a new worker node to the Inference as Service cluster..."    
+    read -p "${YELLOW}WARNING: Adding a node that is already managed by another Kubernetes cluster or has been manually configured using kubeadm, kubelet, or other tools can cause severe disruptions to your existing cluster. This may lead to issues such as pod restarts, service interruptions, and potential data loss. Do you want to proceed? (y/n) ${NC}" -r user_response
+    echo ""
+    if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
+        echo "Aborting node addition process. Exiting!!"
+        exit 1
+    fi
     execute_and_check "Adding new worker nodes..." add_inference_nodes_playbook "$@" \
             "Adding a new worker node is successful." \
             "Failed to add worker node Exiting!."
-        echo "-----------------------------------------------------------"
-        echo "|     Node is Added for Inference as Service Cluster!    |"
-        echo "-----------------------------------------------------------"
+        echo "---------------------------------------------------------------"
+        echo "|     Node is being Added for Inference as Service Cluster!    |"
+        echo "---------------------------------------------------------------"
 }
 
 
 remove_worker_node() {
     echo "Removing a worker node from the Inference as Service cluster..."    
+    read -p "${YELLOW}WARNING: Removing a worker node will drain all resources from the node, which may cause service interruptions or data loss. This process cannot be undone. Do you want to proceed? (y/n)${NC} " -r user_response
+    if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
+        echo "Aborting node removal process. Exiting!!"
+        exit 1
+    fi
+    echo "Draining resources and detaching the worker node. This may take some time..."
     execute_and_check "Removing worker nodes..." remove_inference_nodes_playbook "$@" \
             "Removing  worker node is successful." \
             "Failed to remove worker node Exiting!."
-    echo "-----------------------------------------------------------"
-    echo "|     Node is Removed for Inference as Service Cluster!    |"
-    echo "-----------------------------------------------------------"
+    echo "------------------------------------------------------------------"
+    echo "|     Node is being removed from Inference as Service Cluster!    |"
+    echo "-------------------------------------------------------------------"
     
 }
 
 main_menu() {
     parse_arguments "$@"
     echo "----------------------------------------------------------"
-    echo "|  AI Inference as Service Deployment Automation          |"
+    echo "${BLUE}|  AI Inference as Service Deployment Automation          |${NC}"
     echo "|---------------------------------------------------------|"
     echo "| 1) Provision Inference as Service Cluster               |"
     echo "| 2) Decommission Existing Cluster                        |"

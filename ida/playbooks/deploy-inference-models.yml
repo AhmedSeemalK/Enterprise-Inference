@@ -19,6 +19,10 @@
     deploy_keycloak: 'no'
     tensor_parallel_size_vllm: 1
     gaudi_deployment: 'true'
+    huggingface_model_id: 'false'
+    hugging_face_model_deployment: 'false'
+    huggingface_model_deployment_name: 'None'
+    hugging_face_model_remove_name: 'false'
     gaudi_values_file: "{{ remote_helm_charts_base }}/vllm/gaudi-values.yaml"        
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
@@ -35,6 +39,12 @@
         state: present
         executable: /usr/bin/pip3
       become: true    
+    - name: Install Helm
+      ansible.builtin.shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        executable: /bin/bash
+      become: true
     - name: Create Kubernetes Secret for Hugging Face Token
       kubernetes.core.k8s:
         name: hugging-face-token
@@ -97,6 +107,7 @@
         - name: Print the script output
           debug:
             msg: "{{ script_output.stdout }}"
+      run_once: true
       when: deploy_keycloak == 'yes'
     
     - name: Deploy Llama8b LLM Model
@@ -134,11 +145,13 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
-            --force   
+            --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+      run_once: true
       when:                
-        - "'llama-8b' in model_name_list"
+        - model_name_list is defined        
+        - "'llama-8b' in (model_name_list | regex_replace(',', ' ') | split())"
         - install_true == 'true'
 
 
@@ -147,16 +160,76 @@
         cmd: "helm list --filter vllm-llama-8b --short"
       register: helm_release_installed
       ignore_errors: true
+      run_once: true
     - name: Uninstall vllm-llama-8b Helm release
       ansible.builtin.command:
         cmd: "helm uninstall vllm-llama-8b"
+      run_once: true
       when:
-        - "'llama-8b' in model_name_list"
+        - "'llama-8b' in (model_name_list | regex_replace(',', ' ') | split())"
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""
     
 
-
+    - name: Deploy "{{ huggingface_model_id }}" LLM Model
+      block:
+        - name: Delete Ingress resource "{{ huggingface_model_id }}" from default namespace
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: default
+            name: "{{huggingface_model_deployment_name}}-ingress"
+            state: absent          
+        - name: Delete Ingress resource "{{ huggingface_model_id }}" from auth-apisix namespace
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: "{{huggingface_model_deployment_name}}-ingress"
+            state: absent          
+        - name: Deploy LLM model "{{ huggingface_model_id }}"
+          ansible.builtin.command: >-
+            helm upgrade --install "{{huggingface_model_deployment_name}}" "{{ remote_helm_charts_base }}/vllm"
+            --set LLM_MODEL_ID="{{ huggingface_model_id }}"
+            --set global.HUGGINGFACEHUB_API_TOKEN={{ hugging_face_token }}                        
+            {% if apisix_enabled %}
+              --set apisix.enabled={{ apisix_enabled }}
+            {% endif %}
+            {% if gaudi_deployment %}
+              --set tensor_parallel_size={{ tensor_parallel_size_vllm }}
+              --values {{ gaudi_values_file }}              
+            {% endif %}
+            {% if ingress_enabled %}
+              --set ingress.enabled={{ ingress_enabled }}
+              --set ingress.host={{ secret_name }}
+              --set ingress.secretname={{ secret_name }}
+            {% endif %}
+            {% if deploy_keycloak == 'yes' and apisix_enabled %}
+              --set oidc.client_id={{ keycloak_client_id | default('') }}
+              --set oidc.client_secret={{ client_secret | default('') }}
+            {% endif %}
+            --force             
+          register: helm_upgrade_install_model_deployment
+          failed_when: helm_upgrade_install_model_deployment.rc != 0
+      run_once: true
+      when:                        
+        - hugging_face_model_deployment == 'true'
+        - install_true == 'true'
+                
+    
+    - name: Check if "{{ hugging_face_model_remove_name }}" Helm release is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter {{ hugging_face_model_remove_name }} --short"
+      register: helm_release_installed
+      ignore_errors: true
+      run_once: true
+    - name: Uninstall "{{ hugging_face_model_remove_name }}" Helm release
+      ansible.builtin.command:
+        cmd: "helm uninstall {{ hugging_face_model_remove_name }}"
+      run_once: true
+      when:        
+        - uninstall_true == 'true'
+        - hugging_face_model_remove_deployment == 'true'
+        - helm_release_installed.stdout != ""
+    
     - name: Deploy Llama70b LLM Model
       block:
         - name: Delete Ingress resource Llama70b from default namespace
@@ -192,9 +265,10 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
-            --force   
+            --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+      run_once: true
       when:
         - '"llama-70b" in model_name_list'
         - install_true == 'true'
@@ -205,9 +279,11 @@
         cmd: "helm list --filter vllm-llama-70b --short"
       register: helm_release_installed
       ignore_errors: true
+      run_once: true
     - name: Uninstall llama-70b Helm release
       ansible.builtin.command:
         cmd: "helm uninstall vllm-llama-70b"
+      run_once: true
       when:
         - "'llama-70b' in model_name_list"
         - uninstall_true == 'true'
@@ -249,9 +325,10 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
-            --force   
+            --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+      run_once: true
       when:
         - '"mixtral-8x-7b" in model_name_list'
         - install_true == 'true'
@@ -262,9 +339,11 @@
         cmd: "helm list --filter vllm-mixtral-7b --short"
       register: helm_release_installed
       ignore_errors: true
+      run_once: true
     - name: Uninstall mixtral-8x-7b Helm release
       ansible.builtin.command:
         cmd: "helm uninstall vllm-mixtral-7b"
+      run_once: true
       when:
         - "'mixtral-8x-7b' in model_name_list"
         - uninstall_true == 'true'
@@ -306,9 +385,10 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
-            --force   
+            --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+      run_once: true
       when:
         - '"codellama-34b" in model_name_list'
         - install_true == 'true'
@@ -317,9 +397,11 @@
         cmd: "helm list --filter vllm-codellama --short"
       register: helm_release_installed
       ignore_errors: true
+      run_once: true
     - name: Uninstall codellama-34b Helm release
       ansible.builtin.command:
         cmd: "helm uninstall vllm-codellama"
+      run_once: true
       when:
         - "'codellama-34b' in model_name_list"
         - uninstall_true == 'true'
@@ -361,9 +443,10 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
-            --force   
+            --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+      run_once: true
       when:
         - '"falcon3-7b" in model_name_list'
         - install_true == 'true'
@@ -372,9 +455,11 @@
         cmd: "helm list --filter vllm-falcon3-7b --short"
       register: helm_release_installed
       ignore_errors: true
+      run_once: true
     - name: Uninstall Faclon3 7b Helm release
       ansible.builtin.command:
         cmd: "helm uninstall vllm-falcon3-7b"
+      run_once: true
       when:
         - "'falcon3-7b' in model_name_list"
         - uninstall_true == 'true'
@@ -416,9 +501,10 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
-            --force   
+            --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+      run_once: true
       when:
         - '"mistral-7b" in model_name_list'
         - install_true == 'true'
@@ -427,9 +513,11 @@
         cmd: "helm list --filter vllm-mistral-7b --short"
       register: helm_release_installed
       ignore_errors: true
+      run_once: true
     - name: Uninstall Mistral_7b Helm release
       ansible.builtin.command:
         cmd: "helm uninstall vllm-mistral-7b"
+      run_once: true
       when:
         - "'mistral-7b' in model_name_list"
         - uninstall_true == 'true'
@@ -472,9 +560,10 @@
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
             --set teirerank.namespace=default            
-            --force   
+            --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+      run_once: true
       when:
         - "'tei' in model_name_list"
         - install_true == 'true'
@@ -483,9 +572,11 @@
         cmd: "helm list --filter vllm-tei --short"
       register: helm_release_installed
       ignore_errors: true
+      run_once: true
     - name: Uninstall tei Helm release
       ansible.builtin.command:
         cmd: "helm uninstall vllm-tei"
+      run_once: true
       when:        
         - "'tei' in model_name_list"
         - uninstall_true == 'true'
@@ -527,9 +618,10 @@
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
             --set teirerank.namespace=default
-            --force   
+            --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+      run_once: true
       when:
         - "'rerank' in model_name_list"        
         - install_true == 'true'
@@ -538,24 +630,156 @@
         cmd: "helm list --filter vllm-teirerank --short"
       register: helm_release_installed
       ignore_errors: true
+      run_once: true
     - name: Uninstall teirerank Helm release
       ansible.builtin.command:
         cmd: "helm uninstall vllm-teirerank"
+      run_once: true
       when:        
         - "'rerank' in model_name_list"   
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""
 
+    - name: Deploy Deepkseek R1 Distill Qwen 32b LLM Model
+      block:
+        - name: Delete Ingress resource Deepkseek R1 Distill Qwen 32b from default namespace
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: default
+            name: vllm-deepkseek-r1-qwen-32b-ingress
+            state: absent          
+          run_once: true
+        - name: Delete Ingress resource Deepkseek R1 Distill Qwen 32b from auth-apisix namespace
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllm-deepkseek-r1-qwen-32b-ingress
+            state: absent
+          run_once: true
+        - name: Deploy LLM model Deepkseek R1 Distill Qwen 32b
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-deepkseek-r1-qwen-32b "{{ remote_helm_charts_base }}/vllm"
+            --set LLM_MODEL_ID="deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+            --set global.HUGGINGFACEHUB_API_TOKEN={{ hugging_face_token }}                        
+            {% if apisix_enabled %}
+              --set apisix.enabled={{ apisix_enabled }}
+            {% endif %}
+            {% if gaudi_deployment %}
+              --set tensor_parallel_size=2
+              --values {{ gaudi_values_file }}              
+            {% endif %}
+            {% if ingress_enabled %}
+              --set ingress.enabled={{ ingress_enabled }}
+              --set ingress.host={{ secret_name }}
+              --set ingress.secretname={{ secret_name }}
+            {% endif %}
+            {% if deploy_keycloak == 'yes' and apisix_enabled %}
+              --set oidc.client_id={{ keycloak_client_id | default('') }}
+              --set oidc.client_secret={{ client_secret | default('') }}
+            {% endif %}
+            --force             
+          register: helm_upgrade_install_model_deployment
+          failed_when: helm_upgrade_install_model_deployment.rc != 0
+      run_once: true    
+      when:                
+        - "'deepseek-r1-distill-qwen-32b' in (model_name_list | regex_replace(',', ' ') | split())"        
+        - install_true == 'true'
+
+
+    - name: Check if vllm-deepkseek-r1-qwen-32b Helm release is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-deepkseek-r1-qwen-32b --short"
+      register: helm_release_installed
+      ignore_errors: true
+      run_once: true
+    - name: Uninstall vllm-deepkseek-r1-qwen-32b Helm release
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-deepkseek-r1-qwen-32b"
+      run_once: true
+      when:
+        - "'deepseek-r1-distill-qwen-32b' in (model_name_list | regex_replace(',', ' ') | split())"
+        - uninstall_true == 'true'
+        - helm_release_installed.stdout != ""
+
+
+
+    - name: Deploy Deepkseek R1 Distill Llama 8b LLM Model
+      block:
+        - name: Delete Ingress resource Deepkseek R1 Distill Llama 8b from default namespace
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: default
+            name: vllm-deepkseek-r1-llama-8b-ingress
+            state: absent          
+        - name: Delete Ingress resource Deepkseek R1 Distill Llama 8b from auth-apisix namespace
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllm-deepkseek-r1-llama-8b-ingress
+            state: absent          
+        - name: Deploy LLM model Deepkseek R1 Distill Llama 8b
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-deepkseek-r1-llama-8b "{{ remote_helm_charts_base }}/vllm"
+            --set LLM_MODEL_ID="deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+            --set global.HUGGINGFACEHUB_API_TOKEN={{ hugging_face_token }}                        
+            {% if apisix_enabled %}
+              --set apisix.enabled={{ apisix_enabled }}
+            {% endif %}
+            {% if gaudi_deployment %}
+              --set tensor_parallel_size={{ tensor_parallel_size_vllm }}
+              --values {{ gaudi_values_file }}              
+            {% endif %}
+            {% if ingress_enabled %}
+              --set ingress.enabled={{ ingress_enabled }}
+              --set ingress.host={{ secret_name }}
+              --set ingress.secretname={{ secret_name }}
+            {% endif %}
+            {% if deploy_keycloak == 'yes' and apisix_enabled %}
+              --set oidc.client_id={{ keycloak_client_id | default('') }}
+              --set oidc.client_secret={{ client_secret | default('') }}
+            {% endif %}
+            --force           
+          register: helm_upgrade_install_model_deployment
+          failed_when: helm_upgrade_install_model_deployment.rc != 0
+      run_once: true
+      when:                        
+        - "'deepseek-r1-distill-llama8b' in (model_name_list | regex_replace(',', ' ') | split())"
+        - install_true == 'true'
+
+
+    - name: Check if vllm-deepkseek-r1-llama-8b Helm release is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-deepkseek-r1-llama-8b --short"
+      register: helm_release_installed
+      ignore_errors: true
+      run_once: true
+    - name: Uninstall vllm-deepkseek-r1-llama-8b Helm release
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-deepkseek-r1-llama-8b"
+      run_once: true
+      when:
+        - "'deepseek-r1-distill-llama8b' in (model_name_list | regex_replace(',', ' ') | split())"
+        - uninstall_true == 'true'
+        - helm_release_installed.stdout != ""
+
+
+
+
+
     - name: Check if CPU Model is installed
       ansible.builtin.command:
         cmd: "helm list --filter vllm-llama8b-cpu --short"
       register: helm_release_installed
-      ignore_errors: true
+      ignore_errors: true      
+      run_once: true
     - name: Uninstall CPU  Model
       ansible.builtin.command:
         cmd: "helm uninstall vllm-llama8b-cpu"
+      run_once: true
+      run_once: true
       when:
-        - "'cpu-llama' in model_name_list"
+        - model_name_list is defined
+        - "'cpu-llama-8b' in (model_name_list | regex_replace(',', ' ') | split())"
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""        
     
@@ -592,11 +816,132 @@
             {% endif %}            
             --force                                                
           register: helm_upgrade_install_model_deployment_cpu_llama8b
-          failed_when: helm_upgrade_install_model_deployment_cpu_llama8b.rc != 0
+          failed_when: helm_upgrade_install_model_deployment_cpu_llama8b.rc != 0          
+      run_once: true
       when:
         - cpu_playbook == 'true'
-        - install_true == 'true'                      
+        - install_true == 'true'
+        - model_name_list is defined
+        - "'cpu-llama-8b' in (model_name_list | regex_replace(',', ' ') | split())"
 
+    - name: Check if CPU Deepseek R1 Distill Qwen 32b is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-deepseek-r1-qwen32b-cpu --short"
+      register: helm_release_installed
+      ignore_errors: true
+      run_once: true
+    - name: Uninstall Deepseek R1 Distill Qwen 32b
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-deepseek-r1-qwen32b-cpu"
+      run_once: true
+      when:
+        - model_name_list is defined
+        - "'cpu-deepseek-r1-distill-qwen-32b' in (model_name_list | regex_replace(',', ' ') | split())"            
+        - uninstall_true == 'true'
+        - helm_release_installed.stdout != ""        
+    
+    - name: Deploy CPU Deepseek R1 Distill Qwen 32b LLM model
+      block:        
+        - name: Delete Ingress resource  Deepseek R1 Distill Qwen 32b from default namespace
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: default
+            name: vllm-deepseek-r1-qwen32b-cpu-ingress
+            state: absent
+        - name: Delete Ingress resource  Deepseek R1 Distill Qwen 32b from auth-apisix namespace
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllm-deepseek-r1-qwen32b-cpu-ingress
+            state: absent
+        - name: Deploy CPU based LLM model Deepseek R1 Distill Qwen 32b Installation
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-deepseek-r1-qwen32b-cpu "{{ remote_helm_charts_base }}/vllm"
+            --set LLM_MODEL_ID="deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+            --set global.HUGGINGFACEHUB_API_TOKEN={{ hugging_face_token }}                        
+            {% if apisix_enabled %}
+              --set apisix.enabled={{ apisix_enabled }}
+            {% endif %}
+            {% if ingress_enabled %}
+              --set ingress.enabled={{ ingress_enabled }}
+              --set ingress.host={{ secret_name }}
+              --set ingress.secretname={{ secret_name }}
+            {% endif %}
+            {% if deploy_keycloak == 'yes' and apisix_enabled %}
+              --set oidc.client_id={{ keycloak_client_id | default('') }}
+              --set oidc.client_secret={{ client_secret | default('') }}
+            {% endif %}            
+            --force                                                
+          register: helm_upgrade_install_model_deployment_cpu_deepseek_qwen32b
+          failed_when: helm_upgrade_install_model_deployment_cpu_deepseek_qwen32b.rc != 0
+      run_once: true
+      when:
+        - model_name_list is defined
+        - cpu_playbook == 'true'
+        - install_true == 'true' 
+        - "'cpu-deepseek-r1-distill-qwen-32b' in (model_name_list | regex_replace(',', ' ') | split())"
+    
+    
+    
+    - name: Check if CPU Deepseek R1 Distill Llama 8B is installed
+      ansible.builtin.command:
+        cmd: "helm list --filter vllm-deepseek-r1-llama8b-cpu --short"
+      register: helm_release_installed
+      ignore_errors: true
+      run_once: true
+    - name: Uninstall Deepseek R1 Distill Llama 8B
+      ansible.builtin.command:
+        cmd: "helm uninstall vllm-deepseek-r1-llama8b-cpu"
+      run_once: true
+      when:                
+        - "'cpu-deepseek-r1-distill-llama8b' in (model_name_list | regex_replace(',', ' ') | split())"
+        - uninstall_true == 'true'        
+        - helm_release_installed.stdout != ""        
+    
+    - name: Deploy CPU Deepseek R1 Distill Llama 8B LLM model
+      block:        
+        - name: Delete Ingress resource Deepseek R1 Distill Llama 8B from default namespace
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: default
+            name: vllm-deepseek-r1-llama8b-cpu-ingress
+            state: absent
+        - name: Delete Ingress resource Deepseek R1 Distill Llama 8B from auth-apisix namespace
+          kubernetes.core.k8s:
+            kind: Ingress
+            namespace: auth-apisix
+            name: vllm-deepseek-r1-llama8b-cpu-ingress
+            state: absent
+        - name: Deploy CPU based LLM model Deepseek R1 Distill Llama 8B Installation
+          ansible.builtin.command: >-
+            helm upgrade --install vllm-deepseek-r1-llama8b-cpu "{{ remote_helm_charts_base }}/vllm"
+            --set LLM_MODEL_ID="deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+            --set global.HUGGINGFACEHUB_API_TOKEN={{ hugging_face_token }}                        
+            {% if apisix_enabled %}
+              --set apisix.enabled={{ apisix_enabled }}
+            {% endif %}
+            {% if ingress_enabled %}
+              --set ingress.enabled={{ ingress_enabled }}
+              --set ingress.host={{ secret_name }}
+              --set ingress.secretname={{ secret_name }}
+            {% endif %}
+            {% if deploy_keycloak == 'yes' and apisix_enabled %}
+              --set oidc.client_id={{ keycloak_client_id | default('') }}
+              --set oidc.client_secret={{ client_secret | default('') }}
+            {% endif %}            
+            --force                                                
+          register: helm_upgrade_install_model_deployment_cpu_deepseek_llama_8b
+          failed_when: helm_upgrade_install_model_deployment_cpu_deepseek_llama_8b.rc != 0          
+      run_once: true
+      when:
+        - cpu_playbook == 'true'
+        - install_true == 'true'         
+        - "'cpu-deepseek-r1-distill-llama8b' in (model_name_list | regex_replace(',', ' ') | split())"
+    
+    
+    
+    
+    
     - name: Print model_name_list 
       debug:
         var: model_name_list

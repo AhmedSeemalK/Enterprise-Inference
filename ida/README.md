@@ -35,12 +35,12 @@ Unleash the Power of AI Inference:
          - [Workflow Steps](#example-3)
       - [List Models](#list-llm-model)
          - [Workflow Steps](#example-4)
-11. [Inferencing with Deployed Model](#accessing-deployed-models-for-inference)
+11. [Inferencing with Deployed Model](#accessing-deployed-models-from-inference-cluster)
 
 
 
 ## Supported Models
-The following models are supported by this Inference as a Service automation:
+List of Prevalidated Models for the Inference as a Service Automation:
 1. [**llama-8b**](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct)
 2. [**llama-70b**](https://huggingface.co/meta-llama/Llama-3.1-70B-Instruct)
 3. [**codellama-34b**](https://huggingface.co/codellama/CodeLlama-34b-Instruct-hf)
@@ -49,7 +49,11 @@ The following models are supported by this Inference as a Service automation:
 6. [**tei**](https://github.com/huggingface/tei-gaudi/pkgs/container/tei-gaudi)
 7. [**tei-rerank**](https://github.com/huggingface/text-embeddings-inference/pkgs/container/text-embeddings-inference)
 8. [**falcon3-7b**](https://huggingface.co/tiiuae/Falcon3-7B-Instruct)   
-9. [**cpu-llama-8b**](https://github.com/huggingface/text-generation-inference/pkgs/container/text-generation-inference)
+9. [**deepseek-r1-distill-qwen-32b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B)
+10. [**deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B)
+11. [**cpu-llama-8b**](https://github.com/huggingface/text-generation-inference/pkgs/container/text-generation-inference)
+12. [**cpu-deepseek-r1-distill-qwen-32b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B)
+13. [**cpu-deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B)
    
 These models can be deployed, providing a range of inference capabilities to suit various needs and applications.
 
@@ -183,6 +187,10 @@ Please choose an option (1, 2, or 3):
 ```
 
 ### Fresh Installation:
+
+#### Installation Precautions:
+Ensure that the nodes do not contain existing workloads. If necessary, please purge any previous cluster configurations before initiating a fresh installation to avoid an inappropriate cluster state. Proceeding without this precaution could lead to service disruptions or data loss.
+
 If you choose to perform a fresh installation, the automation will prompt you for the necessary inputs and proceed with the following steps:
 1. Prompt for Input: Collects the required inputs from the user.
 2. Setup Initial Environment: Sets up the virtual environment and installs necessary dependencies.
@@ -224,6 +232,10 @@ Proceed with the inference cluster setup using the provided configurations? (yes
 ```
 
 ### Reset Cluster:
+
+##### Cluster Reset Precautions:
+Performing a cluster reset is a significant action that will permanently erase all current configurations, services, and resources associated with the cluster. This operation is irreversible and may result in service interruptions and data loss. It is essential to be certain of your decision to reset the cluster. Please ensure that you have backed up any important data before confirming that you wish to proceed with the reset.
+
 If you choose to reset the cluster, the automation will:
 1. Prompt for Confirmation: Asks for confirmation before proceeding with the reset.
 2. Setup Initial Environment: Sets up the virtual environment and installs necessary dependencies.
@@ -275,6 +287,16 @@ Please choose an option (1 or 2):
 
 ## Manage Models: Add or remove models.
 
+#### Add Worker Node:
+##### Precautions:
+WARNING: Adding a node that is already managed by another Kubernetes cluster or has been manually configured using kubeadm, kubelet, or other tools can cause severe disruptions to your existing cluster. This may lead to issues such as pod restarts, service interruptions, and potential data loss. 
+
+#### Remove Worker Node:
+##### Precautions:
+CAUTION: Removing the Inference LLM Model will also remove its associated services and resources, which may cause service downtime and potential data loss. This action is irreversible. 
+
+
+## Manage Models: Add or remove models.
 ### Add LLM Model
 This option allows you to deploy a new LLM model on the Kubernetes cluster.
 
@@ -406,8 +428,21 @@ curl -k ${KEYCLOAK_ADDR}/bge-base-en-v1.5/v1/completions -X POST -d '{"model": "
 For inferencing with Tei-reranking:
 curl -k ${KEYCLOAK_ADDR}/bge-reranker-base/v1/completions -X POST -d '{"model": "meta-llama/Meta-Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
 
+For inferencing with Deepseek R1 Distill Qwen 32b:
+curl -k ${KEYCLOAK_ADDR}/DeepSeek-R1-Distill-Qwen-32B/v1/completions -X POST -d '{"model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
+
+For inferencing with Deepseek R1 Distill Llama 8b:
+curl -k ${KEYCLOAK_ADDR}/DeepSeek-R1-Distill-Llama-8B/v1/completions -X POST -d '{"model": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
+
 For inferencing with Llama-3-8b-CPU
 curl -k ${KEYCLOAK_ADDR}/Meta-Llama-3.1-8B-Instruct-vllmcpu/v1/completions -X POST -d '{"model": "meta-llama/Meta-Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
+
+For inferencing with Deepseek R1 Distill Qwen 32b CPU:
+curl -k ${KEYCLOAK_ADDR}/DeepSeek-R1-Distill-Qwen-32B-vllmcpu/v1/completions -X POST -d '{"model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
+
+For inferencing with Deepseek R1 Distill Llama 8b CPU:
+curl -k ${KEYCLOAK_ADDR}/DeepSeek-R1-Distill-Llama-8B-vllmcpu/v1/completions -X POST -d '{"model": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B", "prompt": "What is Deep Learning?", "max_tokens": 5, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
+
 `````
 #### Accessing the model from Inference Cluster deployed without APISIX and Keycloak
 `````

@@ -56,7 +56,8 @@
         chart_ref: gaudi-helm/habana-ai-operator
         release_namespace: habana-ai-operator
         chart_version: 1.18.0-524
-        state: present     
+        state: present
+      run_once: true     
     - name: wait for habana-ai-operator pods to be running
       pause:
         minutes: 5

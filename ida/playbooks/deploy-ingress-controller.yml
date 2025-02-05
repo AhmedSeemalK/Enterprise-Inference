@@ -62,6 +62,7 @@
                 https: 443
             nodeSelector: "{{ node_selector }}"
             tolerations: "{{ tolerations }}"
+      run_once: true   
 
     - name: wait for ingress-nginx pods to be running
       pause:
