@@ -20,7 +20,7 @@ data:
   {{- end }}
   NUMBA_CACHE_DIR: "/tmp"
   HF_HOME: "/tmp/.cache/huggingface"
-  HF_HUB_CACHE: "/tmp/.cache/huggingface/hub"
+  HF_HUB_CACHE: "/data"
   TRANSFORMERS_CACHE: "/tmp/transformers_cache"
   # https://github.com/outlines-dev/outlines/blob/main/outlines/caching.py#L14-L29
   OUTLINES_CACHE_DIR: "/tmp/.cache/outlines"

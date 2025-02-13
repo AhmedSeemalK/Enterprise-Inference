@@ -15,7 +15,7 @@ data:
   no_proxy: {{ .Values.global.no_proxy | quote }}
   NUMBA_CACHE_DIR: "/tmp"
   TRANSFORMERS_CACHE: "/tmp/transformers_cache"
-  HF_HUB_CACHE: "/tmp/.cache/huggingface/hub"
+  HF_HUB_CACHE: "/data"
   HF_HOME: "/tmp/.cache/huggingface"
   {{- if .Values.global.HF_ENDPOINT }}
   HF_ENDPOINT: {{ .Values.global.HF_ENDPOINT | quote}}
