@@ -159,6 +159,8 @@ huggingface_model_id=""
 huggingface_model_deployment_name=""
 hugging_face_model_remove_deployment=""
 hugging_face_model_remove_name=""
+huggingface_tensor_parellel_size=""
+
 
 setup_initial_env() {\
     # Pull Kubespray repository
@@ -185,6 +187,7 @@ setup_initial_env() {\
     # Create and activate virtual environment within Kubespray directory
     VENVDIR="$KUBESPRAYDIR/venv"
     if [ ! -d "$VENVDIR" ]; then
+        python3 -m pip install --upgrade pip
         python3 -m pip install virtualenv
         python3 -m virtualenv $VENVDIR
         echo "Virtual environment created within Kubespray directory."
@@ -412,6 +415,7 @@ deploy_inference_llm_models_playbook() {
         cpu_playbook="true"
         gpu_playbook="false"
         gaudi_deployment="false"
+        huggingface_model_deployment_name="${huggingface_model_deployment_name}-cpu"
     else
         cpu_playbook="false"
         gpu_playbook="true"
@@ -431,8 +435,9 @@ deploy_inference_llm_models_playbook() {
     echo "APISIX Enabled: $apisix_enabled"
     echo "Keycloak Enabled: $deploy_keycloak"    
     echo "Gaudi based: $gaudi_deployment"
+
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name}"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name} deploy_inference_llm_models_playbook=${deploy_inference_llm_models_playbook} huggingface_tensor_parellel_size=${huggingface_tensor_parellel_size}"
 }
 
 remove_inference_llm_models_playbook() {
@@ -593,49 +598,53 @@ model_selection(){
             model_name_list=$(get_model_names)                       
             echo "Proceeding with the setup of Large Language Model (LLM): $deploy_llm_models"
         fi
-        if [ "$deploy_llm_models" = "yes" ]; then                        
-            if [ -z "$models" ]; then
-                if [ "$cpu_or_gpu" = "g" ]; then
-                    # Prompt for GPU models
-                    echo "Available GPU models:"
-                    echo "1. llama-8b"
-                    echo "2. llama-70b"
-                    echo "3. codellama-34b"
-                    echo "4. mixtral-8x-7b"
-                    echo "5. mistral-7b"
-                    echo "6. tei"
-                    echo "7. tei-rerank"
-                    echo "8. falcon3-7b"
-                    echo "9. deepseek-r1-distill-qwen-32b"
-                    echo "10. deepseek-r1-distill-llama8b"
-                    read -p "Enter the numbers of the GPU models you want to deploy/remove (comma-separated, e.g., 1,3,5): " models
-                else
-                    # Prompt for CPU models
-                    echo "Available CPU models:"
-                    echo "11. cpu-llama-8b"
-                    echo "12. cpu-deepseek-r1-distill-qwen-32b"
-                    echo "13. cpu-deepseek-r1-distill-llama8b"
-                    read -p "Enter the number of the CPU model you want to deploy/remove: " cpu_model
-                    models="$cpu_model"
-                fi
-            else
-                if [ "$hugging_face_model_deployment" != "true" ]; then
-                    echo "Using provided models: $models"
-                fi
-            fi
-            
-            model_names=$(get_model_names)                        
-            if [ "$hugging_face_model_remove_deployment" != "true" ]; then
-                if [ -n "$model_names" ]; then
-                    if [ "$hugging_face_model_deployment" != "true" ]; then                    
+        if [ "$deploy_llm_models" = "yes" ]; then
+            if [ "$hugging_face_model_deployment" != "true" ]; then                        
+                if [ -z "$models" ]; then
+                    if [ "$hugging_face_model_remove_deployment" != "true" ]; then
                         if [ "$cpu_or_gpu" = "g" ]; then
-                            echo "Deploying/removing GPU models: $model_names"                    
+                            # Prompt for GPU models
+                            echo "Available GPU models:"
+                            echo "1. llama-8b"
+                            echo "2. llama-70b"
+                            echo "3. codellama-34b"
+                            echo "4. mixtral-8x-7b"
+                            echo "5. mistral-7b"
+                            echo "6. tei"
+                            echo "7. tei-rerank"
+                            echo "8. falcon3-7b"
+                            echo "9. deepseek-r1-distill-qwen-32b"
+                            echo "10. deepseek-r1-distill-llama8b"
+                            read -p "Enter the numbers of the GPU models you want to deploy/remove (comma-separated, e.g., 1,3,5): " models
                         else
-                            echo "Deploying/removing CPU models: $model_names"                    
+                            # Prompt for CPU models
+                            echo "Available CPU models:"
+                            echo "11. cpu-llama-8b"
+                            echo "12. cpu-deepseek-r1-distill-qwen-32b"
+                            echo "13. cpu-deepseek-r1-distill-llama8b"
+                            read -p "Enter the number of the CPU model you want to deploy/remove: " cpu_model
+                            models="$cpu_model"
                         fi
                     fi
+                else
+                    if [ "$hugging_face_model_deployment" != "true" ]; then
+                        echo "Using provided models: $models"
+                    fi
                 fi
-            fi            
+                
+                model_names=$(get_model_names)                        
+                if [ "$hugging_face_model_remove_deployment" != "true" ]; then
+                    if [ -n "$model_names" ]; then
+                        if [ "$hugging_face_model_deployment" != "true" ]; then                    
+                            if [ "$cpu_or_gpu" = "g" ]; then
+                                echo "Deploying/removing GPU models: $model_names"                    
+                            else
+                                echo "Deploying/removing CPU models: $model_names"                    
+                            fi
+                        fi
+                    fi
+                fi            
+            fi
         else
             echo "Skipping model deployment/removal."
         fi
@@ -1022,8 +1031,8 @@ manage_models() {
     echo "| 1) Deploy Model                                |"
     echo "| 2) Undeploy Model                              |"
     echo "| 3) List Installed Models                       |"
-    #echo "| 4) Deploy Model from Hugging Face              |"
-    #echo "| 5) Remove Model using deployment name          |"
+    echo "| 4) Deploy Model from Hugging Face              |"
+    echo "| 5) Remove Model using deployment name          |"
     echo "|------------------------------------------------|"
     echo "Please choose an option (1, 2, 3, or 4):"
     read -p "> " model_choice
@@ -1037,12 +1046,12 @@ manage_models() {
         3)
             list_models "$@"
             ;;
-        # 4)
-        #     deploy_from_huggingface "$@"
-        #     ;;
-        # 5)
-        #     remove_model_deployed_via_huggingface "$@"
-        #     ;;
+        4)
+            deploy_from_huggingface "$@"
+            ;;
+        5)
+            remove_model_deployed_via_huggingface "$@"
+            ;;
         *)
             echo "Invalid option. Please enter 1, 2, 3, or 4."
             manage_models
@@ -1108,11 +1117,19 @@ deploy_from_huggingface() {
         echo "Some required arguments are missing. Prompting for input..."
         prompt_for_input
     fi        
-    read -p "Enter the Huggingface Model ID: " huggingface_model_id
+        
+    read -p "Enter the Huggingface Model ID: " huggingface_model_id    
     read -p "Enter the name of the model deployment name: " huggingface_model_deployment_name
-    echo "Deploying models: $huggingface_model_id"    
+    echo "${YELLOW}NOTICE: Ensure the Tensor Parallel size value corresponds to the number of available Gaudi cards. Providing an incorrect value may result in the model being in a not ready state. ${NC}" 
+    if [ "$cpu_or_gpu" = "g" ]; then
+        read -p "Enter the Tensor Parallel size:" -r huggingface_tensor_parellel_size        
+        if ! [[ "$huggingface_tensor_parellel_size" =~ ^[0-9]+$ ]]; then
+            echo "Invalid input: Tensor Parallel size must be a positive integer."
+            exit 1
+        fi 
+    fi           
     if [ -n "$huggingface_model_deployment_name" ] && [ -n "$huggingface_model_id" ]; then
-        read -p "${YELLOW}NOTICE: You are initiating a model deployment. This will create the required services. Do you wish to continue? (y/n) ${NC}" -r user_response
+        read -p "${YELLOW}NOTICE: You are about to deploy a model directly from Hugging Face, which has not been pre-validated by our team. Do you wish to continue? (y/n) ${NC}" -r user_response
         echo ""
         if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then        
             echo "Deployment process has been cancelled. Exiting!!"

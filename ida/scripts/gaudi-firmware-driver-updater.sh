@@ -1,5 +1,11 @@
 #!/bin/bash
 
+RED=$(tput setaf 1)
+GREEN=$(tput setaf 2)
+YELLOW=$(tput setaf 3)
+BLUE=$(tput setaf 4)
+NC=$(tput sgr0)  # Reset color
+
 # ©2024 Intel Corporation
 # Permission is granted for recipient to internally use and modify this software for purposes of benchmarking and testing on Intel architectures. 
 # This software is provided "AS IS" possibly with faults, bugs or errors; it is not intended for production use, and recipient uses this design at their own risk with no liability to Intel.
@@ -38,98 +44,102 @@
 # non-zero status code.
 #
 
-set -e
-# Define colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
+update_driver_script_ack=""
 
 # Function to update Gaudi drivers
 update_drivers() {
-    # Download the base Gaudi installer
-    echo -e "${YELLOW}Downloading Gaudi installer...${NC}"
-    echo -e "${YELLOW}Unloading Gaudi drivers...${NC}"
-    sudo modprobe -r habanalabs &>/dev/null || true
-    sudo modprobe -r habanalabs_cn &>/dev/null || true
-    sudo modprobe -r habanalabs_ib &>/dev/null || true
-    sudo modprobe -r habanalabs_en &>/dev/null || true
-    echo -e "${GREEN}Gaudi drivers unloaded successfully.${NC}"
-    echo -e "${YELLOW}Loading Gaudi drivers...${NC}"
-    sudo modprobe habanalabs
-    sudo modprobe habanalabs_cn
-    sudo modprobe habanalabs_ib
-    sudo modprobe habanalabs_en
-    echo -e "${GREEN}Gaudi drivers loaded successfully.${NC}"
+    # Check the current driver version
+    current_driver_version=$(modinfo habanalabs | grep -m1 '^version:' | awk '{print $2}')
+    if [ "$current_driver_version" != "1.18.0-524" ]; then
+        echo -e "${YELLOW}Current Gaudi driver version: $current_driver_version${NC}"
+        echo -e "${YELLOW}Expected version: 1.18.0-524${NC}"
+        echo $update_driver_script_ack
+        if [ "$update_driver_script_ack" != "yes" ]; then
+            read -p "${YELLOW}This operation will update the Gaudi drivers to version 1.18.0-524. Do you want to proceed? (y/n) ${NC}" -r confirm
+            if [[ ! $confirm =~ ^[Yy]$ ]]; then
+                echo -e "${RED}Driver update cancelled.${NC}"
+                return
+            fi
+        fi
+        # Download the base Gaudi installer
+        echo -e "${YELLOW}Downloading Gaudi installer...${NC}"
+        echo -e "${YELLOW}Unloading Gaudi drivers...${NC}"
+        wget -nv https://vault.habana.ai/artifactory/gaudi-installer/1.18.0/habanalabs-installer.sh
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Failed to download Gaudi installer.${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}Gaudi installer downloaded successfully.${NC}"
+        echo -e "${YELLOW}Installing Gaudi base components...${NC}"
+        chmod +x habanalabs-installer.sh
+        ./habanalabs-installer.sh install --type base -y
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Failed to install Gaudi base components.${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}Gaudi base components installed successfully.${NC}"
+        echo -e "${YELLOW}Installing Gaudi container runtime...${NC}"
+        sudo apt install -y habanalabs-container-runtime=1.18.0-524
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Failed to install Gaudi container runtime.${NC}"
+            #exit 1
+        fi
+        echo -e "${GREEN}Gaudi container runtime installed.${NC}"               
+    else
+        echo -e "${GREEN}Gaudi driver version is already 1.18.0-524.${NC}"
+    fi
 }
 
 # Function to update Gaudi firmware
 update_firmware() {
-    echo -e "${YELLOW}Downloading Gaudi installer...${NC}"
-    wget -nv https://vault.habana.ai/artifactory/gaudi-installer/1.18.0/habanalabs-installer.sh
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Failed to download Gaudi installer.${NC}"
-        exit 1
-    fi
-    echo -e "${GREEN}Gaudi installer downloaded successfully.${NC}"
-    echo -e "${YELLOW}Installing Gaudi base components...${NC}"
-    chmod +x habanalabs-installer.sh
-    ./habanalabs-installer.sh install --type base -y
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Failed to install Gaudi base components.${NC}"
-        exit 1
-    fi
-    echo -e "${GREEN}Gaudi base components installed successfully.${NC}"
-    echo -e "${YELLOW}Installing Gaudi container runtime...${NC}"
-    sudo apt install -y habanalabs-container-runtime=1.18.0-524
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Failed to install Gaudi container runtime.${NC}"
-        #exit 1
-    fi
-    echo -e "${GREEN}Gaudi container runtime installed successfully.${NC}"
-    echo -e "${YELLOW}Checking FW version...${NC}"
-    FW_VERSION=$(hl-smi -L | grep "Firmware \[SPI\] Version" | awk 'NR==1 {sub(/^.*gaudi2-/,""); sub(/-.*$/,""); print}')
-    if [ -z "$FW_VERSION" ]; then
-        echo -e "${RED}Failed to retrieve FW version.${NC}"
-        exit 1
-    fi
-    echo -e "${GREEN}Current FW version: $FW_VERSION${NC}"
-    if [ "$FW_VERSION" != "1.18.0" ]; then
-        echo -e "${YELLOW}Updating FW version...${NC}"
-        echo -e "${YELLOW}Updating the downloader package...${NC}"
+    # Check the current firmware version
+    current_firmware_version=$(modinfo habanalabs | grep -m1 '^version:' | awk '{print $2}')
+    if [ "$current_firmware_version" != "1.18.0-524" ]; then
+        echo -e "${YELLOW}Current Gaudi firmware version: $current_firmware_version${NC}"
+        echo -e "${YELLOW}Expected version: 1.18.0-524${NC}"
+        if [ "$update_driver_script_ack" != "yes" ]; then
+            read -p "${YELLOW}This operation will update the Gaudi firmware to version 1.18.0-524. Do you want to proceed? (y/n) ${NC}" -r confirm
+            if [[ ! $confirm =~ ^[Yy]$ ]]; then
+                echo -e "${RED}Firmware update cancelled.${NC}"
+                return
+            fi
+        fi
+        # Unload drivers
+        echo "Unloading Habana drivers..."
+        sudo modprobe -r habanalabs &>/dev/null || true
+        sudo modprobe -r habanalabs_cn &>/dev/null || true
+        sudo modprobe -r habanalabs_ib &>/dev/null || true
+        sudo modprobe -r habanalabs_en &>/dev/null || true
+        # Install firmware package
+        echo "Updating the downloader package..."
         sudo apt update
         sudo apt install -y --allow-downgrades habanalabs-firmware-odm=1.18.0-524
-        if [ $? -ne 0 ]; then
-            echo -e "${RED}Failed to install the downloader package.${NC}"
-            exit 1
-        fi
-        echo -e "${GREEN}Downloader package updated successfully.${NC}"
-        echo -e "${YELLOW}Updating the FW...${NC}"
+        # Update firmware
+        echo "Updating the firmware..."
         sudo hl-fw-loader
-        if [ $? -ne 0 ]; then
-            echo -e "${RED}Failed to update the FW.${NC}"
-            exit 1
-        fi
-        echo -e "${GREEN}FW updated successfully.${NC}"
-        echo -e "${YELLOW}Confirming the FW version...${NC}"
-        FW_VERSION=$(hl-smi -L | grep "SPI Version" | awk '{print $3}')
-        if [ -z "$FW_VERSION" ]; then
-            echo -e "${RED}Failed to retrieve FW version.${NC}"
-            exit 1
-        fi
-        echo -e "${GREEN}Updated FW version: $FW_VERSION${NC}"
+        # Load drivers
+        echo "Loading Habana drivers..."
+        sudo modprobe habanalabs
+        sudo modprobe habanalabs_cn
+        sudo modprobe habanalabs_ib
+        sudo modprobe habanalabs_en
     else
-        echo -e "${GREEN}FW version is already 1.18${NC}"
+        echo -e "${GREEN}Gaudi firmware version is already 1.18.0-524.${NC}"
     fi
 }
+
+
 # Parse command-line arguments
 if [ "$1" == "--drivers" ]; then
-    update_drivers
+    update_driver_script_ack="yes"
+    update_drivers "$@"    
 elif [ "$1" == "--firmware" ]; then
-    update_firmware
+    update_driver_script_ack="yes"
+    update_firmware "$@"
 elif [ "$1" == "--both" ]; then    
-    update_firmware
-    update_drivers
+    update_driver_script_ack="yes"
+    update_firmware "$@"
+    update_drivers "$@" 
 else
     echo "Undefined Selection, please select a parameter --firmware or --drivers or --both"
 fi

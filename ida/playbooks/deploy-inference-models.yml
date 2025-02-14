@@ -24,6 +24,7 @@
     huggingface_model_deployment_name: 'None'
     hugging_face_model_remove_name: 'false'
     gaudi_values_file: "{{ remote_helm_charts_base }}/vllm/gaudi-values.yaml"        
+    huggingface_tensor_parellel_size: 'false'
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default({}) }}"
@@ -82,6 +83,10 @@
         owner: ubuntu
         group: ubuntu
     
+    - name: Print gaudi values values
+      debug:
+        var: gaudi_deployment
+
     - name: Print model_name_list
       debug:
         var: model_name_list
@@ -193,8 +198,8 @@
             {% if apisix_enabled %}
               --set apisix.enabled={{ apisix_enabled }}
             {% endif %}
-            {% if gaudi_deployment %}
-              --set tensor_parallel_size={{ tensor_parallel_size_vllm }}
+            {% if gaudi_deployment|lower == "true" %}
+              --set tensor_parallel_size={{ huggingface_tensor_parellel_size }}
               --values {{ gaudi_values_file }}              
             {% endif %}
             {% if ingress_enabled %}

@@ -25,11 +25,13 @@ image:
   # Uncomment the following line to set desired image pull policy if needed, as one of Always, IfNotPresent, Never.
   # pullPolicy: ""
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
+  tag: "1.2"
 
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+
+VLLM_NO_USAGE_STATS: 1
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -109,22 +111,23 @@ livenessProbe:
   httpGet:
     path: /health
     port: http
-  initialDelaySeconds: 450
-  periodSeconds: 30
-  failureThreshold: 60
+  initialDelaySeconds: 480
+  periodSeconds: 60
+  failureThreshold: 40
 readinessProbe:
   httpGet:
     path: /health
     port: http
-  initialDelaySeconds: 450
-  periodSeconds: 30
+  initialDelaySeconds: 240
+  periodSeconds: 60
+  failureThreshold: 35
 startupProbe:
   httpGet:
     path: /health
     port: http
-  initialDelaySeconds: 5
-  periodSeconds: 5
-  failureThreshold: 300
+  initialDelaySeconds: 360 
+  periodSeconds: 60
+  failureThreshold: 30
 
 nodeSelector: {}
 
