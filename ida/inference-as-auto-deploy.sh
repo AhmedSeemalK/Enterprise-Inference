@@ -977,7 +977,7 @@ update_cluster() {
     echo "|------------------------------------------------|"
     echo "| 1) Manage Worker Nodes                         |"
     echo "| 2) Manage LLM Models                           |"
-    echo "| 3) Update Driver and Firmware                  |"
+    #echo "| 3) Update Driver and Firmware                  |"
     echo "|------------------------------------------------|"    
     echo "Please choose an option (1 or 2):"
     read -p "> " update_choice
@@ -988,9 +988,9 @@ update_cluster() {
         2)
             manage_models "$@"
             ;;
-        3)
-            update_drivers_and_firmware "$@"
-            ;;
+        # 3)
+        #     update_drivers_and_firmware "$@"
+        #     ;;
         *)
             echo "Invalid option. Please enter 1 or 2."
             update_cluster

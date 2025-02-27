@@ -457,6 +457,23 @@ curl -k ${KEYCLOAK_ADDR}/Meta-Llama-3.1-8B-Instruct/v1/completions -X POST -d '{
 `````
 
 
+### Accessing Cluster Dashboard
+
+To log in, use a **bearer token**. Generate it using the following command:
+```sh
+   kubectl -n kube-system create token dashboard-user
+```
+
+Open your browser and navigate to:
+```
+   https://<cluster-url>/dashboard/#/login
+   Replace `<cluster-url>` with your domain name.
+```
+
+
+
+
+
 
 Example Run:
 [Inference-As-Service-Deployment-Automation](https://intel-my.sharepoint.com/:v:/r/personal/ahmed_seemal_intel_com/Documents/Videos/Clipchamp/Video%20Project%203/Exports/one-click-modularization.mp4?csf=1&web=1&e=k3mc0V&nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLCJyZWZlcnJhbFZpZXciOiJTaGFyZURpYWxvZy1MaW5rIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXcifX0%3D)

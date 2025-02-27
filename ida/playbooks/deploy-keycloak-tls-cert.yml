@@ -261,15 +261,97 @@
         - script_output.stdout is defined
         - script_output.stdout is search('Client secret:')
         - deploy_keycloak == "yes"
+      run_once: true
 
+    - name: Create kubernetes dashboard ingress
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            annotations:
+              nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+              nginx.ingress.kubernetes.io/rewrite-target: /$2
+            name: kubernetes-dashboard-ingress
+            namespace: kube-system
+          spec:
+            ingressClassName: nginx
+            rules:
+            - host: "{{ secret_name }}"
+              http:
+                paths:
+                - backend:
+                    service:
+                      name: kubernetes-dashboard
+                      port:
+                        number: 443
+                  path: /dashboard(/|$)(.*) 
+                  pathType: ImplementationSpecific
+            tls:
+            - hosts:
+              - "{{ secret_name }}"
+              secretName: "{{ secret_name }}"
 
+    - name: Create ServiceAccount for Kubernetes Dashboard
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: dashboard-user
+            namespace: kube-system
+    - name: Create ClusterRole for Kubernetes Dashboard
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: kubernetes-dashboard-role
+          rules:
+          - apiGroups: ["apps"]
+            resources: ["deployments"]
+            verbs: ["get", "list", "watch"]
+          - apiGroups: [""]
+            resources: ["pods", "services", "nodes"]
+            verbs: ["get", "list", "watch"]
+          - apiGroups: ["networking.k8s.io"]
+            resources: ["ingresses"]
+            verbs: ["get", "list", "watch"]
+          - apiGroups: ["metrics.k8s.io"]
+            resources: ["pods", "nodes"]
+            verbs: ["get", "list", "watch"]
+          - apiGroups: [""]
+            resources: ["services/proxy"]
+            resourceNames: ["https:kubernetes-dashboard:https"]
+            verbs: ["get", "create", "update"]
+    - name: Create ClusterRoleBinding for Kubernetes Dashboard
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: kubernetes-dashboard-rolebinding
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: kubernetes-dashboard-role
+          subjects:
+          - kind: ServiceAccount
+            name: dashboard-user
+            namespace: kube-system
 
     - debug:
         msg: "The client secret is: {{ client_secret }}"
+      run_once: true
       when: deploy_keycloak == "yes"
     - name: Print the script output
       debug:
         msg: "{{ script_output.stdout }}"    
+      run_once: true
       when: deploy_keycloak == "yes"
 
     - name: Cleanup Helm chart files from master nodes
