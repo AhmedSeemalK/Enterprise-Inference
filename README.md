@@ -1,41 +1,17 @@
-Your new repo has been pre-propulated with this Readme and a minimal Jenkinsfile. The steps for the Jenkinsfile should be adapted to suit the build/test commands of this repo contents.
+# AI Inference as a Service Deployment Automation
 
-## Scans
-Scans have been limited to the minimal required number. They can be extended with Bandit(for python code) or Snyk(for go code). Protex will only run on "main" branch and not on PRs because of tool limitations (parelel jobs cannot be executed) and also to shorten the PR check time. 
 
-## Triggers
-Please adapt the time at which the main branch is being executed according to your night time
+## Usage
+The Usage instructions for the AI Inference as a Service Deployment Automation can be found in the [ida/README.md](https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/README.md) file.
+To setup, follow the step-by-step instructions provided in the `ida/README.md` file.
 
-## Containers
-amr-registry.caas.intel.com/one-intel-edge/rrp-devops/oie_ci_testing:latest is used currently. This container has the following tools: 
-```
-Git 
-Make and standard build tooling 
-Docker CLI (to start containers) 
-Go 1.19.x 
-Python 3.9 or later 
-NodeJS 18 
-Mermaid CLI (used in documentation generation): https://github.com/mermaid-js/mermaid-cli 
-```
+## Contributing
+If you have feature requests, encounter any bugs or have questions about the project, please [open an issue](https://github.com/intel-innersource/applications.ai.erag.infra-automation/issues) on the project's issue tracker. Provide as much detail as possible, including steps to reproduce the issue, expected behavior, and actual behavior.
 
-## Coverage above 70% threshold. The following tools 
-```
-Python - Coverage
-Java - Bazel, Jacoco
-Go - Built-in Coverage
-JS - c8
-```
-
-## Linters. The following tools 
-```
-Python - Flake8 (formerly pep8)
-Java - Sonallint 
-Go - GoLint
-JS - prittier, Karma
-Ansible - Ansible Lint
-```
-
-## Artifacts
-The source will be packed in a archive named after the repo. The archive will then be uploaded to artifactory following a path simillar to:
-https://ubit-artifactory-or.intel.com/artifactory/one-intel-edge-or-local/<project_name>/<jenkins_controller>/<jenkins_team>/<jenkins_job>/<repo_name>/<branch>/
-
+## License
+©2025 Intel Corporation  
+Permission is granted for recipient to internally use and modify this software for purposes of benchmarking and testing on Intel architectures. 
+This software is provided "AS IS" possibly with faults, bugs or errors; it is not intended for production use, and recipient uses this design at their own risk with no liability to Intel.
+Intel disclaims all warranties, express or implied, including warranties of merchantability, fitness for a particular purpose, and non-infringement. 
+Recipient agrees that any feedback it provides to Intel about this software is licensed to Intel for any purpose worldwide. No permission is granted to use Intel’s trademarks.
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the code.

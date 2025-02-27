@@ -29,7 +29,7 @@ Unleash the Power of AI Inference:
 9. [Reset Cluster](#reset-cluster)
      - [Workflow Steps](#example-1)
 10. [Update Existing Cluster](#update-existing-cluster)
-      - [Add Models](#add-llm-model)
+      - [Add Models](#deploy-llm-model)
          - [Workflow Steps](#example-2)
       - [Remove Models](#remove-llm-model)
          - [Workflow Steps](#example-3)
@@ -286,19 +286,8 @@ Please choose an option (1 or 2):
 
 
 ## Manage Models: Add or remove models.
-
-#### Add Worker Node:
-##### Precautions:
-WARNING: Adding a node that is already managed by another Kubernetes cluster or has been manually configured using kubeadm, kubelet, or other tools can cause severe disruptions to your existing cluster. This may lead to issues such as pod restarts, service interruptions, and potential data loss. 
-
-#### Remove Worker Node:
-##### Precautions:
-CAUTION: Removing the Inference LLM Model will also remove its associated services and resources, which may cause service downtime and potential data loss. This action is irreversible. 
-
-
-## Manage Models: Add or remove models.
-### Add LLM Model
-This option allows you to deploy a new LLM model on the Kubernetes cluster.
+### Deploy LLM Model
+This option allows you to deploy a new LLM model on the Inference Cluster.
 
 #### Example:
 `````
@@ -334,6 +323,53 @@ Please choose an option (1, 2, or 3):
 Follow the prompts to provide the necessary information for deploying the model if model is not set in inference-config.cfg.
 If model is set in inference-config.cfg automation will proceed to deploy the model.
 `````
+
+### Deploy LLM Model from Hugging Face
+This option allows you to deploy a new LLM model using model id from Hugging Face on the Inference Cluster.
+
+#### Example:
+`````
+Run:
+bash inference-as-auto-deploy.sh 
+----------------------------------------------------------
+|  AI Inference as Service Deployment Automation          |
+|---------------------------------------------------------|
+| 1) Provision Inference as Service Cluster               |
+| 2) Decommission Existing Cluster                        |
+| 3) Update Deployed Inference Cluster                    |
+|---------------------------------------------------------|
+Please choose an option (1, 2, or 3):
+> 3
+-------------------------------------------------
+|             Update Existing Cluster            |
+|------------------------------------------------|
+| 1) Manage Worker Nodes                         |
+| 2) Manage LLM Models                           |
+|------------------------------------------------|
+Please choose an option (1 or 2):
+> 2
+-------------------------------------------------
+| Manage LLM Models                               
+|------------------------------------------------|
+| 1) Deploy Model                                |
+| 2) Undeploy Model                              |
+| 3) List Installed Models                       |
+| 4) Deploy Model from Hugging Face              |
+| 5) Remove Model using deployment name          |
+|------------------------------------------------|
+Please choose an option (1, 2, 3, or 4):
+> 4
+-------------------------------------------------
+|         Deploy Model from Huggingface          |
+|------------------------------------------------|
+cpu_or_gpu is already set to g
+Enter the Huggingface Model ID: meta-llama/Meta-Llama-3-8B
+Enter the name of the model deployment name: metallama-8b
+NOTICE: Ensure the Tensor Parallel size value corresponds to the number of available Gaudi cards. Providing an incorrect value may result in the model being in a not ready state. 
+Enter the Tensor Parallel size:2
+NOTICE: You are about to deploy a model directly from Hugging Face, which has not been pre-validated by our team. Do you wish to continue? (y/n) y
+`````
+
 
 ### Remove LLM Model
 This option allows you to remove deployed LLM model on the Kubernetes cluster.
@@ -389,6 +425,17 @@ Please select the following options:
    3) List Installed Models
 The script will display a list of all the installed LLM models on the cluster.
 `````
+
+## Manage Nodes: Add or remove Nodes.
+
+#### Add Worker Node:
+##### Precautions:
+WARNING: Adding a node that is already managed by another Kubernetes cluster or has been manually configured using kubeadm, kubelet, or other tools can cause severe disruptions to your existing cluster. This may lead to issues such as pod restarts, service interruptions, and potential data loss. 
+
+#### Remove Worker Node:
+##### Precautions:
+CAUTION: Removing the Inference LLM Model will also remove its associated services and resources, which may cause service downtime and potential data loss. This action is irreversible. 
+
 
 ## Accessing Deployed Models from Inference Cluster
 

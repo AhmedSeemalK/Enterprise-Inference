@@ -1,35 +1,46 @@
-<!---
-  SPDX-FileCopyrightText: (C) 2022 Intel Corporation
-  SPDX-License-Identifier: LicenseRef-Intel
+## Pull Request Description
+Please include a summary of the changes and the related issue or requirement.     
+Please Provide relevant context and motivation for the changes.     
+Resolves # (issue)
+Related to [requirements document/specification]
 
-  ------------------------------------------------------
+## Components Impacted
+- [ ] Kubernetes Deployment
+- [ ] Habana Operator
+- [ ] Ingress Configuration
+- [ ] Keycloak Configuration
+- [ ] APISIX Configuration
+- [ ] Model Deployment
+- [ ] Other (please specify)
+Please provide details on the components impacted by the changes and any potential risks or dependencies identified.
 
-  Author Mandatory (to be filled by PR Author/Submitter)
-  ------------------------------------------------------
+## Type of Change
+- [ ] Bug Fix (non-breaking change which fixes an issue)
+- [ ] New Feature (non-breaking change which adds functionality)
+- [ ] Breaking Change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Refactoring (non-breaking change that improves code quality or architecture)
+- [ ] This change requires a documentation update
 
-  - Developer who submits the Pull Request for merge is required to mark the checklist below as applicable for the PR changes submitted.
-  - Those checklist items which are not marked are considered as not applicable for the PR change.
--->
+## Testing
+Please describe the tests that you ran to verify your changes, including any specific test cases, test environments, and testing tools used. Provide instructions for reproducing the testing scenarios.
+- [ ] Unit Tests
+- [ ] Integration Tests
+- [ ] End-to-End Tests
+- [ ] Performance Tests
+- [ ] Model Inference Tests
+- [ ] User Acceptance Testing
 
-### PULL DESCRIPTION
+## Checklist
+- [ ] My code follows the coding standards and best practices of this project
+- [ ] I have performed a self-review of my code
+- [ ] I have commented my code, particularly in complex areas
+- [ ] I have made corresponding changes to the documentation
+- [ ] My changes generate no new warnings or errors
+- [ ] I have added tests that prove my fix is effective or that my feature works
+- [ ] Any dependent changes have been merged and published in downstream modules
+- [ ] I have obtained necessary approvals and sign-offs for this change
 
-_Provide a 1-2 line brief overview of the changes submitted through the Pull Request..._
+## Screenshots (if applicable)
+Please add any relevant screenshots or screen recordings to help explain your changes.
 
-
-### Impact Analysis
-
-| Info | Please fill out this column |
-| ------ | ----------- |
-| Root Cause | Specifically for bugs, empty in case of no variants |
-| Jira ticket | Add the name to the Jira ticket eg: "NEX-". Automation will do the linking to Jira |
-
-
-### CODE MAINTAINABILITY
-
-- [ ] Added required new tests relevant to the changes and the URL has been included
-- [ ] Updated Documentation as relevant to the changes
-- [ ] PR change contains code related to security
-- [ ] PR introduces changes that break compatibility with other modules/services (If YES, please provide description)
-
-
-# _Code must act as a teacher for future developers_
+##### _Code must act as a teacher for future developers_
