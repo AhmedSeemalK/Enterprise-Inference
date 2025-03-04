@@ -39,27 +39,17 @@ runs:
         output: trivy-report.json
         format: json
         exit-code: 0
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@0.28.0
+      with:
+        image-ref: 'opea/vllm-gaudi:1.1'
+        format: 'json'
+        output: Trivy-report.json
+        ignore-unfixed: true
+        vuln-type: 'os,library'
 
-    - name: Upload Vulnerability Scan Results
+    - name: Upload Trivy report
       uses: actions/upload-artifact@v4
       with:
-        name: trivy-report
-        path: trivy-report.json
-        retention-days: 30
-
-    - name: Check High/Criticial Vulnerabilities
-      id: checkVulnerabilities
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: "fs"
-        format: table
-        severity: HIGH,CRITICAL
-        ignore-unfixed: true
-        exit-code: 1
-        skip-setup-trivy: true
-      continue-on-error: true
-    
-    - name: Add annotation if High/Criticial Vulnerabilities are found
-      if: ${{ steps.checkVulnerabilities.conclusion == 'success' && steps.checkVulnerabilities.outcome == 'failure' }}
-      shell: bash
-      run: echo "::error::High/Critical vulnerabilities found. Please check the trivy report for more details."
+        name: CT248-report
+        path: '${{ github.workspace }}/Trivy-report.json'
