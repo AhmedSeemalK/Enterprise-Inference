@@ -3,12 +3,16 @@ name: Coverity Scans
 on:
   push:
     branches: [ main ]
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   coverity-scan:
     name: Coverity scans
     runs-on: [innersource.prod.amr.dind]
     container: cache-registry.caas.intel.com/cache/library/python:3.11
+    environment: d3
     steps:
     - name: Checkout
       uses: actions/checkout@v4
