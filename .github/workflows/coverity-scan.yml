@@ -26,3 +26,5 @@ jobs:
       with:
         ANALYZE_OPTIONS: --enable-default --security --webapp-security --enable-audit-checkers
         COMPILER_TYPE: python
+        RAG_COVERITY_PASSWORD: ${{ env.RAG_COVERITY_PASSWORD }}
+        RAG_COVERITY_USER: ${{ env.RAG_COVERITY_USER }}
