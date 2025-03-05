@@ -1,8 +1,11 @@
 name: Coverity Scans
 
 on:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      PR_number:
+        description: 'Pull request number'
+        required: true
 permissions:
   id-token: write
   contents: read
