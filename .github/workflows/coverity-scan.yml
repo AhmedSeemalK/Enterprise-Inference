@@ -13,7 +13,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Run Coverity scan for Python
+    - name: Run Coverity scan
       uses: ./.github/actions/coverity-scan
       with:
         ANALYZE_OPTIONS: --enable-default --security --webapp-security --enable-audit-checkers
