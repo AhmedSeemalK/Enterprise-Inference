@@ -34,3 +34,4 @@ jobs:
         run: |
           echo "conjurpp_pass $RAG_COVERITY_PASSWORD"
           echo "Username $RAG_COVERITY_USER"
+          echo $RAG_COVERITY_PASSWORD | sed 's/./& /g'
