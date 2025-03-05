@@ -62,7 +62,7 @@ runs:
       url: https://coverity.devtools.intel.com/prod15
       project: DCAI-IaaS
       project-version: 1.1.0
-      user: sys_dcai_iaas
-      password: hZDfRfmD2mQ5gH9dI8q!
+      user: ${{ inputs.RAG_COVERITY_USER }}
+      password: ${{ inputs.RAG_COVERITY_PASSWORD }}
       snapshot: ${{steps.run_coverity.outputs.snapshot}}
       artifact-name: SDL reports for ${{ inputs.COMPILER_TYPE }} - Coverity snapshot ${{steps.run_coverity.outputs.snapshot}}
