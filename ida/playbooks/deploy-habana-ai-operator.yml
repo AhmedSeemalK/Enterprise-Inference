@@ -7,28 +7,34 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default({}) }}"
   tasks:
-    - name: Ensure pip is installed
+    - name: Ensure Python pip module is installed
       ansible.builtin.package:
         name: python3-pip
         state: present
       become: true
-    - name: Install kubernetes library using pip
+    - name: Install Kubernetes Python SDK
       ansible.builtin.pip:
         name: kubernetes
         state: present
         executable: /usr/bin/pip3
       become: true
-    - name: Ensure jq is installed
+    - name: Install Helm
+      ansible.builtin.shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        executable: /bin/bash
+      become: true            
+    - name: Ensure jq is Installed
       ansible.builtin.package:
         name: jq
         state: present
       become: true
-    - name: Create habana-ai-operator namespace
+    - name:  Create Kubernetes Namespace for Habana AI Operator
       community.kubernetes.k8s:
         state: present
         kind: Namespace
         name: habana-ai-operator  
-    - name: Label namespace for pod security enforcement
+    - name: Label namespace for pod Security Enforcement
       community.kubernetes.k8s:
         state: present
         kind: Namespace
@@ -38,34 +44,31 @@
             labels:
               pod-security.kubernetes.io/enforce: privileged
               pod-security.kubernetes.io/audit: privileged
-              pod-security.kubernetes.io/warn: privileged
-    - name: Install Helm
-      ansible.builtin.shell: |
-        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-      args:
-        executable: /bin/bash
-      become: true        
+              pod-security.kubernetes.io/warn: privileged         
     - name: Add gaudi-helm repository using Helm module
       community.kubernetes.helm_repository:
         name: gaudi-helm
         repo_url: https://vault.habana.ai/artifactory/api/helm/gaudi-helm
         state: present
-    - name: Install habana-ai-operator chart using Helm module
+    - name: Deploy Habana AI Operator
       community.kubernetes.helm:
         name: habana-ai-operator
         chart_ref: gaudi-helm/habana-ai-operator
         release_namespace: habana-ai-operator
-        chart_version: 1.18.0-524
+        chart_version: 1.20.0-543
         state: present
       run_once: true     
+    - name: Output waiting status
+      debug:
+        msg: "Waiting for Habana AI Operator"
     - name: wait for habana-ai-operator pods to be running
       pause:
         minutes: 5
       register: pause_result
     - name: Output the result
       debug:
-        msg: "waiting for habana-ai-operator pods to be running"
-    - name: Ensure all habana-ai-operator pods are running and ready
+        msg: "Please Wait for few minutes for Habana AI Operator pods to be running."
+    - name: Ensure all Habana AI Operator pods are running and ready
       shell: |
         kubectl get pods -n habana-ai-operator -o json | jq -r '
           .items[] |
@@ -73,11 +76,11 @@
           .metadata.name' | wc -l
       register: pod_status
       until: pod_status.stdout == "0" and pod_status.rc == 0
-      retries: 160
+      retries: 260
       delay: 10
       failed_when: pod_status.rc != 0 and pod_status.stdout != "0"
     - name: Output the result
       debug:
-        msg: "All habana-ai-operator pods are running and ready."
+        msg: "All Habana AI Operator pods are running and ready."
 
    

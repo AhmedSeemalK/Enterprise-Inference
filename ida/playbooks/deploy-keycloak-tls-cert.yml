@@ -14,23 +14,29 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default({}) }}"
   tasks:
-    - name: Ensure pip is installed
+    - name: Ensure Python pip module is installed
       ansible.builtin.package:
         name: python3-pip
         state: present
       become: true
-    - name: Install kubernetes library using pip
+    - name: Install Kubernetes Python SDK
       ansible.builtin.pip:
         name: kubernetes
         state: present
         executable: /usr/bin/pip3
       become: true
-    - name: Ensure jq is installed
+    - name: Install Helm
+      ansible.builtin.shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        executable: /bin/bash
+      become: true            
+    - name: Ensure jq is Installed
       ansible.builtin.package:
         name: jq
         state: present
       become: true
-    - name: Create auth-apisix namespace
+    - name: Create Namespace for APISIX
       kubernetes.core.k8s:
         state: present
         definition:
@@ -38,11 +44,10 @@
           kind: Namespace
           metadata:
             name: auth-apisix      
-    - name: Print the values of multiple variables
+    - name: Output variable values
       debug:
-        var: cert_file, key_file, secret_name
-
-    - name: Create a Keycloak secret for TLS using the k8s module
+        var: cert_file, key_file, secret_name    
+    - name: Create TLS secret for Keycloak
       community.kubernetes.k8s:
         state: present
         definition:
@@ -56,7 +61,7 @@
             tls.crt: "{{ lookup('file', cert_file) | b64encode }}"
             tls.key: "{{ lookup('file', key_file) | b64encode }}"
       register: kubectl_output
-    - name: Create a Keycloak secret in Apisix-auth namespace
+    - name: Create TLS secret for Keycloak in APISIX namespace
       community.kubernetes.k8s:
         state: present
         definition:
@@ -71,31 +76,51 @@
             tls.key: "{{ lookup('file', key_file) | b64encode }}"
       register: kubectl_output    
       when: deploy_apisix == "yes"
-
     - name: Display the output
       debug:
-        msg: "Secret {{ secret_name }} created."
-    - name: Install Helm
-      ansible.builtin.shell: |
-        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-      args:
-        executable: /bin/bash
-      become: true
-    - name: Print the values of multiple variables
+        msg: "Secret {{ secret_name }} created."            
+    - name: Retrieve number of Inference Infrastructure Nodes
+      ansible.builtin.shell: kubectl get nodes --selector=node-role.kubernetes.io/inference-infra=true --no-headers | wc -l
+      register: inference_node_count
+      changed_when: false
+    - name: Set Keycloak Replicas based upon Inference Infra Nodes
+      set_fact:
+        inference_infra_replica_count: "{{ inference_node_count.stdout | int if inference_node_count.stdout | int > 0 else 1 }}"
+    - name: Display the number of Inference Infrastructure Nodes
       debug:
-        var: keycloak_admin_user, keycloak_admin_password
-    
-    - name: Upgrade Keycloak using Helm
+        msg: "Number of inference-infra node configured: {{ inference_infra_replica_count }}"  
+      run_once: true
+      when: deploy_keycloak == "yes"
+    - name: Deploy Keycloak System
+      run_once: true
+      register: helm_output
+      when: deploy_keycloak == "yes"
       community.kubernetes.helm:
         name: keycloak
         chart_ref: oci://registry-1.docker.io/bitnamicharts/keycloak
         release_namespace: default  # Set the namespace where Keycloak will be installed
         create_namespace: true
-        chart_version: "22.1.0"
+        chart_version: "22.1.0"        
         values:
+          replicaCount: "{{ inference_infra_replica_count | int }}"
           auth:
             adminUser: "{{ keycloak_admin_user }}"
             adminPassword: "{{ keycloak_admin_password }}"
+          metrics:
+            enabled: true                      
+          autoscaling:
+            enabled: true
+            minReplicas: "{{ inference_infra_replica_count | int }}"
+            maxReplicas: "{{ (inference_infra_replica_count | int * 3) }}"
+            metrics:
+              - type: Resource
+                resource:
+                  name: cpu
+                  targetAverageUtilization: 60
+              - type: Resource
+                resource:
+                  name: memory
+                  targetAverageUtilization: 60 
           ingress:
             enabled: true
             hostname: "{{ secret_name }}"
@@ -108,18 +133,35 @@
             extraTls:
               - hosts:
                   - "{{ secret_name }}"
-                secretName: "{{ secret_name }}"      
-        state: present
-      run_once: true
-      register: helm_output
-      when: deploy_keycloak == "yes"
-
-    - name: Display Helm output
-      debug:
-        msg: "{{ helm_output }}"
-      when: deploy_keycloak == "yes"
-
-    - name: Check Keycloak StatefulSet is ready
+                secretName: "{{ secret_name }}"           
+          tolerations:
+            - key: "node-role.kubernetes.io/control-plane"
+              operator: "Exists"
+              effect: "NoSchedule"
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/inference-infra
+                        operator: In
+                        values:
+                          - "true"
+                - weight: 50
+                  preference:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: Exists
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  podAffinityTerm:
+                    labelSelector:
+                      matchLabels:
+                        app: keycloak
+                    topologyKey: "kubernetes.io/hostname"
+    - name: Verify Keycloak StatefulSet readiness
       community.kubernetes.k8s_info:
         kind: StatefulSet
         namespace: default
@@ -132,7 +174,6 @@
       delay: 10
       changed_when: false
       when: deploy_keycloak == "yes"
-
     - name: Wait for Keycloak pods to be ready
       kubernetes.core.k8s_info:
         kind: Pod
@@ -146,85 +187,55 @@
       retries: 60
       delay: 5
       when: deploy_keycloak == "yes"
-    
-  
-    - name: Wait for a short delay to allow pods to terminate
-      pause:
-        seconds: 10
-    - name: Get the expected number of replicas for the ingress-nginx deployment
-      community.kubernetes.k8s_info:
-        kind: Deployment
-        namespace: ingress-nginx
-        name: ingress-nginx-controller
-      register: ingress_nginx_deployment
-    - name: Wait for new ingress-nginx pods to be running and ready
-      community.kubernetes.k8s_info:
-        kind: Pod
-        namespace: ingress-nginx
-        label_selectors:
-          - "app.kubernetes.io/name=ingress-nginx"
-      register: new_pods
-      until: >-
-        new_pods.resources | json_query('[?status.phase == `Running`].status.containerStatuses[].ready') | length ==
-        ingress_nginx_deployment.resources[0].status.replicas
-      retries: 60
-      delay: 10
-      changed_when: false
-
-
-    - name: Copy Helm chart files to node
+    - name: Copy dependency files to Deployment Nodes
       ansible.builtin.copy:
         src: "{{ helm_charts_base }}/"
         dest: "{{ remote_helm_charts_base }}/"
         mode: '0755'
-        owner: ubuntu
-        group: ubuntu
-        remote_src: no
-    
-    - name: Copy Helm chart keycloak-realcreation file to node
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        remote_src: no  
+    - name: Copy dependency Realm Creation
       ansible.builtin.copy:
         src: "{{ remote_home_dir }}/"
         dest: "{{ remote_helm_charts_base }}/"
         mode: '0755'
-        owner: ubuntu
-        group: ubuntu
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
         remote_src: no
-    
-    - name: Ensure the script is executable
+    - name: Ensure Keycloak Realm Creation script is executable
       file:
         path: "{{ remote_helm_charts_base }}/keycloak-realmcreation.sh"
         mode: '0755'
-        owner: ubuntu
-        group: ubuntu
-                        
-    - name: Update Helm dependencies for auth-apisix on nodes
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"                      
+    - name: Synchronize dependencies for APISIX
       ansible.builtin.command: helm dependency update "{{ remote_helm_charts_base }}/apisix-helm/"
       register: helm_dependency_update
       failed_when: helm_dependency_update.rc != 0
       when: deploy_apisix == "yes"
-    
-
-      
-    - name: Update Helm dependencies for auth-apisix on nodes search
+    - name: Synchronize dependencies for APISIX
       community.kubernetes.helm:
         name: auth-apisix
         chart_ref: "{{ remote_helm_charts_base }}/apisix-helm/"
         update_repo_cache: yes
         release_namespace: auth-apisix
       run_once: true
+      when: deploy_apisix == "yes"            
+    - name: Deploy APISIX System
+      command: >
+          helm upgrade --install auth-apisix {{ remote_helm_charts_base }}/apisix-helm/
+          --values {{ remote_helm_charts_base }}/apisix-helm/values.yaml
+          --set apisix.replicaCount={{ inference_infra_replica_count }}
+          --set apisix.ingress-controller.replicaCount={{ inference_infra_replica_count }} 
+          --set apisix.etcd.replicaCount={{ inference_infra_replica_count }}          
+          --namespace auth-apisix --create-namespace          
       when: deploy_apisix == "yes"
-    - name: Install auth-apisix Helm chart on nodes
-      community.kubernetes.helm:
-        name: auth-apisix
-        chart_ref: "{{ remote_helm_charts_base }}/apisix-helm/"
-        create_namespace: yes
-        release_namespace: auth-apisix
-      when: deploy_apisix == "yes"
-    
-    - name: Print model_name_list
+      run_once: true    
+    - name: Print Model List to be Deployed
       debug:
         var: model_name_list
-    - name: Upgrade or install keycloak-apisix
+    - name: Upgrade Keycloak with TLS and Ingress Configurations
       command: >
         helm upgrade --install keycloak-apisix "{{ remote_helm_charts_base }}/keycloak"
         --namespace default
@@ -245,14 +256,12 @@
       run_once: true
       register: keycloak_ingress_register_msg_in
       failed_when: keycloak_ingress_register_msg_in.rc != 0
-      when: deploy_keycloak == "yes"
-                  
+      when: deploy_keycloak == "yes"                  
     - name: Execute the Keycloak Realm Creation Script
       command: "{{ remote_helm_charts_base }}/keycloak-realmcreation.sh {{ secret_name }} {{ keycloak_admin_user }} {{ keycloak_admin_password }} {{ keycloak_client_id }}"
       register: script_output
       run_once: true
       when: deploy_keycloak == "yes"
-
     - name: Set client_secret fact
       set_fact:
         client_secret: "{{ script_output.stdout | regex_search('Client secret: (.*)') | join('') | regex_replace('^Client secret: ') }}"
@@ -262,88 +271,6 @@
         - script_output.stdout is search('Client secret:')
         - deploy_keycloak == "yes"
       run_once: true
-
-    - name: Create kubernetes dashboard ingress
-      community.kubernetes.k8s:
-        state: present
-        definition:
-          apiVersion: networking.k8s.io/v1
-          kind: Ingress
-          metadata:
-            annotations:
-              nginx.ingress.kubernetes.io/backend-protocol: HTTPS
-              nginx.ingress.kubernetes.io/rewrite-target: /$2
-            name: kubernetes-dashboard-ingress
-            namespace: kube-system
-          spec:
-            ingressClassName: nginx
-            rules:
-            - host: "{{ secret_name }}"
-              http:
-                paths:
-                - backend:
-                    service:
-                      name: kubernetes-dashboard
-                      port:
-                        number: 443
-                  path: /dashboard(/|$)(.*) 
-                  pathType: ImplementationSpecific
-            tls:
-            - hosts:
-              - "{{ secret_name }}"
-              secretName: "{{ secret_name }}"
-
-    - name: Create ServiceAccount for Kubernetes Dashboard
-      community.kubernetes.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: ServiceAccount
-          metadata:
-            name: dashboard-user
-            namespace: kube-system
-    - name: Create ClusterRole for Kubernetes Dashboard
-      community.kubernetes.k8s:
-        state: present
-        definition:
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: ClusterRole
-          metadata:
-            name: kubernetes-dashboard-role
-          rules:
-          - apiGroups: ["apps"]
-            resources: ["deployments"]
-            verbs: ["get", "list", "watch"]
-          - apiGroups: [""]
-            resources: ["pods", "services", "nodes"]
-            verbs: ["get", "list", "watch"]
-          - apiGroups: ["networking.k8s.io"]
-            resources: ["ingresses"]
-            verbs: ["get", "list", "watch"]
-          - apiGroups: ["metrics.k8s.io"]
-            resources: ["pods", "nodes"]
-            verbs: ["get", "list", "watch"]
-          - apiGroups: [""]
-            resources: ["services/proxy"]
-            resourceNames: ["https:kubernetes-dashboard:https"]
-            verbs: ["get", "create", "update"]
-    - name: Create ClusterRoleBinding for Kubernetes Dashboard
-      community.kubernetes.k8s:
-        state: present
-        definition:
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: ClusterRoleBinding
-          metadata:
-            name: kubernetes-dashboard-rolebinding
-          roleRef:
-            apiGroup: rbac.authorization.k8s.io
-            kind: ClusterRole
-            name: kubernetes-dashboard-role
-          subjects:
-          - kind: ServiceAccount
-            name: dashboard-user
-            namespace: kube-system
-
     - debug:
         msg: "The client secret is: {{ client_secret }}"
       run_once: true
@@ -353,9 +280,7 @@
         msg: "{{ script_output.stdout }}"    
       run_once: true
       when: deploy_keycloak == "yes"
-
-    - name: Cleanup Helm chart files from master nodes
+    - name: Remove any existing deployment directory
       ansible.builtin.file:
         path: "{{ remote_helm_charts_base }}"
         state: absent
-    

@@ -1,0 +1,2 @@
+- name: Deploy Observability
+  ansible.builtin.import_playbook: playbooks/deploy-keycloak-tls-cert.yml
