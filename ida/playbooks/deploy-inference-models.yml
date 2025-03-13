@@ -46,7 +46,7 @@
       args:
         executable: /bin/bash
       become: true
-    - name: Create Kubernetes Secret for Hugging Face Token
+    - name: Create/Update Kubernetes Secret for Hugging Face Token
       kubernetes.core.k8s:
         name: hugging-face-token
         namespace: default        
@@ -64,8 +64,8 @@
         src: "{{ helm_charts_base }}/"
         dest: "{{ remote_helm_charts_base }}/"
         mode: '0755'
-        owner: ubuntu
-        group: ubuntu
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
         remote_src: no
     
     - name: Copy Helm chart keycloak-realcreation file to node
@@ -73,16 +73,16 @@
         src: "{{ remote_home_dir }}/"
         dest: "{{ remote_helm_charts_base }}/"
         mode: '0755'
-        owner: ubuntu
-        group: ubuntu
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
         remote_src: no
     
     - name: Ensure the script is executable
       file:
         path: "{{ remote_helm_charts_base }}/keycloak-realmcreation.sh"
         mode: '0755'
-        owner: ubuntu
-        group: ubuntu
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
     
     - name: Print gaudi values values
       debug:

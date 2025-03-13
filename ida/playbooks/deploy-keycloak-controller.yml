@@ -8,12 +8,12 @@
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default({}) }}"
   tasks:
-    - name: Ensure pip is installed
+    - name: Ensure Python pip module is installed
       ansible.builtin.package:
         name: python3-pip
         state: present
       become: true
-    - name: Install kubernetes library using pip
+    - name: Install Kubernetes Python SDK
       ansible.builtin.pip:
         name: kubernetes
         state: present
@@ -25,47 +25,33 @@
       args:
         executable: /bin/bash
       become: true
-    - name: Add ingress-nginx repository using Helm module
+    - name: Add Ingress-Nginx repository
       community.kubernetes.helm_repository:
         name: ingress-nginx
         repo_url: https://kubernetes.github.io/ingress-nginx
         state: present
       when: delete_pv_on_purge == "no"
-    - name: Check if Helm repositories exist
+    - name: Verify repository availability
       ansible.builtin.command: helm repo list
       register: helm_repo_list    
       failed_when: false
       changed_when: false  
-    - name: Update Helm repositories
+    - name: Synchronize repositories
       ansible.builtin.shell: helm repo update      
       when: helm_repo_list.stdout != "" and delete_pv_on_purge == "no"                              
-    - name: Delete existing Keycloak PersistentVolume data directory
+    - name: Remove existing Keycloak PersistentVolume data directory
       ansible.builtin.file:
-        path: /mnt/keycloak-vol/
+        path: /mnt/local-path-provisioner/
         state: absent
         force: yes
       become: true
       when: delete_pv_on_purge == "yes"
-    - name: Create directory for Keycloak PersistentVolume
+    - name: Provision Storage data directory
       ansible.builtin.file:
-        path: /mnt/keycloak-vol
+        path: /mnt/local-path-provisioner/
         state: directory
         mode: '0777'
       become: true
-      when: delete_pv_on_purge == "no"
-    - name: Create PersistentVolume for Keycloak
-      community.kubernetes.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: PersistentVolume
-          metadata:
-            name: data-keycloak-postgresql-0
-          spec:
-            capacity:
-              storage: 9Gi
-            accessModes:
-              - ReadWriteOnce
-            hostPath:
-              path: "/mnt/keycloak-vol"
-      when: delete_pv_on_purge == "no"
+      when: delete_pv_on_purge == "no" 
+    
+    

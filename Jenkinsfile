@@ -1,5 +1,9 @@
-// SPDX-FileCopyrightText: (C) 2024 Intel Corporation
-// SPDX-License-Identifier: LicenseRef-Intel
+// # ©2024 Intel Corporation
+// # Permission is granted for recipient to internally use and modify this software for purposes of benchmarking and testing on Intel architectures. 
+// # This software is provided "AS IS" possibly with faults, bugs or errors; it is not intended for production use, and recipient uses this design at their own risk with no liability to Intel.
+// # Intel disclaims all warranties, express or implied, including warranties of merchantability, fitness for a particular purpose, and non-infringement. 
+// # Recipient agrees that any feedback it provides to Intel about this software is licensed to Intel for any purpose worldwide. No permission is granted to use Intel’s trademarks.
+// # The above copyright notice and this permission notice shall be included in all copies or substantial portions of the code.
 
 def getEnvFromBranch(branch) {
     if (branch ==~ /main/) {
@@ -7,7 +11,7 @@ def getEnvFromBranch(branch) {
     }
     else {
         return 'virus,trivy'
-        // PR checks can be extended with checkmarx, bandit, snyk but source code has to available for them to pass. Protex should be kept only at branch level scanning.
+       
     }
 }
 

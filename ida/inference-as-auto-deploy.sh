@@ -7,7 +7,6 @@ YELLOW=$(tput setaf 3)
 BLUE=$(tput setaf 4)
 NC=$(tput sgr0)  # Reset color
 
-
 # ©2025 Intel Corporation
 # Permission is granted for recipient to internally use and modify this software for purposes of benchmarking and testing on Intel architectures. 
 # This software is provided "AS IS" possibly with faults, bugs or errors; it is not intended for production use, and recipient uses this design at their own risk with no liability to Intel.
@@ -217,7 +216,7 @@ setup_initial_env() {\
     # Copy playbooks directory
     cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/    
     echo "Additional files and directories copied to Kubespray directory."
-    ansible-galaxy collection install community.kubernetes
+    ansible-galaxy collection install community.kubernetes    
 }
 
 
@@ -231,11 +230,16 @@ read_config_file() {
             key=$(echo "$key" | xargs)
             value=$(echo "$value" | xargs)
             # Set the variable using a temporary file
-            printf "%s=%s\n" "$key" "$value" >> temp_env_vars
-        done < "$config_file"
+            if [[ "$value" == "on" ]]; then
+                value="yes"
+            elif [[ "$value" == "off" ]]; then
+                value="no"
+            fi
+            printf "%s=%s\n" "$key" "$value" >> temp_env_vars                        
+        done < "$config_file"        
         # Load the environment variables from the temporary file
         source temp_env_vars        
-        rm temp_env_vars
+        rm temp_env_vars        
         case "$cpu_or_gpu" in
             "c" | "cpu")
                 cpu_or_gpu="c"
@@ -371,7 +375,7 @@ run_deploy_habana_ai_operator_playbook() {
 
 run_ingress_nginx_playbook() {
     echo "Deploying the Ingress NGINX Controller..."
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-ingress-controller.yml
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-ingress-controller.yml --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file}" 
 }
 
 install_ansible_collection() {
@@ -440,6 +444,19 @@ deploy_inference_llm_models_playbook() {
         --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name} deploy_inference_llm_models_playbook=${deploy_inference_llm_models_playbook} huggingface_tensor_parellel_size=${huggingface_tensor_parellel_size}"
 }
 
+deploy_observability_playbook() {
+    if [ "$deploy_logging" = "yes" ]; then
+        ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-observability.yml --become --become-user=root --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} deploy_observability=${deploy_observability} deploy_logging=yes" 
+    else
+        ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-observability.yml --become --become-user=root --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} deploy_observability=${deploy_observability} deploy_logging=no"
+    fi
+}
+
+deploy_cluster_config_playbook() {    
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-cluster-config.yml --become --become-user=root --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file}"    
+}
+
+
 remove_inference_llm_models_playbook() {
     echo "Removing Inference LLM Models playbook..."        
     echo "Uninstalling the models..."
@@ -463,7 +480,7 @@ add_inference_nodes_playbook() {
     fi
     invoke_prereq_workflows     
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/facts.yml --become --become-user=root       
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/scale.yml --become --become-user=root --limit="$worker_node_name"
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/cluster.yml --become --become-user=root --limit="$worker_node_name"
 }
 
 remove_inference_nodes_playbook() {
@@ -523,6 +540,12 @@ prompt_for_input() {
         echo "Proceeding with the setup of Apisix: $deploy_apisix"
     fi
     
+    if [ -z "$deploy_observability" ]; then
+        read -p "Do you want to proceed with deploying Observability? (yes/no): " deploy_observability
+    else
+        echo "Proceeding with the setup of Observability: $deploy_observability"
+    fi
+
     model_selection "$@"
 
     echo "----- Input -----"
@@ -811,14 +834,15 @@ install_kubernetes() {
 
 fresh_installation() {    
     read_config_file        
-    if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak" == "no" && "$deploy_apisix" == "no" && "$deploy_llm_models" == "no" ]]; then
+    if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak" == "no" && "$deploy_apisix" == "no" && "$deploy_llm_models" == "no" && "$deploy_observability" == "no" ]]; then
         echo "No installation or deployment steps selected. Skipping setup_initial_env..."
         echo "-------------------------------------------------------"
         echo "|     Deployment Skipped for Inference as Service!    |"
         echo "-------------------------------------------------------"
     else
         prompt_for_input                        
-        read -p "${YELLOW}ATTENTION: Ensure that the nodes do not contain existing workloads. If necessary, please purge any previous cluster configurations before initiating a fresh installation to avoid an inappropriate cluster state. Proceeding without this precaution could lead to service disruptions or data loss. Do you wish to continue with the setup? (yes/no) ${NC}" -r proceed_with_installation
+        read -p "${YELLOW}ATTENTION: Ensure that the nodes do not contain existing workloads. If necessary, please purge any previous cluster configurations before initiating a fresh installation to avoid an inappropriate cluster state. Proceeding without this precaution could lead to service disruptions or data loss. Do you wish to continue with the setup? (yes/no) ${NC}" -r proceed_with_installation        
+        
         if [[ "$proceed_with_installation" =~ ^([yY][eE][sS]|[yY])+$ ]]; then      
             echo "Starting fresh installation of Inference as a Service Cluster..."    
             setup_initial_env        
@@ -827,6 +851,9 @@ fresh_installation() {
             else
                 echo "Skipping Kubernetes installation..."
             fi
+            execute_and_check "Deploying Cluster Configuration Playbook..." deploy_cluster_config_playbook \
+                  "Cluster Configuration Playbook is deployed successfully." \
+                  "Failed to deploy Cluster Configuration Playbook. Exiting."
             if [[ "$deploy_habana_ai_operator" == "yes" ]]; then
                 execute_and_check "Deploying habana-ai-operator..." run_deploy_habana_ai_operator_playbook "Habana AI Operator is deployed." \
                     "Failed to deploy Habana AI Operator. Exiting."
@@ -839,7 +866,7 @@ fresh_installation() {
                     "Failed to deploy Ingress NGINX Controller. Exiting."
             else
                 echo "Skipping Ingress NGINX Controller deployment..."
-            fi
+            fi            
             
             if [[ "$deploy_keycloak" == "yes" || "$deploy_apisix" == "yes" ]]; then        
                 execute_and_check "Deploying Keycloak..." run_keycloak_playbook \
@@ -863,9 +890,20 @@ fresh_installation() {
             else
                 echo "Skipping LLM Model deployment..."
             fi
+            
+            if [[ "$deploy_observability" == "yes" ]]; then
+                echo "Deploying observability..."
+                execute_and_check "Deploying Observability..." deploy_observability_playbook "$@" \
+                    "Observability is deployed successfully." \
+                    "Failed to deploy Observability. Exiting!."
+            else
+                echo "Skipping Observability deployment..."
+            fi
+            
+            if [ "$deploy_llm_models" == "yes" ]; then
             echo -e "${BLUE}-------------------------------------------------------------------------------------${NC}"
-            echo -e "${GREEN}|  LLM Model Deployment Complete!                                                   |${NC}"        
-            echo -e "${GREEN}|  The model is transitioning to a state ready for inference.                       |${NC}"
+            echo -e "${GREEN}|  AI LLM Model Deployment Complete!                                                   |${NC}"
+            echo -e "${GREEN}|  The model is transitioning to a state ready for Inference.                       |${NC}"
             echo -e "${GREEN}|  This may take some time depending on system resources and other factors.         |${NC}"
             echo -e "${GREEN}|  Please standby...                                                                |${NC}"
             echo -e "${BLUE}--------------------------------------------------------------------------------------${NC}"
@@ -874,7 +912,21 @@ fresh_installation() {
             echo "https://github.com/intel-innersource/applications.ai.erag.infra-automation/tree/main/ida#accessing-deployed-models-for-inference"
             echo ""
             echo "Please refer to this comprehensive guide for detailed instructions." 
-            echo ""                      
+            echo "" 
+            else
+            echo -e "${BLUE}-------------------------------------------------------------------------------------${NC}"
+            echo -e "${GREEN}|  AI Inference Deployment Complete!                                                   |${NC}"
+            echo -e "${GREEN}|  Resources are transitioning to a state ready for Inference.                      |${NC}"
+            echo -e "${GREEN}|  This may take some time depending on system resources and other factors.         |${NC}"
+            echo -e "${GREEN}|  Please standby...                                                                |${NC}"
+            echo -e "${BLUE}--------------------------------------------------------------------------------------${NC}"
+            echo ""
+            echo "Accessing Deployed Resources for Inference"
+            echo "https://github.com/intel-innersource/applications.ai.erag.infra-automation/tree/main/ida#accessing-deployed-models-for-inference"
+            echo ""
+            echo "Please refer to this comprehensive guide for detailed instructions." 
+            echo "" 
+            fi                     
         else
             echo "-------------------------------------------------------"
             echo "|     Deployment Skipped for Inference as Service!    |"
@@ -1097,9 +1149,9 @@ remove_model_deployed_via_huggingface(){
         execute_and_check "Removing Inference LLM Models..." remove_inference_llm_models_playbook "$@" \
             "Inference LLM Model is removed successfully." \
             "Failed to remove Inference LLM Model Exiting!."
-        echo "-----------------------------------------------------------"
-        echo "|     LLM Model Removed for Inference as Service Cluster! |"
-        echo "-----------------------------------------------------------"
+        echo "------------------------------------------------------------"
+        echo "|     LLM Model Removed from AI Inference as Service Cluster! |"
+        echo "------------------------------------------------------------"
         echo ""        
     else
         echo "Required huggingface model name and model id not provided. Exiting!!"
@@ -1140,8 +1192,8 @@ deploy_from_huggingface() {
             "Inference LLM Model is deployed successfully." \
             "Failed to deploy Inference LLM Model Exiting!." 
         echo -e "${BLUE}-------------------------------------------------------------------------------------${NC}"
-        echo -e "${GREEN}|  LLM Model Deployment Complete!                                                   |${NC}"        
-        echo -e "${GREEN}|  The model is transitioning to a state ready for inference.                       |${NC}"
+        echo -e "${GREEN}|  AI LLM Model Deployment Complete!                                                   |${NC}"        
+        echo -e "${GREEN}|  The model is transitioning to a state ready for Inference.                       |${NC}"
         echo -e "${GREEN}|  This may take some time depending on system resources and other factors.         |${NC}"
         echo -e "${GREEN}|  Please standby...                                                                |${NC}"
         echo -e "${BLUE}--------------------------------------------------------------------------------------${NC}"
@@ -1181,8 +1233,8 @@ add_model() {
             "Inference LLM Model is deployed successfully." \
             "Failed to deploy Inference LLM Model Exiting!." 
         echo -e "${BLUE}-------------------------------------------------------------------------------------${NC}"
-        echo -e "${GREEN}|  LLM Model Deployment Complete!                                                   |${NC}"        
-        echo -e "${GREEN}|  The model is transitioning to a state ready for inference.                       |${NC}"
+        echo -e "${GREEN}|  AI LLM Model Deployment Complete!                                                   |${NC}"        
+        echo -e "${GREEN}|  The model is transitioning to a state ready for Inference.                       |${NC}"
         echo -e "${GREEN}|  This may take some time depending on system resources and other factors.         |${NC}"
         echo -e "${GREEN}|  Please standby...                                                                |${NC}"
         echo -e "${BLUE}--------------------------------------------------------------------------------------${NC}"
@@ -1219,14 +1271,14 @@ remove_model() {
         execute_and_check "Removing Inference LLM Models..." remove_inference_llm_models_playbook "$@" \
             "Inference LLM Model is removed successfully." \
             "Failed to remove Inference LLM Model Exiting!."
-        echo -e "${BLUE}-----------------------------------------------------------------------${NC}"
-        echo -e "${GREEN}|     LLM Model is being removed from Inference as Service Cluster!    |${NC}"
-        echo -e "${BLUE}-----------------------------------------------------------------------${NC}"
+        echo -e "${BLUE}-------------------------------------------------------------------------${NC}"
+        echo -e "${GREEN}|     LLM Model is being removed from AI Inference as Service Cluster!    |${NC}"
+        echo -e "${BLUE}-------------------------------------------------------------------------${NC}"
     fi
 }
 
 add_worker_node() {
-    echo "Adding a new worker node to the Inference as Service cluster..."    
+    echo "Adding a new worker node to the AI Inference as Service cluster..."    
     read -p "${YELLOW}WARNING: Adding a node that is already managed by another Kubernetes cluster or has been manually configured using kubeadm, kubelet, or other tools can cause severe disruptions to your existing cluster. This may lead to issues such as pod restarts, service interruptions, and potential data loss. Do you want to proceed? (y/n) ${NC}" -r user_response
     echo ""
     if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
@@ -1236,14 +1288,14 @@ add_worker_node() {
     execute_and_check "Adding new worker nodes..." add_inference_nodes_playbook "$@" \
             "Adding a new worker node is successful." \
             "Failed to add worker node Exiting!."
-        echo "---------------------------------------------------------------"
-        echo "|     Node is being Added for Inference as Service Cluster!    |"
-        echo "---------------------------------------------------------------"
+        echo "------------------------------------------------------------------"
+        echo "|     Node is being Added for AI Inference as Service Cluster!    |"
+        echo "------------------------------------------------------------------"
 }
 
 
 remove_worker_node() {
-    echo "Removing a worker node from the Inference as Service cluster..."    
+    echo "Removing a worker node from the AI Inference as Service cluster..."    
     read -p "${YELLOW}WARNING: Removing a worker node will drain all resources from the node, which may cause service interruptions or data loss. This process cannot be undone. Do you want to proceed? (y/n)${NC} " -r user_response
     if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
         echo "Aborting node removal process. Exiting!!"
@@ -1253,9 +1305,9 @@ remove_worker_node() {
     execute_and_check "Removing worker nodes..." remove_inference_nodes_playbook "$@" \
             "Removing  worker node is successful." \
             "Failed to remove worker node Exiting!."
-    echo "------------------------------------------------------------------"
-    echo "|     Node is being removed from Inference as Service Cluster!    |"
     echo "-------------------------------------------------------------------"
+    echo "|     Node is being removed from AI Inference as Service Cluster!    |"
+    echo "--------------------------------------------------------------------"
     
 }
 

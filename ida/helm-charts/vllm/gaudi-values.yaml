@@ -20,7 +20,7 @@ accelDevice: "gaudi"
 
 image:
   repository: opea/vllm-gaudi
-  tag: "1.1"
+  tag: "1.2"
   pullPolicy: IfNotPresent
 
 # OMPI Configuration

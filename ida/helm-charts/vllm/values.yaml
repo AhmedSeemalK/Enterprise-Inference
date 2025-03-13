@@ -107,27 +107,20 @@ resources:
 
 extraCmdArgs: []
 
-livenessProbe:
-  httpGet:
-    path: /health
-    port: http
-  initialDelaySeconds: 480
-  periodSeconds: 60
-  failureThreshold: 40
 readinessProbe:
   httpGet:
     path: /health
     port: http
-  initialDelaySeconds: 240
-  periodSeconds: 60
-  failureThreshold: 35
-startupProbe:
-  httpGet:
-    path: /health
-    port: http
-  initialDelaySeconds: 360 
-  periodSeconds: 60
-  failureThreshold: 30
+  initialDelaySeconds: 120
+  periodSeconds: 30
+  failureThreshold: 79
+# startupProbe:
+#   httpGet:
+#     path: /health
+#     port: http
+#   initialDelaySeconds: 120 
+#   periodSeconds: 30
+#   failureThreshold: 79
 
 nodeSelector: {}
 
