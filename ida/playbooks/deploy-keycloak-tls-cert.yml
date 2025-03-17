@@ -25,7 +25,7 @@
         state: present
         executable: /usr/bin/pip3
       become: true
-    - name: Install Helm
+    - name: Install Deployment Client
       ansible.builtin.shell: |
         curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
       args:

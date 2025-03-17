@@ -202,6 +202,7 @@ setup_initial_env() {\
     else
         echo "Virtual environment activated successfully. Path: $VIRTUAL_ENV"
     fi
+    export PIP_BREAK_SYSTEM_PACKAGES=1
     # Install Kubespray requirements
     pip install -U -r requirements.txt
     echo "Kubespray requirements installed."    
@@ -439,9 +440,14 @@ deploy_inference_llm_models_playbook() {
     echo "APISIX Enabled: $apisix_enabled"
     echo "Keycloak Enabled: $deploy_keycloak"    
     echo "Gaudi based: $gaudi_deployment"
-
+    
+    tags=""    
+    for model in $model_name_list; do
+        tags+="install-$model,"
+    done    
+    tags=${tags%,}
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name} deploy_inference_llm_models_playbook=${deploy_inference_llm_models_playbook} huggingface_tensor_parellel_size=${huggingface_tensor_parellel_size}"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name} deploy_inference_llm_models_playbook=${deploy_inference_llm_models_playbook} huggingface_tensor_parellel_size=${huggingface_tensor_parellel_size}" --tags "$tags"
 }
 
 deploy_observability_playbook() {
@@ -459,10 +465,15 @@ deploy_cluster_config_playbook() {
 
 remove_inference_llm_models_playbook() {
     echo "Removing Inference LLM Models playbook..."        
-    echo "Uninstalling the models..."
+    echo "Uninstalling the models..."    
+    tags=""    
+    for model in $model_name_list; do
+        tags+="uninstall-$model,"
+    done    
+    tags=${tags%,}        
     uninstall_true="true"               
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} model_name_list='${model_name_list//\ /,}' hugging_face_model_remove_deployment=${hugging_face_model_remove_deployment} hugging_face_model_remove_name=${hugging_face_model_remove_name} "
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} model_name_list='${model_name_list//\ /,}' hugging_face_model_remove_deployment=${hugging_face_model_remove_deployment} hugging_face_model_remove_name=${hugging_face_model_remove_name}" --tags "$tags"
 }
 
 add_inference_nodes_playbook() {    
@@ -638,13 +649,14 @@ model_selection(){
                             echo "8. falcon3-7b"
                             echo "9. deepseek-r1-distill-qwen-32b"
                             echo "10. deepseek-r1-distill-llama8b"
+                            echo "11. llama3-405b"
                             read -p "Enter the numbers of the GPU models you want to deploy/remove (comma-separated, e.g., 1,3,5): " models
                         else
                             # Prompt for CPU models
                             echo "Available CPU models:"
-                            echo "11. cpu-llama-8b"
-                            echo "12. cpu-deepseek-r1-distill-qwen-32b"
-                            echo "13. cpu-deepseek-r1-distill-llama8b"
+                            echo "21. cpu-llama-8b"
+                            echo "22. cpu-deepseek-r1-distill-qwen-32b"
+                            echo "23. cpu-deepseek-r1-distill-llama8b"
                             read -p "Enter the number of the CPU model you want to deploy/remove: " cpu_model
                             models="$cpu_model"
                         fi
@@ -775,27 +787,34 @@ get_model_names() {
                 model_names+=("deepseek-r1-distill-llama8b")
                 ;;
             11)
+                if [ "$cpu_or_gpu" = "c" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("llama3-405b")
+                ;;
+            21)
                 if [ "$cpu_or_gpu" = "g" ]; then
                     echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
                     exit 1
                 fi
                 model_names+=("cpu-llama-8b")
                 ;;
-            12)
+            22)
                 if [ "$cpu_or_gpu" = "g" ]; then
                     echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
                     exit 1
                 fi
                 model_names+=("cpu-deepseek-r1-distill-qwen-32b")
                 ;;
-            13)
+            23)
                 if [ "$cpu_or_gpu" = "g" ]; then
                     echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
                     exit 1
                 fi
                 model_names+=("cpu-deepseek-r1-distill-llama8b")
                 ;;
-            "llama-8b"|"llama-70b"|"codellama-34b"|"mixtral-8x-7b"|"mistral-7b"|"tei"|"tei-rerank"|"falcon3-7b"|"deepseek-r1-distill-qwen-32b"|"deepseek-r1-distill-llama8b")
+            "llama-8b"|"llama-70b"|"codellama-34b"|"mixtral-8x-7b"|"mistral-7b"|"tei"|"tei-rerank"|"falcon3-7b"|"deepseek-r1-distill-qwen-32b"|"deepseek-r1-distill-llama8b"|"llama3-405b")
                 if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1
@@ -1271,9 +1290,11 @@ remove_model() {
         execute_and_check "Removing Inference LLM Models..." remove_inference_llm_models_playbook "$@" \
             "Inference LLM Model is removed successfully." \
             "Failed to remove Inference LLM Model Exiting!."
-        echo -e "${BLUE}-------------------------------------------------------------------------${NC}"
-        echo -e "${GREEN}|     LLM Model is being removed from AI Inference as Service Cluster!    |${NC}"
-        echo -e "${BLUE}-------------------------------------------------------------------------${NC}"
+        echo -e "${BLUE}------------------------------------------------------------------------------${NC}"
+        echo -e "${GREEN}|  AI LLM Model is being removed from AI Inference as Service Cluster!       |${NC}"
+        echo -e "${GREEN}|  This may take some time depending on system resources and other factors.  |${NC}"
+        echo -e "${GREEN}|  Please standby...                                                         |${NC}"
+        echo -e "${BLUE}------------------------------------------------------------------------------${NC}"
     fi
 }
 
@@ -1340,5 +1361,4 @@ main_menu() {
 }
 
 main_menu "$@"
-
 

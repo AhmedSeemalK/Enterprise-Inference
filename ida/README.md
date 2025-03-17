@@ -78,9 +78,10 @@ These models can be selectively deployed based on the configuration settings of 
 | 8. [**falcon3-7b**](https://huggingface.co/tiiuae/Falcon3-7B-Instruct) | Instruction-following LLM with 7 billion parameters, designed for task-oriented language understanding and generation. |
 | 9. [**deepseek-r1-distill-qwen-32b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B) | Distilled version of the Qwen-32B model, optimized for efficient inference and knowledge retrieval. |
 | 10. [**deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | Distilled version of the LLama-8B model, optimized for efficient inference and knowledge retrieval. |
-| 11. [**cpu-llama-8b**](https://github.com/huggingface/text-generation-inference/pkgs/container/text-generation-inference) | CPU-optimized version of the LLama-8B model for efficient inference on CPUs. |
-| 12. [**cpu-deepseek-r1-distill-qwen-32b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B) | CPU-optimized version of the Distilled Qwen-32B model for efficient inference on CPUs. |
-| 13. [**cpu-deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | CPU-optimized version of the Distilled LLama-8B model for efficient inference on CPUs. |
+| 11. [**llama3-405b**](https://huggingface.co/meta-llama/Llama-3.1-405B-Instruct) | Large Language Model (LLM) with 405 billion parameters, suitable for a wide range of natural language processing tasks.. |
+| 21. [**cpu-llama-8b**](https://github.com/huggingface/text-generation-inference/pkgs/container/text-generation-inference) | CPU-optimized version of the LLama-8B model for efficient inference on CPUs. |
+| 22. [**cpu-deepseek-r1-distill-qwen-32b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B) | CPU-optimized version of the Distilled Qwen-32B model for efficient inference on CPUs. |
+| 23. [**cpu-deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | CPU-optimized version of the Distilled LLama-8B model for efficient inference on CPUs. |
 
 
 These models can be deployed, providing a range of inference capabilities to suit various needs and applications.

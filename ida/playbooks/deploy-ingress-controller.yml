@@ -18,7 +18,7 @@
         state: present
         executable: /usr/bin/pip3
       become: true
-    - name: Install Helm
+    - name: Install Deployment Client
       ansible.builtin.shell: |
         curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
       args:
@@ -37,17 +37,44 @@
     - name: Update Helm repositories to fetch the latest charts
       ansible.builtin.shell: helm repo update      
       when: helm_repo_list.stdout != ""    
+    
+    
     - name: Retrieving the Number of Inference Infrastructure Nodes
       ansible.builtin.shell: kubectl get nodes --selector=node-role.kubernetes.io/inference-infra=true --no-headers | wc -l
       register: inference_node_count
-      changed_when: false    
+      changed_when: false
+    - name: Set the Replica Count based on Inference Infrastructure Nodes
+      set_fact:
+        inference_infra_replica_count: "{{ inference_node_count.stdout | int }}"
+      when: inference_node_count.stdout | int > 0
+    - name: Retrieving the Number of Control Plane Nodes
+      ansible.builtin.shell: kubectl get nodes --selector=node-role.kubernetes.io/control-plane= --no-headers | wc -l
+      register: control_plane_node_count
+      changed_when: false
+      when: inference_node_count.stdout | int == 0
+    - name: Set the Replica Count based on Control Plane Nodes
+      set_fact:
+        inference_infra_replica_count: "{{ control_plane_node_count.stdout | int }}"
+      when: inference_node_count.stdout | int == 0 and control_plane_node_count.stdout | int > 0            
+    - name: Display the Number of Nodes on which Ingress is deployed
+      debug:
+        msg: "Number of Nodes on which Ingress is deployed: {{ inference_infra_replica_count }}"  
+      run_once: true       
     - name: Set the Replica Count based upon Infrastructure Nodes
       set_fact:
         inference_infra_replica_count: "{{ inference_node_count.stdout | int if inference_node_count.stdout | int > 0 else 1 }}"    
-    - name: Display the Number of Inference Infrastructure Nodes
-      debug:
-        msg: "Number of Inference Infr Node configured: {{ inference_infra_replica_count }}"  
+    
+    - name: Set default replica count if no labeled nodes are found
+      set_fact:
+        inference_infra_replica_count: 1
+      when: inference_node_count.stdout | int == 0 and control_plane_node_count.stdout | int == 0
+    
+    - name: Display the Number of Nodes on which Ingress is deployed
+      debug:        
+        msg: "Number of Nodes on which Ingress is deployed: {{ inference_infra_replica_count }}"  
       run_once: true        
+    
+    
     - name: Deploy Ingress Nginx Controller
       community.kubernetes.helm:
         name: ingress-nginx
