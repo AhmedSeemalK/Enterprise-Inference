@@ -79,6 +79,16 @@
       retries: 260
       delay: 10
       failed_when: pod_status.rc != 0 and pod_status.stdout != "0"
+    
+    - name: Install Habana Kubernetes device plugin
+      kubernetes.core.k8s:
+        state: present
+        src: https://vault.habana.ai/artifactory/docker-k8s-device-plugin/habana-k8s-device-plugin.yaml
+      register: k8s_result
+      until: k8s_result is successful
+      retries: 5
+      delay: 10
+    
     - name: Output the result
       debug:
         msg: "All Habana AI Operator pods are running and ready."

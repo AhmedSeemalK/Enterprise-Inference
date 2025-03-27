@@ -477,21 +477,39 @@ remove_inference_llm_models_playbook() {
 }
 
 add_inference_nodes_playbook() {    
-    echo "Add Inference LLM Nodes playbook..."    
-    # Prompt the user for the worker node name
+    echo "Add Inference LLM Nodes playbook..."        
     read -p "Enter the name of the worker node to be added (as defined in hosts.yml): " worker_node_name    
     if [ -z "$worker_node_name" ]; then
         echo "Error: No worker node names provided."
         return 1
-    fi
-    # Check if the input contains invalid characters
+    fi    
     if ! [[ "$worker_node_name" =~ ^[a-zA-Z0-9,-]+$ ]]; then
         echo "Error: Invalid characters in worker node names. Only alphanumeric characters, commas, and hyphens are allowed."
         return 1
     fi
     invoke_prereq_workflows     
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/facts.yml --become --become-user=root       
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/cluster.yml --become --become-user=root --limit="$worker_node_name"
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/cluster.yml --become --become-user=root
+    namespace="habana-ai-operator"
+    if kubectl get namespace "$namespace" &>/dev/null; then
+        daemonsets=("habana-ai-device-plugin-ds" "habana-ai-driver-ubuntu-22-04-ds")
+        restarted_daemonsets=()
+        not_found_daemonsets=()
+        for ds in "${daemonsets[@]}"; do
+            if kubectl get ds "$ds" -n "$namespace" &>/dev/null; then
+                kubectl rollout restart ds "$ds" -n "$namespace"
+                restarted_daemonsets+=("$ds")
+            else
+                not_found_daemonsets+=("$ds")
+            fi
+        done
+        if [ "${#restarted_daemonsets[@]}" -gt 0 ]; then
+            echo "Restarted DaemonSets: ${restarted_daemonsets[@]}"
+        fi
+        if [ "${#not_found_daemonsets[@]}" -gt 0 ]; then
+            echo "DaemonSets not found in namespace $namespace: ${not_found_daemonsets[@]}"
+        fi            
+    fi    
 }
 
 remove_inference_nodes_playbook() {
@@ -921,7 +939,7 @@ fresh_installation() {
             
             if [ "$deploy_llm_models" == "yes" ]; then
             echo -e "${BLUE}-------------------------------------------------------------------------------------${NC}"
-            echo -e "${GREEN}|  AI LLM Model Deployment Complete!                                                   |${NC}"
+            echo -e "${GREEN}|  AI LLM Model Deployment Complete!                                                |${NC}"
             echo -e "${GREEN}|  The model is transitioning to a state ready for Inference.                       |${NC}"
             echo -e "${GREEN}|  This may take some time depending on system resources and other factors.         |${NC}"
             echo -e "${GREEN}|  Please standby...                                                                |${NC}"
@@ -1211,7 +1229,7 @@ deploy_from_huggingface() {
             "Inference LLM Model is deployed successfully." \
             "Failed to deploy Inference LLM Model Exiting!." 
         echo -e "${BLUE}-------------------------------------------------------------------------------------${NC}"
-        echo -e "${GREEN}|  AI LLM Model Deployment Complete!                                                   |${NC}"        
+        echo -e "${GREEN}|  AI LLM Model Deployment Complete!                                                |${NC}"        
         echo -e "${GREEN}|  The model is transitioning to a state ready for Inference.                       |${NC}"
         echo -e "${GREEN}|  This may take some time depending on system resources and other factors.         |${NC}"
         echo -e "${GREEN}|  Please standby...                                                                |${NC}"
@@ -1252,7 +1270,7 @@ add_model() {
             "Inference LLM Model is deployed successfully." \
             "Failed to deploy Inference LLM Model Exiting!." 
         echo -e "${BLUE}-------------------------------------------------------------------------------------${NC}"
-        echo -e "${GREEN}|  AI LLM Model Deployment Complete!                                                   |${NC}"        
+        echo -e "${GREEN}|  AI LLM Model Deployment Complete!                                                |${NC}"        
         echo -e "${GREEN}|  The model is transitioning to a state ready for Inference.                       |${NC}"
         echo -e "${GREEN}|  This may take some time depending on system resources and other factors.         |${NC}"
         echo -e "${GREEN}|  Please standby...                                                                |${NC}"
@@ -1307,11 +1325,15 @@ add_worker_node() {
         exit 1
     fi
     execute_and_check "Adding new worker nodes..." add_inference_nodes_playbook "$@" \
-            "Adding a new worker node is successful." \
+            "Adding a new worker node to the cluster" \
             "Failed to add worker node Exiting!."
-        echo "------------------------------------------------------------------"
-        echo "|     Node is being Added for AI Inference as Service Cluster!    |"
-        echo "------------------------------------------------------------------"
+        
+    echo -e "${BLUE}------------------------------------------------------------------------------${NC}"
+    echo -e "${GREEN}|  Node is being added to the AI Inference as Service Cluster!              |${NC}"
+    echo -e "${GREEN}|  This process depends on network and available system resources.          |${NC}"
+    echo -e "${GREEN}|  Please stand by while the node is being added...                         |${NC}"
+    echo -e "${BLUE}------------------------------------------------------------------------------${NC}"    
+                
 }
 
 

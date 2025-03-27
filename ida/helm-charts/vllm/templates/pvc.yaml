@@ -6,9 +6,10 @@ metadata:
   namespace: default
 spec:
   accessModes:
+  #- ReadWriteMany Enable this for supported storage provisioner like Ceph or EFS or Azure Files
   - ReadWriteOnce
   resources:
     requests:
-      storage: 50Gi
-  storageClassName: local-path
+      storage: 250Gi # Adjust this accroding to model storage size
+  storageClassName: local-path # Adjuts this according to storage class deployment ceph-filesystem
 {{- end }}

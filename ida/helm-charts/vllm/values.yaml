@@ -31,8 +31,6 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-VLLM_NO_USAGE_STATS: 1
-
 serviceAccount:
   # Specifies whether a service account should be created
   create: false
@@ -46,8 +44,9 @@ serviceAccount:
 
 podAnnotations: {}
 
-podSecurityContext: {}
-  # fsGroup: 2000
+podSecurityContext:
+  fsGroup: 1001
+  runAsUser: 1001
 
 securityContext:
   allowPrivilegeEscalation: false
@@ -86,6 +85,9 @@ ingress:
   namespace: default
   secretname: ""
 
+svcmonitor:
+  enabled: false
+
 oidc:
   realm: master
   client_id: ""
@@ -93,19 +95,43 @@ oidc:
   discovery: http://keycloak.default.svc.cluster.local/realms/master/.well-known/openid-configuration
   introspection_endpoint: http://keycloak.default.svc.cluster.local/realms/master/protocol/openid-connect/token/introspect
 
-resources: 
+resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
   # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
   # limits:
-  #   cpu: "96"
-  #   memory: 128G
+  #   cpu: 100m
+  #   memory: 128Mi
   # requests:
-  #   cpu: "96"
-  #   memory: 128G
+  #   cpu: 100m
+  #   memory: 128Mi
 
 extraCmdArgs: []
+
+# livenessProbe:
+#   httpGet:
+#     path: /health
+#     port: http
+#   initialDelaySeconds: 4600  # Start liveness checks after 1 hour (safe buffer)
+#   periodSeconds: 60
+#   failureThreshold: 60  # Allows up to 30 minutes of failures before restart
+
+# readinessProbe:
+#   httpGet:
+#     path: /health
+#     port: http
+#   initialDelaySeconds: 4600  # Only mark ready after 1 hour
+#   periodSeconds: 60
+
+# startupProbe:
+#   httpGet:
+#     path: /health
+#     port: http
+#   initialDelaySeconds: 3600
+#   periodSeconds: 10
+#   failureThreshold: 7200  # Allows up to 2 hours (10s * 7200 = 72000s)
+
 
 readinessProbe:
   httpGet:
@@ -113,7 +139,7 @@ readinessProbe:
     port: http
   initialDelaySeconds: 120
   periodSeconds: 30
-  failureThreshold: 79
+  failureThreshold: 98
 # startupProbe:
 #   httpGet:
 #     path: /health
@@ -121,6 +147,7 @@ readinessProbe:
 #   initialDelaySeconds: 120 
 #   periodSeconds: 30
 #   failureThreshold: 79
+
 
 nodeSelector: {}
 
@@ -135,6 +162,26 @@ LLM_MODEL_ID: Intel/neural-chat-7b-v3-3
 OMPI_MCA_btl_vader_single_copy_mechanism: ""
 PT_HPU_ENABLE_LAZY_COLLECTIVES: ""
 VLLM_CPU_KVCACHE_SPACE: "40"
+VLLM_CONFIGURE_LOGGING: 1
+VLLM_NO_USAGE_STATS: 1
+
+modelConfigs:  
+  "Qwen/Qwen2.5-7B-Instruct":
+    configMapValues:
+      OMPI_MCA_btl_vader_single_copy_mechanism: none
+      PT_HPU_ENABLE_LAZY_COLLECTIVES: "true"
+      VLLM_CPU_KVCACHE_SPACE: "40"
+    extraCmdArgs: ["--block-size", "128", "--dtype", "bfloat16", "--max-model-len","5196"]
+    tensor_parallel_size: "1"
+
+defaultModelConfigs:
+  configMapValues:    
+    OMPI_MCA_btl_vader_single_copy_mechanism: none
+    PT_HPU_ENABLE_LAZY_COLLECTIVES: "true"
+    VLLM_CPU_KVCACHE_SPACE: "40"
+  extraCmdArgs: ["--block-size", "128", "--dtype", "bfloat16", "--max-model-len","5196"]
+  tensor_parallel_size: "1"
+
 
 global:
   http_proxy: ""
@@ -161,3 +208,4 @@ global:
 
   # Prometheus Helm install release name for serviceMonitor
   prometheusRelease: prometheus-stack
+
