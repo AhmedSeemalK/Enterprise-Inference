@@ -106,7 +106,7 @@ For deploying models that are not part of the prevalidated models list from Hugg
    > Deploying models that is not part of above prevalidated models list by our team. Additional validation and optimization may be required to ensure seamless deployment in an Enterprise environment.
 
 
-Both Prevalidated and not valited Models can be deployed, enabling a range of Inference capabilities to support diverse Enterprise needs and applications.
+Both Prevalidated and Non-validated Models can be deployed, enabling a range of Inference capabilities to support diverse Enterprise needs and applications.
 
 
 ## Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster
