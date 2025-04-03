@@ -64,12 +64,25 @@
       run_once: true
       ansible.builtin.shell: |
         kubectl create configmap habana-dashboard-configmap \
-          --from-file=habana-dashboard.json={{ remote_helm_charts_base }}/habana-exporter/grafan-gaudi-dashboard.json \
+          --from-file=habana-dashboard.json={{ remote_helm_charts_base }}/habana-exporter/grafana-gaudi-dashboard.json \
           -n observability --dry-run=client -o yaml | kubectl apply -f -
 
         kubectl label configmap habana-dashboard-configmap grafana_dashboard=1 -n observability --overwrite
       args:
         executable: /bin/bash
+
+    - name: Create Config for Gaudi Cluster Utilization Dashboard
+      run_once: true
+      ansible.builtin.shell: |
+        kubectl create configmap habana-cluster-dashboard-configmap \
+          --from-file=habana-cluster-dashboard.json={{ remote_helm_charts_base }}/habana-exporter/grafana-gaudi-cluster-util.json \
+          -n observability --dry-run=client -o yaml | kubectl apply -f -
+
+        kubectl label configmap habana-cluster-dashboard-configmap grafana_dashboard=1 -n observability --overwrite
+      args:
+        executable: /bin/bash
+
+      
 
     - name: Create Config for Xeon Grafana Dashboard
       run_once: true
