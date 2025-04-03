@@ -6,11 +6,11 @@ Unleash the Power of AI Inference
 
    The Intel AI for Enterprise Inference suite is your ultimate companion for harnessing the full potential of AI Inference capabilities. 
    
-   Imagine a world where deploying and managing AI inference services is as effortless as a few keystrokes. With this automation suite, you can bid farewell to the complexities of manual provisioning and embrace a future where agility and operational excellence are the norms.
+   Imagine a world where deploying and managing AI Inference services is as effortless as a few keystrokes. With AI Inference Deployment Suite, you can bid farewell to the complexities of manual provisioning and embrace a future where agility and operational excellence are the norms.
    
-   Powered by Kubernetes Infrastructure. This AI Inference Deployment Suite empowers Enterprises to seamlessly provision, deploy, connfigure, and evolve their AI Inference infrastructure with unparalleled agility.
+   Powered by Kubernetes Infrastructure. AI Inference Deployment Suite empowers Enterprises to seamlessly provision, deploy, connfigure, and evolve their AI Inference infrastructure with unparalleled agility.
 
-   This AI Inference Deployment Suite is designed for versatility, supporting model deployment for Inference across a diverse range of Intel hardware platforms, including   
+   AI Inference Deployment Suite is designed for versatility, supporting model deployment for Inference across a diverse range of Intel hardware platforms, including   
    Intel Xeon, Intel Gaudi, and Intel CPUs, ensuring maximum flexibility for your AI Inference infrastructure requirements
 
 #### Key Components:
