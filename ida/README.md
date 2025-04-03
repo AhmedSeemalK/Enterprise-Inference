@@ -754,6 +754,12 @@ Please note that this list is subject to change, and additional models may be ad
 
    ```
 
+##### Authentication Formats for Deployed AI Models:   
+   - **With Keycloak and APISIX**:      
+      -  In this flow, Keycloak and APISIX are deployed to provide authentication, authorization, and API gateway functionality, ensuring secure and controlled access to the deployed AI models.
+   - **Without Keycloak and APISIX**:
+      - In this flow, the AI models are deployed directly within the Kubernetes cluster, without the additional security and API gateway layers provided by Keycloak and APISIX. This deployment option is suitable for scenarios where these components are not required or are handled separately.
+
 --- 
 
 ## Component Based Deployment
@@ -761,11 +767,6 @@ Please note that this list is subject to change, and additional models may be ad
 ### Usage
 #### Running the Inference Deployment Automation
 
-##### Authentication Formats for Deployed AI Models:   
-   - **With Keycloak and APISIX**:      
-      -  In this flow, Keycloak and APISIX are deployed to provide authentication, authorization, and API gateway functionality, ensuring secure and controlled access to the deployed AI models.
-   - **Without Keycloak and APISIX**:
-      - In this flow, the AI models are deployed directly within the Kubernetes cluster, without the additional security and API gateway layers provided by Keycloak and APISIX. This deployment option is suitable for scenarios where these components are not required or are handled separately.
 
 #### Using the inference-config.cfg configuration file
 If you don't want to be prompted for the required parameters, you can use the inference-config.cfg file to provide the necessary values. The automation will read the values from this file.
