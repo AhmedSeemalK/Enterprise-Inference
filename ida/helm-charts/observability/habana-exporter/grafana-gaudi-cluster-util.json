@@ -833,8 +833,8 @@
     },
     "timepicker": {},
     "timezone": "",
-    "title": "Gaudi Cards Cluster Utilization",
-    "uid": "gaudi-cluster-util",
+    "title": "Gaudi Cards Utilization Dashboard",
+    "uid": "gaudi-cards-util",
     "version": 46,
     "weekStart": ""
   }
