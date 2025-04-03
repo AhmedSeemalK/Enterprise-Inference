@@ -4,7 +4,7 @@
 
 Unleash the Power of AI Inference
 
-   The Intel AI for Enterprise Inference suite is your ultimate companion for harnessing the full potential of AI inference capabilities. 
+   The Intel AI for Enterprise Inference suite is your ultimate companion for harnessing the full potential of AI Inference capabilities. 
    
    Imagine a world where deploying and managing AI inference services is as effortless as a few keystrokes. With this automation suite, you can bid farewell to the complexities of manual provisioning and embrace a future where agility and operational excellence are the norms.
    
