@@ -769,8 +769,8 @@ Please note that this list is subject to change, and additional models may be ad
 
 
 #### Using the inference-config.cfg configuration file
-If you don't want to be prompted for the required parameters, you can use the inference-config.cfg file to provide the necessary values. The automation will read the values from this file.
-Here's an example of the inference-config.cfg file:
+If you don't want to be prompted for the required parameters, you can use the `ida\inference-config.cfg` file to provide the necessary values. The automation will read the values from this file.
+Here's an example of the `inference-config.cfg` file:
 `````
 cluster_url=example.com
 cert_file=/path/to/cert/file.pem
