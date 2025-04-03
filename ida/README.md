@@ -768,7 +768,7 @@ Please note that this list is subject to change, and additional models may be ad
 ### Usage
 #### Running the AI Inference Deployment Suite with inference-config.cfg
 
-If you don't want to be prompted for the required parameters, you can use the `ida\inference-config.cfg` file to provide the necessary values. The automation will read the values from this file.
+If you don't want to be prompted for the required parameters, you can use the `ida\inference-config.cfg` file to provide the necessary values. The AI Inference Deployment Suite will read the values from this file.
 Here's an example of the `inference-config.cfg` file:
 `````
 cluster_url=example.com
@@ -787,10 +787,10 @@ deploy_observability=off
 deploy_llm_models=on
 
 `````
-Make sure to update the values in the inference-config.cfg file according to your requirements before running the automation.
+Make sure to update the values in the inference-config.cfg file according to your requirements before running the AI Inference Deployment Suite.
 
 ##### Notice:
-   This automation is designed for deployments which allows you to selectively deploy or skip various components based on your requirements.
+   This AI Inference Deployment Suite is designed for deployments which allows you to selectively deploy or skip various components based on your requirements.
 
 >
 > - If `deploy_kubernetes_fresh` is set to `on`, a fresh Kubernetes cluster will be initialized as per the deployment configuration.
@@ -820,7 +820,7 @@ updated the `ida/inventory/hosts.yml` file with your desired requirement as docu
 bash inference-as-auto-deploy.sh [OPTIONS]
 ##### Options
 `````
-The automation accepts the following command-line options:
+The AI Inference Deployment Suite accepts the following command-line options:
 --cluster-url <URL>: The cluster URL (FQDN).
 --cert-file <path>: The full path to the certificate file.
 --key-file <path>: The full path to the key file.
@@ -832,12 +832,12 @@ The automation accepts the following command-line options:
 --cpu-or-gpu <c/g>: Specify whether to run on CPU or GPU.
 `````
 
-Execute the following command to initiate the automation:
+Execute the following command to initiate the AI Inference Deployment Suite:
 ```
    bash inference-as-auto-deploy.sh
 ```
 ## Main Menu
-When you run the automation, you will be presented with a main menu with the following options:
+When you run the AI Inference Deployment Suite  you will be presented with a main menu with the following options:
 ```
 ----------------------------------------------------------
 |  Intel AI for Enterprise Inference                      |
@@ -854,7 +854,7 @@ Please choose an option (1, 2, or 3):
 ##### Installation Precautions:
 Ensure that the nodes do not contain existing workloads. If necessary, please purge any previous cluster configurations before initiating a fresh installation to avoid an inappropriate cluster state. Proceeding without this precaution could lead to service disruptions or data loss.
 
-If you choose to perform a fresh installation, the automation will prompt you for the necessary inputs and proceed with the following steps:
+If you choose to perform a fresh installation, the AI Inference Deployment Suite will prompt you for the necessary inputs and proceed with the following steps:
 1. Prompt for Input: Collects the required inputs from the user.
 2. Setup Initial Environment: Sets up the virtual environment and installs necessary dependencies.
 3. Install Kubernetes: Installs Kubernetes and sets up the kubeconfig for the user.
@@ -899,7 +899,7 @@ Proceed with the inference cluster setup using the provided configurations? (yes
 ##### Cluster Reset Precautions:
 Performing a cluster reset is a significant action that will permanently erase all current configurations, services, and resources associated with the cluster. This operation is irreversible and may result in service interruptions and data loss. It is essential to be certain of your decision to reset the cluster. Please ensure that you have backed up any important data before confirming that you wish to proceed with the reset.
 
-If you choose to reset the cluster, the automation will:
+If you choose to reset the cluster, the AI Inference Deployment Suite will:
 1. Prompt for Confirmation: Asks for confirmation before proceeding with the reset.
 2. Setup Initial Environment: Sets up the virtual environment and installs necessary dependencies.
 3. Run Reset Playbook: Executes the Ansible playbook to reset the cluster.
@@ -923,7 +923,7 @@ Acknowledge it with "yes".
 `````
 
 ### Update Existing Cluster:
-If you choose to update the existing cluster, the automation will present you with the following options:
+If you choose to update the existing cluster, the AI Inference Deployment Suite will present you with the following options:
 1. Manage Worker Nodes: Add or remove worker nodes.
 2. Manage Models: Add or remove models.
 
@@ -987,7 +987,7 @@ Please choose an option (1 or 2):
 Please choose an option (1, 2, or 3):
 > 1
 Follow the prompts to provide the necessary information for deploying the model if model is not set in inference-config.cfg.
-If model is set in inference-config.cfg automation will proceed to deploy the model.
+If model is set in inference-config.cfg AI Inference Deployment Suite will proceed to deploy the model.
 `````
 
 ### Deploy LLM Model from Hugging Face
@@ -1072,7 +1072,7 @@ Please choose an option (1 or 2):
 Please choose an option (1, 2, or 3):
 > 2
 Follow the prompts to select the model you want to undeploy if model is not set in inference-config.cfg.
-If model is set in inference-config.cfg automation will proceed to remove the model.
+If model is set in inference-config.cfg AI Inference Deployment Suite will proceed to remove the model.
 `````
 
 
