@@ -15,15 +15,15 @@ Unleash the Power of AI Inference
 
 #### Key Components:
    - **Kubernetes**: A powerful container orchestration platform that automates the deployment, scaling, and management of containerized applications, ensuring high availability and efficient resource utilization.
-   - **Habana AI Operator**: A specialized operator that manages the lifecycle of Habana AI resources within the Kubernetes cluster, enabling efficient utilization of hardware for AI workloads.
+   - **Habana AI Operator**: A specialized operator that manages the lifecycle of Habana AI resources within the Kubernetes cluster, enabling efficient utilization of Intel Gaudi hardware for AI workloads.
    - **Ingress NGINX Controller**: A high-performance reverse proxy and load balancer for traffic, responsible for routing incoming requests to the appropriate services within the Kubernetes cluster, ensuring seamless access to deployed AI models.
    - **Keycloak**: An open-source identity and access management solution that provides robust authentication and authorization capabilities, ensuring secure access to AI services and resources within the cluster.
    - **APISIX**: A cloud-native API gateway, handling API traffic and providing advanced features caching, and authentication, enabling efficient and secure access to deployed AI models.
    - **Observability**: An open-source monitoring solution designed to operate natively within Kubernetes clusters, providing comprehensive visibility into the performance, health, and resource utilization of deployed applications and cluster components through metrics, visualization, and alerting capabilities.
-   - **Model Deployments**: Automated deployment and management of llm models within the Kubernetes cluster, enabling scalable and reliable AI inference capabilities.
+   - **Model Deployments**: Automated deployment and management of AI LLM Models within the Kubernetes cluster, enabling scalable and reliable AI Inference capabilities.
    
 # Table of Contents
-- [Intel AI for Enterprise Inference Deployment Automation](#ai-inference-as-a-service-deployment-automation)
+- [Intel AI for Enterprise Inference Deployment Automation](#intel-ai-for-enterprise-inference)
 - [Models for Inference Cluster](#models-for-inference-cluster)
 - [Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster](#prerequisites-for-setting-up-intel-ai-for-enterprise-inference-cluster)
    - [Gaudi Node Requirement](#gaudi-node-requirements)
