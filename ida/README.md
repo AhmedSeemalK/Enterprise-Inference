@@ -1,6 +1,7 @@
 # Intel AI for Enterprise Inference 
 
-#### AI Inference as a Service Deployment Automation
+### AI Model Deployment Suite 
+
 Unleash the Power of AI Inference
 
    The Intel AI for Enterprise Inference suite is your ultimate companion for harnessing the full potential of AI inference capabilities. 
