@@ -102,7 +102,14 @@
         create_namespace: true
         chart_version: "22.1.0"        
         values:
+          production: true
+          proxy: edge          
           replicaCount: "{{ inference_infra_replica_count | int }}"
+          extraEnvVars:
+          - name: KC_CACHE
+            value: ispn
+          - name: KC_CACHE_STACK
+            value: kubernetes
           auth:
             adminUser: "{{ keycloak_admin_user }}"
             adminPassword: "{{ keycloak_admin_password }}"

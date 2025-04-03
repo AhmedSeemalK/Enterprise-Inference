@@ -2,7 +2,9 @@
 - name: Deploy Habana AI Operator Namespace and Labels
   hosts: kube_control_plane
   vars:
-    ansible_python_interpreter: /usr/bin/python3
+    ansible_python_interpreter: /usr/bin/python3    
+    helm_charts_base: "{{ lookup('env', 'PWD') }}/helm-charts"        
+    remote_helm_charts_base: "/tmp/helm-charts"
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default({}) }}"
@@ -29,12 +31,22 @@
         name: jq
         state: present
       become: true
+    - name: Check if Gaudi Nodes are Available
+      shell: "kubectl get nodes -l habana.ai/device.family=gaudi --no-headers | wc -l"
+      register: gaudi_node_count
+      changed_when: false
+
+    - name: Set Fact if Gaudi Nodes are Available
+      set_fact:
+        gaudi_available: "{{ gaudi_node_count.stdout | int > 0 }}"              
+      
     - name:  Create Kubernetes Namespace for Habana AI Operator
       community.kubernetes.k8s:
         state: present
         kind: Namespace
-        name: habana-ai-operator  
-    - name: Label namespace for pod Security Enforcement
+        name: habana-ai-operator
+      when: gaudi_available
+    - name: Label namespace for pod Security Enforcement      
       community.kubernetes.k8s:
         state: present
         kind: Namespace
@@ -44,12 +56,14 @@
             labels:
               pod-security.kubernetes.io/enforce: privileged
               pod-security.kubernetes.io/audit: privileged
-              pod-security.kubernetes.io/warn: privileged         
-    - name: Add gaudi-helm repository using Helm module
+              pod-security.kubernetes.io/warn: privileged                             
+      when: gaudi_available
+    - name: Add Gaudi Repository
       community.kubernetes.helm_repository:
         name: gaudi-helm
         repo_url: https://vault.habana.ai/artifactory/api/helm/gaudi-helm
         state: present
+      when: gaudi_available
     - name: Deploy Habana AI Operator
       community.kubernetes.helm:
         name: habana-ai-operator
@@ -58,16 +72,22 @@
         chart_version: 1.20.0-543
         state: present
       run_once: true     
+      when: gaudi_available
     - name: Output waiting status
       debug:
         msg: "Waiting for Habana AI Operator"
+      run_once: true
+      when: gaudi_available
     - name: wait for habana-ai-operator pods to be running
       pause:
         minutes: 5
       register: pause_result
+      when: gaudi_available
     - name: Output the result
       debug:
         msg: "Please Wait for few minutes for Habana AI Operator pods to be running."
+      run_once: true
+      when: gaudi_available
     - name: Ensure all Habana AI Operator pods are running and ready
       shell: |
         kubectl get pods -n habana-ai-operator -o json | jq -r '
@@ -79,7 +99,8 @@
       retries: 260
       delay: 10
       failed_when: pod_status.rc != 0 and pod_status.stdout != "0"
-    
+      when: gaudi_available
+
     - name: Install Habana Kubernetes device plugin
       kubernetes.core.k8s:
         state: present
@@ -88,9 +109,29 @@
       until: k8s_result is successful
       retries: 5
       delay: 10
+      when: gaudi_available
+
+    
+    - name: Transfer Dependency files
+      ansible.builtin.copy:
+        src: "{{ helm_charts_base }}/observability/habana-exporter"
+        dest: "{{ remote_helm_charts_base }}/"
+        mode: '0755'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        remote_src: no
+      when: gaudi_available       
+    
+    - name: Apply Habana Metrics Service Monitor
+      community.kubernetes.k8s:
+        state: present        
+        src: "{{ remote_helm_charts_base }}/habana-exporter/habana-metrics.yml"
+      when: gaudi_available
+  
     
     - name: Output the result
       debug:
         msg: "All Habana AI Operator pods are running and ready."
+      when: gaudi_available
 
    

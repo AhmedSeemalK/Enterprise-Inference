@@ -85,8 +85,7 @@ ingress:
   namespace: default
   secretname: ""
 
-svcmonitor:
-  enabled: false
+
 
 oidc:
   realm: master
@@ -153,7 +152,24 @@ nodeSelector: {}
 
 tolerations: []
 
-affinity: {}
+
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:      
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: node-role.kubernetes.io/inference-xeon
+              operator: In
+              values:
+                - "true"
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: node-role.kubernetes.io/inference-cpu
+              operator: In
+              values:
+                - "true"
 
 LLM_MODEL_ID: Intel/neural-chat-7b-v3-3
 
@@ -181,6 +197,9 @@ defaultModelConfigs:
     VLLM_CPU_KVCACHE_SPACE: "40"
   extraCmdArgs: ["--block-size", "128", "--dtype", "bfloat16", "--max-model-len","5196"]
   tensor_parallel_size: "1"
+
+svcmonitor:
+  enabled: false
 
 
 global:

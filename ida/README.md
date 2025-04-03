@@ -1,11 +1,16 @@
-# AI Inference as a Service Deployment Automation
+# Intel AI for Enterprise Inference 
+
+#### AI Inference as a Service Deployment Automation
 Unleash the Power of AI Inference
 
-   The Inference as a Service Deployment Automation suite is your ultimate companion for harnessing the full potential of AI inference capabilities. 
+   The Intel AI for Enterprise Inference suite is your ultimate companion for harnessing the full potential of AI inference capabilities. 
    
    Imagine a world where deploying and managing AI inference services is as effortless as a few keystrokes. With this automation suite, you can bid farewell to the complexities of manual configurations and embrace a future where agility and operational excellence are the norms.
    
    Powered by Kubernetes infrastructure.This automation suite empowers enterprises to seamlessly provision, reconfigure, and evolve their AI inference infrastructure with unparalleled agility.
+
+   This AI suite is designed for versatility, supporting model deployment for Inference across a diverse range of Intel hardware platforms, including   
+   Intel Xeon, Intel Gaudi, and Intel CPUs, ensuring maximum flexibility for your AI inference infrastructure requirements
 
 #### Key Components:
    - **Kubernetes**: A powerful container orchestration platform that automates the deployment, scaling, and management of containerized applications, ensuring high availability and efficient resource utilization.
@@ -17,9 +22,9 @@ Unleash the Power of AI Inference
    - **Model Deployments**: Automated deployment and management of llm models within the Kubernetes cluster, enabling scalable and reliable AI inference capabilities.
    
 # Table of Contents
-- [Inference as a Service Deployment Automation](#ai-inference-as-a-service-deployment-automation)
-- [Models for Inference as a Service](#models-for-inference-as-a-service)
-- [Prerequisites for Setting Up Inference as a Service Cluster](#prerequisites-for-setting-up-inference-as-a-service-cluster)
+- [Intel AI for Enterprise Inference Deployment Automation](#ai-inference-as-a-service-deployment-automation)
+- [Models for Inference Cluster](#models-for-inference-as-a-service)
+- [Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster](#prerequisites-for-setting-up-inference-as-a-service-cluster)
    - [Gaudi Node Requirement](#gaudi-node-requirements)
    - [SSH Key Setup](#ssh-key-setup)
    - [Supported Linux Distributions](#supported-linux-distributions)
@@ -30,15 +35,20 @@ Unleash the Power of AI Inference
   - [Hugging Face Token Generation](#hugging-face-token-generation)
 - [Designing Inventory for Inference Cluster Deployment](#designing-inventory-for-inference-cluster-deployment)
    - [Control Plane Node Sizing](#control-plane-node-sizing)
-   - [Worker Node Sizing](#worker-node-sizing)
+   - [Workload Node Sizing](#worker-node-sizing)
    - [CPU-based Workloads](#cpu-based-workloads)
    - [HPU-based Workloads (Intel Gaudi)](#gpu-based-workloads-intel-gaudi)
    - [Infrastructure Node Sizing](#infrastructure-node-sizing)
-   - [Setting Dedicated Infra Node](#setting-dedicated-inference-infra-node)
+   - [Setting Dedicated Infra Nodes](#setting-dedicated-inference-infra-nodes)
+   - [Setting Dedicated Intel Xeon Nodes](#setting-dedicated-inference-xeon-nodes)
+   - [Setting Dedicated Intel Gaudi Nodes](#setting-dedicated-gaudi-nodes)
+   - [Setting Dedicated Intel CPU Nodes](#setting-dedicated-cpu-nodes)
    - [Node Sizing Guide](#node-sizing-guide)
    - [Single Node Deployment](#single-node-deployment)
-   - [Single Master Multiple Worker Node Deployment](#single-master-multiple-worker-node-deployment)
-   - [Multi Master Multi Worker Node Deployment](#multi-master-multi-worker-node-deployment)
+   - [Single Master Multiple Workload Node Deployment](#single-master-multiple-workload-node-deployment)
+   - [Multi Master Multi Workload Node Deployment](#multi-master-multi-worker-node-deployment)
+   - [Multi Master Node with Dedicated Intel Xeon, Gaudi and CPU nodes Deployment](#multi-master-multi-workload-node-with-dedicated-intel-xeon-gaudi-and-cpu-nodes-deployment)
+
 - [Running the Inference Deployment Automation](#running-the-inference-deployment-automation)   
    - [Using the inference-config.cfg global configuration file](#using-the-inference-configcfg-configuration-file)
    - [Deploying the cluster](#deploying-the-cluster)
@@ -66,8 +76,8 @@ Unleash the Power of AI Inference
    - [Accessing Models Deployed with Keycloak and APISIX](#accessing-models-deployed-with-keycloak-and-apisix)
    - [Accessing Models Deployed without Keycloak and APISIX](#accessing-the-model-from-inference-cluster-deployed-without-apisix-and-keycloak)
 
-## Models for Inference as a Service
-The following table lists the pre-validated models for the Inference as a Service Automation.      
+## Models for Inference Cluster
+The following table lists the pre-validated models for the Intel AI for Enterprise Inference.      
 These models can be selectively deployed based on the configuration settings of models in the `inference-config.cfg` file, allowing organizations to choose the appropriate models that meet their specific business needs and applications.
 | Model                                  | Description                                                  |
 |----------------------------------------|---------------------------------------------------------------|
@@ -93,7 +103,7 @@ Notice:
 Please note that this list is subject to change, and additional models may be added or removed based on business requirements and model performance evaluations.    
 
 
-## Prerequisites for Setting Up Inference as a Service Cluster
+## Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster
 
    ##### Gaudi Node Requirements        
    Ensure that the Gaudi Node(s) in your cluster have firmware and driver versions 1.20 installed
@@ -108,7 +118,7 @@ Please note that this list is subject to change, and additional models may be ad
     
    ##### SSH Key Setup
    - Generate an SSH key pair (if you don't have one already) using the `ssh-keygen` command.
-   - Copy the public key (`id_rsa.pub`) to all the control plane and worker nodes that will be part of the cluster.
+   - Copy the public key (`id_rsa.pub`) to all the control plane and workload nodes that will be part of the cluster.
    - On each node, add the public key to the `authorized_keys` file in the `.ssh` directory of the user account you'll be using to connect to the nodes.
       ```
            echo "<YOUR_PUBLIC_KEY_CONTENTS>" >> ~/.ssh/authorized_keys
@@ -119,7 +129,7 @@ Please note that this list is subject to change, and additional models may be ad
 
    #### Network and Storage Requirement
    ##### Network Requirement
-   - Configure a network topology that allows communication between the control plane nodes and worker nodes.
+   - Configure a network topology that allows communication between the control plane nodes and workload nodes.
    - Ensure that the nodes have internet access to pull the required Docker images and other dependencies during the deployment process.
    - Ensure that the necessary ports are open for communication (e.g., ports for Kubernetes API server, etcd, etc.).
    ##### Storage Requirement
@@ -201,17 +211,17 @@ Please note that this list is subject to change, and additional models may be ad
    For an inference model deployment cluster in Kubernetes (K8s), the control plane nodes should have sufficient resources to handle the management and orchestration of the cluster. It's recommended to have at least 8 vCPUs and 32 GB of RAM per control plane node.    
    For larger clusters or clusters with high workloads, you may need to increase the resources further.
    
-   ##### Worker Node Sizing
-   The worker node sizing will depend on the specific requirements of the inference models and the workloads they need to handle. Here are some recommendations:
+   ##### Workload Node Sizing
+   The workload node sizing will depend on the specific requirements of the inference models and the workloads they need to handle. Here are some recommendations:
       
    ##### CPU-based Workloads
-   For CPU-based inference workloads, the worker nodes should have a sufficient number of vCPUs based on the number of models and the expected concurrency. A general guideline is to allocate 32 vCPUs per model instance, depending on the model complexity and resource requirements.
+   For CPU-based inference workloads, the workload nodes should have a sufficient number of vCPUs based on the number of models and the expected concurrency. A general guideline is to allocate 32 vCPUs per model instance, depending on the model complexity and resource requirements.
 
    ##### GPU-based Workloads (Intel Gaudi)
-   For GPU-based inference workloads using Intel Gaudi GPUs, the worker nodes should be equipped with the appropriate number of Gaudi GPUs based on the number of models and the expected concurrency.
+   For GPU-based inference workloads using Intel Gaudi GPUs, the workload nodes should be equipped with the appropriate number of Gaudi GPUs based on the number of models and the expected concurrency.
    Each Gaudi GPU can handle multiple model instances, depending on the model size and resource requirements.
    
-   Additionally, the worker nodes should have sufficient RAM and storage capacity to accommodate the inference models and any associated data.
+   Additionally, the workload nodes should have sufficient RAM and storage capacity to accommodate the inference models and any associated data.
 
 
    ##### Infrastructure Node Sizing
@@ -235,7 +245,7 @@ Please note that this list is subject to change, and additional models may be ad
    ##### Note:
    > It is recommended to keep the host names in the `inventory/hosts.yml` file similar to the actual machine hostnames. This ensures compatibility and maintain consistency across different systems and processes. Additionally, this automation will update the hostnames of the machines to match the ones specified in the `inventory/hosts.yml` file.
    
-   ### Setting Dedicated Inference Infra Node:   
+   ### Setting Dedicated Inference Infra Nodes:   
    To configure dedicated infra node edit the file `inventory/hosts.yml` and add the label `inference-infra` to the nodes.   
    This group will be used to schedule the Keycloak and APISIX workloads.
    
@@ -295,6 +305,186 @@ Please note that this list is subject to change, and additional models may be ad
             kube_inference_infra: 
    ```
 
+   ### Setting Dedicated Inference Xeon Nodes:   
+   To configure a dedicated Xeon nodes for deploying models, edit the file `inventory/hosts.yml` and add the label `inference-xeon` to the nodes.
+   This group will be used to schedule the workloads dedicated to run on Xeon nodes.
+   
+   follow these steps:
+   1. Open the `inventory/hosts.yml` file in a text editor.
+   2. Locate the section where you define your nodes. This is typically under the `all` group or any other group you've defined for your nodes.
+   3. For each node that you want to label as an `inference-xeon`, add the following line under the node's IP or hostname:
+   ```yaml
+   node_labels:
+     node-role.kubernetes.io/inference-xeon: "true"
+   ```
+   4.After labeling the desired nodes, list the nodes under the group kube_inference_xeon to include in this group. 
+
+   Please find the template for the inventory configuration with 2 dedicated xeon nodes for inference cluster
+   ```yaml
+      all:
+        hosts:
+          inference-control-plane-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+          inference-xeon-node-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-xeon: "true"         
+          inference-xeon-node-02:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-xeon: "true"
+          inference-infra-node-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key          
+        children:
+          kube_control_plane:
+            hosts:
+              inference-control-plane-01:       
+          kube_node:
+            hosts:
+              inference-xeon-node-01:
+              inference-xeon-node-02:
+              inference-infra-node-01:
+          kube_inference_xeon:
+              inference-xeon-node-01:
+              inference-xeon-node-02:
+        etcd:
+          hosts:
+            inference-control-plane-01:       
+        k8s_cluster:
+          children:
+            kube_control_plane:
+            kube_node:
+            kube_inference_xeon: 
+   ```
+
+
+   ### Setting Dedicated Gaudi Nodes:   
+   To configure a dedicated Gaudi nodes for deploying models, edit the file `inventory/hosts.yml` and add the label `inference-gaudi` to the nodes.
+   This group will be used to schedule the workloads dedicated to run on nodes with Intel Gaudi attached.
+   
+   follow these steps:
+   1. Open the `inventory/hosts.yml` file in a text editor.
+   2. Locate the section where you define your nodes. This is typically under the `all` group or any other group you've defined for your nodes.
+   3. For each node that you want to label as an `inference-gaudi`, add the following line under the node's IP or hostname:
+   ```yaml
+   node_labels:
+     node-role.kubernetes.io/inference-gaudi: "true"
+   ```
+   4.After labeling the desired nodes, list the nodes under the group kube_inference_gaudi to include in this group. 
+
+   Please find the template for the inventory configuration with 2 dedicated Gaudi nodes for inference cluster
+   ```yaml
+      all:
+        hosts:
+          inference-control-plane-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+          inference-gaudi-node-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-gaudi: "true"         
+          inference-gaudi-node-02:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-xeon: "true"
+          inference-infra-node-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key          
+        children:
+          kube_control_plane:
+            hosts:
+              inference-control-plane-01:       
+          kube_node:
+            hosts:
+              inference-gaudi-node-01:
+              inference-gaudi-node-02:
+              inference-infra-node-01:
+          kube_inference_gaudi:
+              inference-gaudi-node-01:
+              inference-gaudi-node-02:
+        etcd:
+          hosts:
+            inference-control-plane-01:       
+        k8s_cluster:
+          children:
+            kube_control_plane:
+            kube_node:
+            kube_inference_gaudi: 
+   ```
+
+   ### Setting Dedicated CPU Nodes:   
+   To configure a dedicated CPU nodes for deploying models, edit the file `inventory/hosts.yml` and add the label `inference-cpu` to the nodes.
+   This group will be used to schedule the workloads dedicated to run on nodes with Intel CPUs.
+   
+   follow these steps:
+   1. Open the `inventory/hosts.yml` file in a text editor.
+   2. Locate the section where you define your nodes. This is typically under the `all` group or any other group you've defined for your nodes.
+   3. For each node that you want to label as an `inference-cpu`, add the following line under the node's IP or hostname:
+   ```yaml
+   node_labels:
+     node-role.kubernetes.io/inference-cpu: "true"
+   ```
+   4.After labeling the desired nodes, list the nodes under the group kube_inference_cpu to include in this group. 
+
+   Please find the template for the inventory configuration with 2 dedicated CPU nodes for inference cluster
+   ```yaml
+      all:
+        hosts:
+          inference-control-plane-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+          inference-cpu-node-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-cpu: "true"         
+          inference-cpu-node-02:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-cpu: "true"
+          inference-infra-node-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key          
+        children:
+          kube_control_plane:
+            hosts:
+              inference-control-plane-01:       
+          kube_node:
+            hosts:
+              inference-cpu-node-01:
+              inference-cpu-node-02:
+              inference-infra-node-01:
+          kube_inference_cpu:
+              inference-cpu-node-01:
+              inference-cpu-node-02:
+        etcd:
+          hosts:
+            inference-control-plane-01:       
+        k8s_cluster:
+          children:
+            kube_control_plane:
+            kube_node:
+            kube_inference_cpu: 
+   ```
    
    ### Single Node Deployment:   
    
@@ -327,9 +517,9 @@ Please note that this list is subject to change, and additional models may be ad
             hosts: {}
    ```
 
- ### Single Master Multiple Worker Node Deployment:   
+ ### Single Master Multiple Workload Node Deployment:   
    
-   For deployment with a single control plane node and multiple worker nodes.   
+   For deployment with a single control plane node and multiple workload nodes.   
    Replace the placeholders in the following code with the appropriate values:
    
    ```yaml
@@ -339,11 +529,11 @@ Please note that this list is subject to change, and additional models may be ad
             ansible_host: "{{ private_ip }}"
             ansible_user: "{{ ansible_user }}"
             ansible_ssh_private_key_file: /path/to/your/ssh/key
-          inference-worker-node-01:
+          inference-workload-node-01:
             ansible_host: "{{ private_ip }}"
             ansible_user: "{{ ansible_user }}"
             ansible_ssh_private_key_file: /path/to/your/ssh/key
-          inference-worker-node-02:
+          inference-workload-node-02:
             ansible_host: "{{ private_ip }}"
             ansible_user: "{{ ansible_user }}"
             ansible_ssh_private_key_file: /path/to/your/ssh/key
@@ -353,8 +543,8 @@ Please note that this list is subject to change, and additional models may be ad
               inference-control-plane-01:
           kube_node:
             hosts:
-              inference-worker-node-01:
-              inference-worker-node-02:
+              inference-workload-node-01:
+              inference-workload-node-02:
           etcd:
             hosts:
               inference-control-plane-01:
@@ -366,8 +556,8 @@ Please note that this list is subject to change, and additional models may be ad
             hosts: {}
    ```
 
- ### Multi Master Multi Worker Node Deployment:   
-   For an enterprise-grade deployment with multiple control plane nodes and multiple worker nodes, it is recommended to follow these guidelines:
+ ### Multi Master Multi Workload Node Deployment:   
+   For an enterprise-grade deployment with multiple control plane nodes and multiple workload nodes, it is recommended to follow these guidelines:
    
    ##### Control Plane Node Count
    It's recommended to have an odd number of control plane nodes (e.g., 3, 5, 7) to ensure high availability and fault tolerance. If one control plane node fails, the remaining nodes can continue to operate and maintain a quorum, ensuring the cluster remains operational.
@@ -389,23 +579,23 @@ Please note that this list is subject to change, and additional models may be ad
             ansible_host: "{{ private_ip }}"
             ansible_user: "{{ ansible_user }}"
             ansible_ssh_private_key_file: /path/to/your/ssh/key
-          inference-worker-node-01:
+          inference-workload-node-01:
             ansible_host: "{{ private_ip }}"
             ansible_user: "{{ ansible_user }}"
             ansible_ssh_private_key_file: /path/to/your/ssh/key
-          inference-worker-node-02:
+          inference-workload-node-02:
             ansible_host: "{{ private_ip }}"
             ansible_user: "{{ ansible_user }}"
             ansible_ssh_private_key_file: /path/to/your/ssh/key
-          inference-worker-node-03:
+          inference-workload-node-03:
             ansible_host: "{{ private_ip }}"
             ansible_user: "{{ ansible_user }}"
             ansible_ssh_private_key_file: /path/to/your/ssh/key
-          inference-worker-node-04:
+          inference-workload-node-04:
             ansible_host: "{{ private_ip }}"
             ansible_user: "{{ ansible_user }}"
             ansible_ssh_private_key_file: /path/to/your/ssh/key         
-          inference-worker-node-05:
+          inference-workload-node-05:
             ansible_host: "{{ private_ip }}"
             ansible_user: "{{ ansible_user }}"
             ansible_ssh_private_key_file: /path/to/your/ssh/key
@@ -417,11 +607,11 @@ Please note that this list is subject to change, and additional models may be ad
               inference-control-plane-03:
           kube_node:
             hosts:
-              inference-worker-node-01:
-              inference-worker-node-02:
-              inference-worker-node-03:
-              inference-worker-node-04:
-              inference-worker-node-05:
+              inference-workload-node-01:
+              inference-workload-node-02:
+              inference-workload-node-03:
+              inference-workload-node-04:
+              inference-workload-node-05:
           etcd:
             hosts:              
               inference-control-plane-01:
@@ -435,6 +625,133 @@ Please note that this list is subject to change, and additional models may be ad
             hosts: {}
    ```
 
+   ### Multi Master Multi Workload Node with Dedicated Intel Xeon, Gaudi and CPU nodes Deployment:   
+   For an enterprise-grade deployment with multiple control plane nodes and multiple workload nodes,
+   This setup uses workload nodes to be mix of Intel Xeon, Intel Gaudi and Intel CPU nodes for deploying models.
+   
+   it is recommended to follow these guidelines:
+   
+   ##### Control Plane Node Count
+   It's recommended to have an odd number of control plane nodes (e.g., 3, 5, 7) to ensure high availability and fault tolerance. If one control plane node fails, the remaining nodes can continue to operate and maintain a quorum, ensuring the cluster remains operational.
+      
+   Replace the placeholders in the following code with the appropriate values:
+   
+   ```yaml
+      all:
+        hosts:
+          inference-control-plane-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+          inference-control-plane-02:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key         
+          inference-control-plane-03:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+          inference-infra-node-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-infra: "true"
+         inference-infra-node-02:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-infra: "true"         
+         inference-infra-node-03:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-infra: "true"
+         inference-workload-xeon-node-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-xeon: "true"
+         inference-workload-xeon-node-02:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-xeon: "true"         
+         inference-workload-gaudi-node-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-gaudi: "true"
+         inference-workload-gaudi-node-02:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-gaudi: "true"
+         inference-workload-cpu-node-01:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-cpu: "true"
+         inference-workload-cpu-node-02:
+            ansible_host: "{{ private_ip }}"
+            ansible_user: "{{ ansible_user }}"
+            ansible_ssh_private_key_file: /path/to/your/ssh/key
+            node_labels:
+              node-role.kubernetes.io/inference-cpu: "true"          
+        children:
+          kube_control_plane:
+            hosts:
+              inference-control-plane-01:
+              inference-control-plane-02:
+              inference-control-plane-03:
+          kube_node:
+            hosts:
+              inference-infra-node-01:
+              inference-infra-node-02:
+              inference-infra-node-03:
+              inference-workload-xeon-node-01:
+              inference-workload-xeon-node-02:
+              inference-workload-gaudi-node-01:
+              inference-workload-gaudi-node-02:
+              inference-workload-cpu-node-01:
+              inference-workload-cpu-node-02:
+          etcd:
+            hosts:              
+              inference-control-plane-01:
+              inference-control-plane-02:
+              inference-control-plane-03:
+         kube_inference_infra:
+              inference-infra-node-01:
+              inference-infra-node-02:
+              inference-infra-node-03:
+         kube_inference_xeon:
+              inference-workload-xeon-node-01:
+		        inference-workload-xeon-node-02:
+         kube_inference_gaudi:
+              inference-workload-gaudi-node-01:
+		        inference-workload-gaudi-node-02:
+         kube_inference_cpu:
+              inference-workload-cpu-node-01:
+		        inference-workload-cpu-node-02:
+          k8s_cluster:
+            children:
+              kube_control_plane:
+              kube_node:
+              kube_inference_infra:
+              kube_inference_xeon:
+              kube_inference_gaudi:
+              kube_inference_cpu:
+          calico_rr:
+            hosts: {}
+
+   ```
 
  
 
@@ -520,9 +837,9 @@ The automation accepts the following command-line options:
 When you run the automation, you will be presented with a main menu with the following options:
 ```
 ----------------------------------------------------------
-|  AI Inference as Service Deployment Automation          |
+|  Intel AI for Enterprise Inference                      |
 |---------------------------------------------------------|
-| 1) Provision Inference as Service Cluster               |
+| 1) Provision AI for Inference Cluster                   |
 | 2) Decommission Existing Cluster                        |
 | 3) Update Deployed Inference Cluster                    |
 |---------------------------------------------------------|
@@ -588,15 +905,15 @@ If you choose to reset the cluster, the automation will:
 `````
 Run:
 ----------------------------------------------------------
-|  AI Inference as Service Deployment Automation          |
+|  Intel AI for Enterprise Inference                      |
 |---------------------------------------------------------|
-| 1) Provision Inference as Service Cluster               |
+| 1) Provision AI for Inference Cluster                   |
 | 2) Decommission Existing Cluster                        |
 | 3) Update Deployed Inference Cluster                    |
 |---------------------------------------------------------|
 Please choose an option (1, 2, or 3):
 > 2
-You are about to reset the existing Inference as service cluster.
+You are about to reset the existing AI Inference cluster.
 This will remove all the current configurations and data.
 Are you sure you want to proceed? (yes/no): 
 Acknowledge it with "yes".
@@ -613,9 +930,9 @@ Run:
 bash inference-as-auto-deploy.sh
 
 ----------------------------------------------------------
-|  AI Inference as Service Deployment Automation          |
+|  Intel AI for Enterprise Inference                      |
 |---------------------------------------------------------|
-| 1) Provision Inference as Service Cluster               |
+| 1) Provision AI for Inference Cluster                   |
 | 2) Decommission Existing Cluster                        |
 | 3) Update Deployed Inference Cluster                    |
 |---------------------------------------------------------|
@@ -640,9 +957,9 @@ This option allows you to deploy a new LLM model on the Inference Cluster.
 Run:
 bash inference-as-auto-deploy.sh
 ----------------------------------------------------------
-|  AI Inference as Service Deployment Automation          |
+|  Intel AI for Enterprise Inference                      |
 |---------------------------------------------------------|
-| 1) Provision Inference as Service Cluster               |
+| 1) Provision AI for Inference Cluster                   |
 | 2) Decommission Existing Cluster                        |
 | 3) Update Deployed Inference Cluster                    |
 |---------------------------------------------------------|
@@ -678,9 +995,9 @@ This option allows you to deploy a new LLM model using model id from Hugging Fac
 Run:
 bash inference-as-auto-deploy.sh 
 ----------------------------------------------------------
-|  AI Inference as Service Deployment Automation          |
+|  Intel AI for Enterprise Inference                      |
 |---------------------------------------------------------|
-| 1) Provision Inference as Service Cluster               |
+| 1) Provision AI for Inference Cluster                   |
 | 2) Decommission Existing Cluster                        |
 | 3) Update Deployed Inference Cluster                    |
 |---------------------------------------------------------|
@@ -725,9 +1042,9 @@ This option allows you to remove deployed LLM model on the Kubernetes cluster.
 Run:
 bash inference-as-auto-deploy.sh
 ----------------------------------------------------------
-|  AI Inference as Service Deployment Automation          |
+|  Intel AI for Enterprise Inference                      |
 |---------------------------------------------------------|
-| 1) Provision Inference as Service Cluster               |
+| 1) Provision AI for Inference Cluster                   |
 | 2) Decommission Existing Cluster                        |
 | 3) Update Deployed Inference Cluster                    |
 |---------------------------------------------------------|
@@ -793,9 +1110,9 @@ The observability stack offers monitoring solution designed to operate natively 
 
 ###### For visual assistance, refer to the following observability dashboard 
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/opea-vllm-image-update/ida/catalog/docs/pictures/AI-Inference-as-Service-Observability-dashboard.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Observability-dashboard.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/opea-vllm-image-update/ida/catalog/docs/pictures/AI-Inference-as-Service-Observability-dashboard-two.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Observability-dashboard-two.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
 
 #### To access the observability dashboard, follow these steps:
 Initiate your web browser and proceed to navigate to the specified URL:
@@ -854,11 +1171,11 @@ Follow these instructions to import the Postman collection for your deployed mod
 3. Confirm the import to add the collection to your Postman workspace.
 
 For visual assistance, refer to the following example image of a Postman request setup:
-###### Imported Inference as Service Collection Request and Response
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/opea-vllm-image-update/ida/catalog/docs/pictures/AI-Inference-as-Service-Postman-Collection.png" alt="AI Inference Model API Example" width="800" height="200"/>
+###### Imported Intel AI for Enterprise Inference Collection Request and Response
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Postman-Collection.png" alt="AI Inference Model API Example" width="800" height="200"/>
 
-###### Imported Inference as Service Environment
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/opea-vllm-image-update/ida/catalog/docs/pictures/AI-Inference-as-Service-Postman-Environment.png" alt="AI Inference Model Environment Example" width="800" height="200"/>
+###### Imported Intel AI for Enterprise Inference Service Environment
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Postman-Environment.png" alt="AI Inference Model Environment Example" width="800" height="200"/>
 
 ### Accessing Models from OpenAI based Client
 For interacting with deployed models you can utilize any client that supports OpenAPI specification, such as Swagger UI or Open WebUI. 
@@ -866,11 +1183,11 @@ These tools facilitate seamless integration by offering interactive documentatio
 As an example, we will demonstrate how to use Open WebUI to connect with these models, allowing you to execute API calls and effectively manage your interactions with the models.
 
 ###### For visual assistance, refer to the following example image of a OpenAPI based client request and response:
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/opea-vllm-image-update/ida/catalog/docs/pictures/AI-Inference-as-Service-openapi-based-client.png" alt="AI Inference Model API openAPI request" width="800" height="220"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-openapi-based-client.png" alt="AI Inference Model API openAPI request" width="800" height="220"/>
 
 
 Please reference to this instruction to deploy the OpenAPI based client   
-[openapi-client-deployment](https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/opea-vllm-image-update/ida/catalog/openapi-client-deployment.md)
+[openapi-client-deployment](https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/openapi-client-deployment.md)
 
 
 
@@ -947,7 +1264,7 @@ curl -k ${KEYCLOAK_ADDR}/DeepSeek-R1-Distill-Llama-8B-vllmcpu/v1/completions -X 
 
 ###### For visual assistance, refer to the following example image of a curl request and response:
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/opea-vllm-image-update/ida/catalog/docs/pictures/AI-Inference-as-Service-curl-request.png" alt="AI Inference Model API curl request" width="900" height="100"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-curl-request.png" alt="AI Inference Model API curl request" width="900" height="100"/>
 
 
 #### Accessing the model from Inference Cluster deployed without APISIX and Keycloak

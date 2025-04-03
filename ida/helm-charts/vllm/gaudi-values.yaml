@@ -15,6 +15,18 @@ image:
   pullPolicy: IfNotPresent
 
 
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: node-role.kubernetes.io/inference-gaudi
+              operator: In
+              values:
+                - "true"
+
+
 runtime: "habana"
 HABANA_VISIBLE_DEVICES: "all"
 VLLM_NO_USAGE_STATS: 1

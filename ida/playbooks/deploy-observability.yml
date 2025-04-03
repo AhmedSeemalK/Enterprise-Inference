@@ -43,6 +43,14 @@
       community.kubernetes.helm_repository:
         name: prometheus-community
         repo_url: https://prometheus-community.github.io/helm-charts
+    - name: Transfer Dependency files
+      ansible.builtin.copy:
+        src: "{{ helm_charts_base }}/observability/"
+        dest: "{{ remote_helm_charts_base }}/"
+        mode: '0755'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        remote_src: no          
     - name: Verify Observability repository
       ansible.builtin.command: helm repo list
       register: helm_repo_list_observability
@@ -51,6 +59,29 @@
     - name: Synchronize Observability repositories
       ansible.builtin.shell: helm repo update
       when: helm_repo_list_observability.stdout != ""     
+    
+    - name: Create Config for Gaudi Grafana Dashboard
+      run_once: true
+      ansible.builtin.shell: |
+        kubectl create configmap habana-dashboard-configmap \
+          --from-file=habana-dashboard.json={{ remote_helm_charts_base }}/habana-exporter/grafan-gaudi-dashboard.json \
+          -n observability --dry-run=client -o yaml | kubectl apply -f -
+
+        kubectl label configmap habana-dashboard-configmap grafana_dashboard=1 -n observability --overwrite
+      args:
+        executable: /bin/bash
+
+    - name: Create Config for Xeon Grafana Dashboard
+      run_once: true
+      ansible.builtin.shell: |
+        kubectl create configmap xeon-dashboard-configmap \
+          --from-file=grafana-xeon-dashboard.json={{ remote_helm_charts_base }}/xeon-exporter/grafana-xeon-dashboard.json \
+          -n observability --dry-run=client -o yaml | kubectl apply -f -
+
+        kubectl label configmap xeon-dashboard-configmap grafana_dashboard=1 -n observability --overwrite
+      args:
+        executable: /bin/bash
+
     - name: Install Observability Stack
       community.kubernetes.helm:
         name: observability
@@ -95,7 +126,12 @@
                     resources:
                       requests:
                         storage: 2Gi                     
-          grafana:
+          grafana:                                 
+            sidecar:
+              dashboards:
+                enabled: true
+                label: grafana_dashboard
+                folder: /tmp/dashboards 
             persistence:
                 enabled: true
                 accessModes:

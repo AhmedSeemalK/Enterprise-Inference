@@ -435,11 +435,18 @@ deploy_inference_llm_models_playbook() {
         ingress_enabled="true"        
     else
         ingress_enabled="false"        
-    fi        
+    fi
+    if [ "$deploy_observability" == "yes" ]; then
+        vllm_metrics_enabled="true"        
+    else
+        vllm_metrics_enabled="false"        
+    fi
+    
     echo "Ingress based Deployment: $ingress_enabled"
     echo "APISIX Enabled: $apisix_enabled"
     echo "Keycloak Enabled: $deploy_keycloak"    
     echo "Gaudi based: $gaudi_deployment"
+    echo "Model Metrics Enabled: $vllm_metrics_enabled"
     
     tags=""    
     for model in $model_name_list; do
@@ -447,7 +454,7 @@ deploy_inference_llm_models_playbook() {
     done    
     tags=${tags%,}
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name} deploy_inference_llm_models_playbook=${deploy_inference_llm_models_playbook} huggingface_tensor_parellel_size=${huggingface_tensor_parellel_size}" --tags "$tags"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name} deploy_inference_llm_models_playbook=${deploy_inference_llm_models_playbook} huggingface_tensor_parellel_size=${huggingface_tensor_parellel_size} vllm_metrics_enabled=${vllm_metrics_enabled} " --tags "$tags"
 }
 
 deploy_observability_playbook() {
@@ -1357,7 +1364,7 @@ remove_worker_node() {
 main_menu() {
     parse_arguments "$@"
     echo "----------------------------------------------------------"
-    echo "${BLUE}|  AI Inference as Service Deployment Automation          |${NC}"
+    echo "${BLUE}|  Intel AI for Enterprise Inference                      |${NC}"
     echo "|---------------------------------------------------------|"
     echo "| 1) Provision Inference as Service Cluster               |"
     echo "| 2) Decommission Existing Cluster                        |"
