@@ -1122,6 +1122,10 @@ The observability stack offers monitoring solution designed to operate natively 
 
 <img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Model-Observability.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
 
+###### For visual assistance, refer to the following for Cluster wide observability dashboard 
+
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/service-monitor-changes/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Utilization-Cluster-Observability.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
+
 #### To access the observability dashboard, follow these steps:
 Initiate your web browser and proceed to navigate to the specified URL:
 ```
