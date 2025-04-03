@@ -814,10 +814,6 @@ Make sure to update the values in the inference-config.cfg file according to you
 Once you have configured the `inference-config.cfg` file and selected the components to be deployed, as well as   
 updated the `ida/inventory/hosts.yml` file with your desired requirement as documented, you are ready to proceed with the deployment. 
 
-Execute the following command to initiate the automation:
-```
-   bash inference-as-auto-deploy.sh
-```
 #### Alternative Deployment Method
 
 bash inference-as-auto-deploy.sh [OPTIONS]
@@ -835,6 +831,10 @@ The automation accepts the following command-line options:
 --cpu-or-gpu <c/g>: Specify whether to run on CPU or GPU.
 `````
 
+Execute the following command to initiate the automation:
+```
+   bash inference-as-auto-deploy.sh
+```
 ## Main Menu
 When you run the automation, you will be presented with a main menu with the following options:
 ```
