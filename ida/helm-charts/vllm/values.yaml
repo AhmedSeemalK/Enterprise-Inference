@@ -199,7 +199,7 @@ defaultModelConfigs:
   tensor_parallel_size: "1"
 
 svcmonitor:
-  enabled: false
+  enabled: false  
 
 
 global:
@@ -226,5 +226,5 @@ global:
   monitoring: false
 
   # Prometheus Helm install release name for serviceMonitor
-  prometheusRelease: prometheus-stack
+  prometheusRelease: observability
 
