@@ -17,4 +17,4 @@ Interact with Deployed model
 ```
 
 ###### For visual assistance, refer to the following example image of a OpenAPI based client request and response:
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/opea-vllm-image-update/ida/catalog/docs/pictures/AI-Inference-as-Service-openapi-based-client.png" alt="AI Inference Model API curl request" width="800" height="220"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-openapi-based-client.png" alt="AI Inference Model API curl request" width="800" height="220"/>
