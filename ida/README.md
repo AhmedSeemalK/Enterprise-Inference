@@ -20,10 +20,10 @@ Unleash the Power of AI Inference
    - **Keycloak**: An open-source identity and access management solution that provides robust authentication and authorization capabilities, ensuring secure access to AI services and resources within the cluster.
    - **APISIX**: A cloud-native API gateway, handling API traffic and providing advanced features caching, and authentication, enabling efficient and secure access to deployed AI models.
    - **Observability**: An open-source monitoring solution designed to operate natively within Kubernetes clusters, providing comprehensive visibility into the performance, health, and resource utilization of deployed applications and cluster components through metrics, visualization, and alerting capabilities.
-   - **Model Deployments**: Automated deployment and management of AI LLM Models within the Kubernetes cluster, enabling scalable and reliable AI Inference capabilities.
+   - **Model Deployments**: Automated deployment and management of AI LLM Models within the Kubernetes Inference cluster, enabling scalable and reliable AI Inference capabilities.
    
 # Table of Contents
-- [Intel AI for Enterprise Inference Deployment Automation](#intel-ai-for-enterprise-inference)
+- [Intel AI for Enterprise Inference Deployment Suite](#intel-ai-for-enterprise-inference)
 - [Models for Inference Cluster](#models-for-inference-cluster)
 - [Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster](#prerequisites-for-setting-up-intel-ai-for-enterprise-inference-cluster)
    - [Gaudi Node Requirement](#gaudi-node-requirements)
@@ -50,9 +50,9 @@ Unleash the Power of AI Inference
    - [Multi Master Multi Workload Node Deployment](#multi-master-multi-workload-node-deployment)
    - [Multi Master Node with Dedicated Intel Xeon, Gaudi and CPU nodes Deployment](#multi-master-multi-workload-node-with-dedicated-intel-xeon-gaudi-and-cpu-nodes-deployment)
 
-- [Running the Inference Deployment Automation](#running-the-inference-deployment-automation)
+- [Running the AI Inference Deployment Suite](#usage)
    - [Component Based Deployment](#component-based-deployment)   
-   - [Using the inference-config.cfg global configuration file](#using-the-inference-configcfg-configuration-file)
+   - [Using the inference-config.cfg global configuration file](#running-the-inference-deployment-automation-with-inference-configcfg)
    - [Deploying the cluster](#deploying-the-cluster)
    - [Alternative Deployment Method](#alternative-deployment-method)
    - [Access Formats for Deployed AI Models](#alternative-deployment-method)
@@ -245,7 +245,7 @@ Please note that this list is subject to change, and additional models may be ad
    ## Configuring inventory/hosts.yml 
 
    ##### Note:
-   > It is recommended to keep the host names in the `inventory/hosts.yml` file similar to the actual machine hostnames. This ensures compatibility and maintain consistency across different systems and processes. Additionally, this automation will update the hostnames of the machines to match the ones specified in the `inventory/hosts.yml` file.
+   > It is recommended to keep the host names in the `inventory/hosts.yml` file similar to the actual machine hostnames. This ensures compatibility and maintain consistency across different systems and processes. Additionally, this AI Inference Deployment Suite will update the hostnames of the machines to match the ones specified in the `inventory/hosts.yml` file.
    
    ### Setting Dedicated Inference Infra Nodes:   
    To configure dedicated infra node edit the file `inventory/hosts.yml` and add the label `inference-infra` to the nodes.   
@@ -766,7 +766,7 @@ Please note that this list is subject to change, and additional models may be ad
 ## Component Based Deployment
 
 ### Usage
-#### Running the Inference Deployment Automation with inference-config.cfg
+#### Running the AI Inference Deployment Suite with inference-config.cfg
 
 If you don't want to be prompted for the required parameters, you can use the `ida\inference-config.cfg` file to provide the necessary values. The automation will read the values from this file.
 Here's an example of the `inference-config.cfg` file:
