@@ -23,8 +23,8 @@ Unleash the Power of AI Inference
    
 # Table of Contents
 - [Intel AI for Enterprise Inference Deployment Automation](#ai-inference-as-a-service-deployment-automation)
-- [Models for Inference Cluster](#models-for-inference-as-a-service)
-- [Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster](#prerequisites-for-setting-up-inference-as-a-service-cluster)
+- [Models for Inference Cluster](#models-for-inference-cluster)
+- [Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster](#prerequisites-for-setting-up-intel-ai-for-enterprise-inference-cluster)
    - [Gaudi Node Requirement](#gaudi-node-requirements)
    - [SSH Key Setup](#ssh-key-setup)
    - [Supported Linux Distributions](#supported-linux-distributions)
@@ -35,7 +35,7 @@ Unleash the Power of AI Inference
   - [Hugging Face Token Generation](#hugging-face-token-generation)
 - [Designing Inventory for Inference Cluster Deployment](#designing-inventory-for-inference-cluster-deployment)
    - [Control Plane Node Sizing](#control-plane-node-sizing)
-   - [Workload Node Sizing](#worker-node-sizing)
+   - [Workload Node Sizing](#workload-node-sizing)
    - [CPU-based Workloads](#cpu-based-workloads)
    - [HPU-based Workloads (Intel Gaudi)](#gpu-based-workloads-intel-gaudi)
    - [Infrastructure Node Sizing](#infrastructure-node-sizing)
@@ -46,10 +46,11 @@ Unleash the Power of AI Inference
    - [Node Sizing Guide](#node-sizing-guide)
    - [Single Node Deployment](#single-node-deployment)
    - [Single Master Multiple Workload Node Deployment](#single-master-multiple-workload-node-deployment)
-   - [Multi Master Multi Workload Node Deployment](#multi-master-multi-worker-node-deployment)
+   - [Multi Master Multi Workload Node Deployment](#multi-master-multi-workload-node-deployment)
    - [Multi Master Node with Dedicated Intel Xeon, Gaudi and CPU nodes Deployment](#multi-master-multi-workload-node-with-dedicated-intel-xeon-gaudi-and-cpu-nodes-deployment)
 
-- [Running the Inference Deployment Automation](#running-the-inference-deployment-automation)   
+- [Running the Inference Deployment Automation](#running-the-inference-deployment-automation)
+   - [Component Based Deployment](#component-based-deployment)   
    - [Using the inference-config.cfg global configuration file](#using-the-inference-configcfg-configuration-file)
    - [Deploying the cluster](#deploying-the-cluster)
    - [Alternative Deployment Method](#alternative-deployment-method)
@@ -753,9 +754,11 @@ Please note that this list is subject to change, and additional models may be ad
 
    ```
 
- 
+--- 
 
-## Usage
+## Component Based Deployment
+
+### Usage
 #### Running the Inference Deployment Automation
 
 ##### Authentication Formats for Deployed AI Models:   
