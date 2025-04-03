@@ -52,7 +52,7 @@ Unleash the Power of AI Inference
 
 - [Running the AI Inference Deployment Suite](#usage)
    - [Component Based Deployment](#component-based-deployment)   
-   - [Using the inference-config.cfg global configuration file](#running-the-inference-deployment-automation-with-inference-configcfg)
+   - [Using the inference-config.cfg global configuration file](#running-the-ai-inference-deployment-suite-with-inference-configcfg)
    - [Deploying the cluster](#deploying-the-cluster)
    - [Alternative Deployment Method](#alternative-deployment-method)
    - [Access Formats for Deployed AI Models](#alternative-deployment-method)
@@ -98,11 +98,15 @@ These models can be selectively deployed based on the configuration settings of 
 | 22. [**cpu-deepseek-r1-distill-qwen-32b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B) | CPU-optimized version of the Distilled Qwen-32B model for efficient inference on CPUs. |
 | 23. [**cpu-deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | CPU-optimized version of the Distilled LLama-8B model for efficient inference on CPUs. |
 
+##### Notice:
+   > Please note that this list is subject to change, and additional models may be added or removed based on business requirements and model performance evaluations.
 
-These models can be deployed, providing a range of inference capabilities to suit various needs and applications.
+For deploying models that are not part of the prevalidated models list from Hugging Face [please refer to the this steps](deploy-llm-model-from-hugging-face)
+##### Notice:
+   > Deploying models that is not part of above prevalidated models list by our team. Additional validation and optimization may be required to ensure seamless deployment in an Enterprise environment.
 
-Notice:   
-Please note that this list is subject to change, and additional models may be added or removed based on business requirements and model performance evaluations.    
+
+Both Prevalidated and not valited Models can be deployed, enabling a range of Inference capabilities to support diverse Enterprise needs and applications.
 
 
 ## Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster
