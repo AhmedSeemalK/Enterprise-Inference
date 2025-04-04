@@ -223,9 +223,9 @@ Both Prevalidated and Non-validated Models can be deployed, enabling a range of 
    ##### CPU-based Workloads
    For CPU-based inference workloads, the workload nodes should have a sufficient number of vCPUs based on the number of models and the expected concurrency. A general guideline is to allocate 32 vCPUs per model instance, depending on the model complexity and resource requirements.
 
-   ##### GPU-based Workloads (Intel Gaudi)
-   For GPU-based inference workloads using Intel Gaudi GPUs, the workload nodes should be equipped with the appropriate number of Gaudi GPUs based on the number of models and the expected concurrency.
-   Each Gaudi GPU can handle multiple model instances, depending on the model size and resource requirements.
+   ##### HPU-based Workloads (Intel Gaudi)
+   For HPU-based inference workloads using Intel Gaudi HPUs, the workload nodes should be equipped with the appropriate number of Gaudi HPUs based on the number of models and the expected concurrency.
+   Each Gaudi HPU can handle multiple model instances, depending on the model size and resource requirements.
    
    Additionally, the workload nodes should have sufficient RAM and storage capacity to accommodate the inference models and any associated data.
 
@@ -833,7 +833,7 @@ The AI Inference Deployment Suite accepts the following command-line options:
 --keycloak-admin-password <password>: The Keycloak admin password.
 --hugging-face-token <token>: The token for Huggingface.
 --models <models>: The models to deploy (comma-separated list of model numbers or names).
---cpu-or-gpu <c/g>: Specify whether to run on CPU or GPU.
+--cpu-or-gpu <c/g>: Specify whether to run on CPU or HPU.
 `````
 
 Execute the following command to initiate the AI Inference Deployment Suite:
