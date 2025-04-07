@@ -147,7 +147,7 @@ Look for output similar to:
 
 <img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Driver-version.png" alt="AI Inference Driver Snapshot" width="1000" height="120"/>    
    
-#### Step 3: Verify Current Habana runtime Version
+#### Step 3: Verify Current Habana Runtime Version
 Use the following commands to check the required Habana runtime version installed on your Gaudi nodes:
 
 ```bash
