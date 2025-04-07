@@ -26,7 +26,7 @@ Unleash the Power of AI Inference
 - [Intel AI for Enterprise Inference Deployment Suite](#intel-ai-for-enterprise-inference)
 - [Models for Inference Cluster](#models-for-inference-cluster)
 - [Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster](#prerequisites-for-setting-up-intel-ai-for-enterprise-inference-cluster)
-   - [Gaudi Node Requirement](#gaudi-node-requirements)
+   - [Gaudi Node Requirement](#gaudi-node-requirements-and-setup-guide)
    - [SSH Key Setup](#ssh-key-setup)
    - [Supported Linux Distributions](#supported-linux-distributions)
    - [Network and Storage Requirement](#network-and-storage-requirement)
@@ -38,7 +38,7 @@ Unleash the Power of AI Inference
    - [Control Plane Node Sizing](#control-plane-node-sizing)
    - [Workload Node Sizing](#workload-node-sizing)
    - [CPU-based Workloads](#cpu-based-workloads)
-   - [HPU-based Workloads (Intel Gaudi)](#gpu-based-workloads-intel-gaudi)
+   - [HPU-based Workloads (Intel Gaudi)](#hpu-based-workloads-intel-gaudi)
    - [Infrastructure Node Sizing](#infrastructure-node-sizing)
    - [Setting Dedicated Infra Nodes](#setting-dedicated-inference-infra-nodes)
    - [Setting Dedicated Intel Xeon Nodes](#setting-dedicated-inference-xeon-nodes)
@@ -111,16 +111,43 @@ Both Prevalidated and Non-validated Models can be deployed, enabling a range of 
 
 ## Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster
 
-   ##### Gaudi Node Requirements        
-   Ensure that the Gaudi Node(s) in your cluster have firmware and driver versions 1.20 installed
-   Verify the firmware version by running the below command
-   ```
-      hl-smi
+### Gaudi Node Requirements and Setup Guide:
+This guide helps you verify and install the required firmware and driver version **1.20.0** for **Habana Gaudi** nodes in your Kubernetes or Standalone Environment.
+   
+#### Step 1: Verify Current Firmware Version
+Use the following commands to check the firmware version installed on your Gaudi nodes:
 
-      and      
+```bash
+hl-smi -L | grep SPI
+```
+Look for output similar to:
+```
+Firmware [SPI] Version : Preboot version hl-gaudi2-1.20.0-fw-58.0.0-sec-9 (Jan 16 2025 - 17:51:04)
+```
+###### For visual assistance, refer to the following snapshot for Firmware version:
 
-      hl-smi -L | grep SPI
-   ```
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Firmware-version.png" alt="AI Inference Firmware Snapshot" width="1000" height="120"/>   
+   
+
+#### Step 2: Verify Current Driver Version
+Use the following commands to check the required driver version installed on your Gaudi nodes:
+
+```bash
+hl-smi -L 
+```
+Look for output similar to:
+```
++-----------------------------------------------------------------------------+
+| HL-SMI Version:                              hl-1.20.0-fw-58.1.1.1          |
+| Driver Version:                                     1.20.0-bd87f71          |
+| Nic Driver Version:                                 1.20.0-e4fe12d          |
+|-------------------------------+----------------------+----------------------+
+```
+###### For visual assistance, refer to the following snapshot for Driver version:
+
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Driver-version.png" alt="AI Inference Driver Snapshot" width="1000" height="120"/>    
+   
+   
     
    ##### SSH Key Setup
    - Generate an SSH key pair (if you don't have one already) using the `ssh-keygen` command.
