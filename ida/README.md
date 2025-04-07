@@ -161,9 +161,12 @@ ii  habanalabs-container-runtime  1.20.0-543  HABANA container runtime
 
 <img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Habana-version.png" alt="AI Inference Habana runtime Snapshot" width="1000" height="60"/> 
 
+>  **If the Firmware, Driver, and Habana Runtime are all at version 1.20.0**, no further installation steps are required. You may proceed to the next section of your setup.  
+
+>  **If any of the components are at a different version**, follow the steps below to uninstall and reinstall the correct version.
 
    
-    
+---   
    ##### SSH Key Setup
    - Generate an SSH key pair (if you don't have one already) using the `ssh-keygen` command.
    - Copy the public key (`id_rsa.pub`) to all the control plane and workload nodes that will be part of the cluster.
