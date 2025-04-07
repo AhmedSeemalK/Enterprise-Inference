@@ -147,6 +147,21 @@ Look for output similar to:
 
 <img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Driver-version.png" alt="AI Inference Driver Snapshot" width="1000" height="120"/>    
    
+#### Step 3: Verify Current Habana runtime Version
+Use the following commands to check the required Habana runtime version installed on your Gaudi nodes:
+
+```bash
+dpkg -l | grep habanalabs-container-runtime
+```
+Look for output similar to:
+```
+ii  habanalabs-container-runtime  1.20.0-543  HABANA container runtime
+```
+###### For visual assistance, refer to the following snapshot for Habana runtime version:
+
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Habana-version.png" alt="AI Inference Habana runtime Snapshot" width="1000" height="60"/> 
+
+
    
     
    ##### SSH Key Setup
