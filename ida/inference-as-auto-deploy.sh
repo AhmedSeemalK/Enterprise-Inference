@@ -922,6 +922,17 @@ fresh_installation() {
             else
                 echo "Skipping Keycloak deployment..."
             fi
+            
+            if [[ "$deploy_observability" == "yes" ]]; then
+                echo "Deploying observability..."
+                execute_and_check "Deploying Observability..." deploy_observability_playbook "$@" \
+                    "Observability is deployed successfully." \
+                    "Failed to deploy Observability. Exiting!."
+            else
+                echo "Skipping Observability deployment..."
+            fi
+            
+            
             if [[ "$deploy_llm_models" == "yes" ]]; then
                 model_name_list=$(get_model_names)                
                 if [ -z "$model_name_list" ]; then
@@ -935,14 +946,7 @@ fresh_installation() {
                 echo "Skipping LLM Model deployment..."
             fi
             
-            if [[ "$deploy_observability" == "yes" ]]; then
-                echo "Deploying observability..."
-                execute_and_check "Deploying Observability..." deploy_observability_playbook "$@" \
-                    "Observability is deployed successfully." \
-                    "Failed to deploy Observability. Exiting!."
-            else
-                echo "Skipping Observability deployment..."
-            fi
+            
             
             if [ "$deploy_llm_models" == "yes" ]; then
             echo -e "${BLUE}-------------------------------------------------------------------------------------${NC}"
