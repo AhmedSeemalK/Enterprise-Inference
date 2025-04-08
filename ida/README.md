@@ -214,7 +214,7 @@ sudo modprobe  habanalabs_ib && sudo modprobe  habanalabs_en
 
 Please follow above steps for verifying the installed firmware, driver and runtime versions.
 
-> 📘 **For detailed documentation, refer to the official guide:** [Intel Gaudi Software Installation Documentation](https://docs.habana.ai/en/v1.20.1/Installation_Guide/Driver_Installation.html)
+> **For detailed documentation, refer to the official guide:** [Intel Gaudi Software Installation Documentation](https://docs.habana.ai/en/v1.20.1/Installation_Guide/Driver_Installation.html)
 
    
 ---   
