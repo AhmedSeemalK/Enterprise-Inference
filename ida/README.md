@@ -165,6 +165,58 @@ ii  habanalabs-container-runtime  1.20.0-543  HABANA container runtime
 
 >  **If any of the components are at a different version**, follow the steps below to uninstall and reinstall the correct version.
 
+### Installing Habana Firmware Driver Runtime Software
+
+#### Step 1: Unload Existing Drivers
+```
+echo "Unloading Habana drivers..."
+sudo modprobe -r habanalabs && sudo modprobe -r habanalabs_cn
+sudo modprobe -r habanalabs_ib && sudo modprobe -r habanalabs_en
+```
+
+#### Step 2: Clean Previous Installations (Optional)
+```
+echo "Removing old Habana runtime packages..."
+sudo apt remove --purge -y habanalabs-container-runtime
+sudo apt clean
+```
+
+#### Step 3: Install Required Packages
+```
+sudo apt update
+echo "Installing Habana firmware and container runtime..."
+sudo apt install -y habanalabs-firmware-odm
+sudo apt install -y habanalabs-container-runtime
+```
+
+#### Step 4: Install or Upgrade Habana Base Installer
+```
+echo "Downloading Habana installer..."
+wget -nv https://vault.habana.ai/artifactory/gaudi-installer/1.20.0/habanalabs-installer.sh
+chmod +x habanalabs-installer.sh
+
+# For Fresh Installation
+./habanalabs-installer.sh install --type base
+
+# For Upgrade Installation
+./habanalabs-installer.sh upgrade --type base
+```
+
+#### Step 5: Update Firmware
+```
+echo "Updating firmware..."
+sudo hl-fw-loader
+```
+
+#### Step 6: Load Habana Drivers
+```
+echo "loading habana drivers..."
+sudo modprobe  habanalabs && sudo modprobe  habanalabs_cn
+sudo modprobe  habanalabs_ib && sudo modprobe  habanalabs_en
+```
+
+Please follow above steps for verifying the installed firmware, driver and runtime versions.
+
    
 ---   
    ##### SSH Key Setup
