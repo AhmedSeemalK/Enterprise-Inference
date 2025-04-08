@@ -126,7 +126,7 @@ Firmware [SPI] Version : Preboot version hl-gaudi2-1.20.0-fw-58.0.0-sec-9 (Jan 1
 ```
 ###### For visual assistance, refer to the following snapshot for Firmware version:
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Firmware-version.png" alt="AI Inference Firmware Snapshot" width="800" height="120"/>   
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Firmware-version.png" alt="AI Inference Firmware Snapshot" width="800" height="120"/>   
    
 
 #### Step 2: Verify Current Driver Version
@@ -145,7 +145,7 @@ Look for output similar to:
 ```
 ###### For visual assistance, refer to the following snapshot for Driver version:
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Driver-version.png" alt="AI Inference Driver Snapshot" width="800" height="120"/>    
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Driver-version.png" alt="AI Inference Driver Snapshot" width="800" height="120"/>    
    
 #### Step 3: Verify Current Habana Runtime Version
 Use the following commands to check the required Habana runtime version installed on your Gaudi nodes:
