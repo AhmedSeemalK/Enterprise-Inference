@@ -495,28 +495,9 @@ add_inference_nodes_playbook() {
         return 1
     fi
     invoke_prereq_workflows     
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/facts.yml --become --become-user=root       
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/cluster.yml --become --become-user=root
-    namespace="habana-ai-operator"
-    if kubectl get namespace "$namespace" &>/dev/null; then
-        daemonsets=("habana-ai-device-plugin-ds" "habana-ai-driver-ubuntu-22-04-ds")
-        restarted_daemonsets=()
-        not_found_daemonsets=()
-        for ds in "${daemonsets[@]}"; do
-            if kubectl get ds "$ds" -n "$namespace" &>/dev/null; then
-                kubectl rollout restart ds "$ds" -n "$namespace"
-                restarted_daemonsets+=("$ds")
-            else
-                not_found_daemonsets+=("$ds")
-            fi
-        done
-        if [ "${#restarted_daemonsets[@]}" -gt 0 ]; then
-            echo "Restarted DaemonSets: ${restarted_daemonsets[@]}"
-        fi
-        if [ "${#not_found_daemonsets[@]}" -gt 0 ]; then
-            echo "DaemonSets not found in namespace $namespace: ${not_found_daemonsets[@]}"
-        fi            
-    fi    
+    #ansible-playbook -i "${INVENTORY_PATH}" playbooks/facts.yml --become --become-user=root       
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/cluster.yml --limit="$worker_node_name" --become --become-user=root
+    
 }
 
 remove_inference_nodes_playbook() {
