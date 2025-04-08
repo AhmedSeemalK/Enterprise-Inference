@@ -111,7 +111,7 @@ Both Prevalidated and Non-validated Models can be deployed, enabling a range of 
 
 ## Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster
 
-### Gaudi Node Requirements and Setup Guide:
+#### Gaudi Node Requirements and Setup Guide:
 This guide helps you verify and install the required firmware and driver version **1.20.0** for **Habana Gaudi** nodes in your Kubernetes or Standalone Environment.
    
 #### Step 1: Verify Current Firmware Version
@@ -165,7 +165,7 @@ ii  habanalabs-container-runtime  1.20.0-543  HABANA container runtime
 
 >  **If any of the components are at a different version**, follow the steps below to uninstall and reinstall the correct version.
 
-### Installing Habana Firmware Driver Runtime Software
+#### Installing Habana Firmware Driver Runtime Software
 
 #### Step 1: Unload Existing Drivers
 ```
