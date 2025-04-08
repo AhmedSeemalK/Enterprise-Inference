@@ -126,7 +126,7 @@ Firmware [SPI] Version : Preboot version hl-gaudi2-1.20.0-fw-58.0.0-sec-9 (Jan 1
 ```
 ###### For visual assistance, refer to the following snapshot for Firmware version:
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Firmware-version.png" alt="AI Inference Firmware Snapshot" width="1000" height="120"/>   
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Firmware-version.png" alt="AI Inference Firmware Snapshot" width="800" height="120"/>   
    
 
 #### Step 2: Verify Current Driver Version
@@ -145,7 +145,7 @@ Look for output similar to:
 ```
 ###### For visual assistance, refer to the following snapshot for Driver version:
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Driver-version.png" alt="AI Inference Driver Snapshot" width="1000" height="120"/>    
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Driver-version.png" alt="AI Inference Driver Snapshot" width="800" height="120"/>    
    
 #### Step 3: Verify Current Habana Runtime Version
 Use the following commands to check the required Habana runtime version installed on your Gaudi nodes:
@@ -159,7 +159,7 @@ ii  habanalabs-container-runtime  1.20.0-543  HABANA container runtime
 ```
 ###### For visual assistance, refer to the following snapshot for Habana runtime version:
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Habana-version.png" alt="AI Inference Habana runtime Snapshot" width="1000" height="60"/> 
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/habana-docs/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Habana-version.png" alt="AI Inference Habana runtime Snapshot" width="800" height="60"/> 
 
 >  **If the Firmware, Driver, and Habana Runtime are all at version 1.20.0**, no further installation steps are required. You may proceed to the next section of your setup.  
 
