@@ -8,9 +8,9 @@ Unleash the Power of AI Inference
    
    Imagine a world where deploying and managing AI Inference services is as effortless as a few keystrokes. With AI Inference Deployment Suite, you can bid farewell to the complexities of manual provisioning and embrace a future where agility and operational excellence are the norms.
    
-   Powered by Kubernetes Infrastructure. AI Inference Deployment Suite empowers Enterprises to seamlessly provision, deploy, connfigure, and evolve their AI Inference infrastructure with unparalleled agility.
+   Powered by Kubernetes Infrastructure. AI Inference Deployment suite empowers Enterprises to seamlessly provision, deploy, configure, and evolve their AI Inference Infrastructure with unparalleled agility.
 
-   AI Inference Deployment Suite is designed for versatility, supporting model deployment for Inference across a diverse range of Intel hardware platforms, including   
+   AI Inference Deployment suite is designed for versatility, supporting model deployment for Inference across a diverse range of Intel hardware platforms, including   
    Intel Xeon, Intel Gaudi, and Intel CPUs, ensuring maximum flexibility for your AI Inference infrastructure requirements
 
 #### Key Components:
