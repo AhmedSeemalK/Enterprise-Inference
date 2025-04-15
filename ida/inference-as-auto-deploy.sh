@@ -459,11 +459,16 @@ deploy_inference_llm_models_playbook() {
 }
 
 deploy_observability_playbook() {
-    if [ "$deploy_logging" = "yes" ]; then
-        ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-observability.yml --become --become-user=root --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} deploy_observability=${deploy_observability} deploy_logging=yes" 
-    else
-        ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-observability.yml --become --become-user=root --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} deploy_observability=${deploy_observability} deploy_logging=no"
+    tags=""
+    if [ "${deploy_observability}" = "yes" ]; then
+        tags+="deploy_observability,"
     fi
+    if [ "${deploy_logging}" = "yes" ]; then
+        tags+="deploy_logging,"
+    fi
+    tags="${tags%,}"            
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-observability.yml --become --become-user=root --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} deploy_observability=${deploy_observability} deploy_logging=${deploy_logging}" --tags "$tags"
+    
 }
 
 deploy_cluster_config_playbook() {    
