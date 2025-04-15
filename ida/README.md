@@ -11,7 +11,7 @@ Unleash the Power of AI Inference
    Powered by Kubernetes Infrastructure. AI Inference Deployment suite empowers Enterprises to seamlessly provision, deploy, configure, and evolve their AI Inference Infrastructure with unparalleled agility.
 
    AI Inference Deployment suite is designed for versatility, supporting model deployment for Inference across a diverse range of Intel hardware platforms, including   
-   Intel Xeon, Intel Gaudi, and Intel CPUs, ensuring maximum flexibility for your AI Inference infrastructure requirements
+   Intel Xeon, Intel Gaudi, and Intel CPUs, ensuring maximum flexibility for your AI Inference Infrastructure requirements
 
 #### Key Components:
    - **Kubernetes**: A powerful container orchestration platform that automates the deployment, scaling, and management of containerized applications, ensuring high availability and efficient resource utilization.
@@ -1294,7 +1294,7 @@ For visual assistance, refer to the following example image of a Postman request
 
 ### Accessing Models from OpenAI based Client
 For interacting with deployed models you can utilize any client that supports OpenAPI specification, such as Swagger UI or Open WebUI. 
-These tools facilitate seamless integration by offering interactive documentation many features.  
+These tools facilitate seamless integration by offering interactive documentation and many other features.  
 As an example, we will demonstrate how to use Open WebUI to connect with these models, allowing you to execute API calls and effectively manage your interactions with the models.
 
 ###### For visual assistance, refer to the following example image of a OpenAPI based client request and response:
