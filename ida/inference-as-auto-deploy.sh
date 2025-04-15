@@ -161,8 +161,63 @@ hugging_face_model_remove_name=""
 huggingface_tensor_parellel_size=""
 
 
+
+
+read_config_file() {
+    local config_file="$HOMEDIR/inference-config.cfg"
+    if [ -f "$config_file" ]; then
+        echo "Configuration file found, setting vars!"
+        echo "---------------------------------------"
+        while IFS='=' read -r key value || [ -n "$key" ]; do
+            # Trim leading/trailing whitespace
+            key=$(echo "$key" | xargs)
+            value=$(echo "$value" | xargs)
+            # Set the variable using a temporary file
+            if [[ "$value" == "on" ]]; then
+                value="yes"
+            elif [[ "$value" == "off" ]]; then
+                value="no"
+            fi
+            printf "%s=%s\n" "$key" "$value" >> temp_env_vars                        
+        done < "$config_file"        
+        # Load the environment variables from the temporary file
+        source temp_env_vars        
+        rm temp_env_vars        
+        case "$cpu_or_gpu" in
+            "c" | "cpu")
+                cpu_or_gpu="c"
+                deploy_habana_ai_operator="no"
+                ;;
+            "g" | "gpu")
+                cpu_or_gpu="g"
+                deploy_habana_ai_operator="yes"
+                ;;
+            *)
+                echo "Invalid value for cpu_or_gpu. It should be either 'c' or 'cpu' for CPU, or 'g' or 'gpu' for GPU."
+                exit 1
+                ;;
+        esac
+        case "$deploy_keycloak_apisix" in
+            "no")
+                deploy_apisix="no"
+                deploy_keycloak="no"                
+                ;;
+            "yes")
+                deploy_apisix="yes"
+                deploy_keycloak="yes"                
+                ;;
+            *)
+                echo "Incorrect value for deploy_keycloak_apisix"
+                exit 1
+                ;;
+        esac
+    else
+        echo "Configuration file not found. Using default values or prompting for input."
+    fi    
+}
+
 setup_initial_env() {\
-    # Pull Kubespray repository
+    echo "Setting up the Initial Environment..."    
     if [ ! -d "$KUBESPRAYDIR" ]; then
         git clone https://github.com/kubernetes-sigs/kubespray.git $KUBESPRAYDIR
         cd $KUBESPRAYDIR
@@ -221,60 +276,6 @@ setup_initial_env() {\
 }
 
 
-read_config_file() {
-    local config_file="$HOMEDIR/inference-config.cfg"
-    if [ -f "$config_file" ]; then
-        echo "Configuration file found, setting vars!"
-        echo "---------------------------------------"
-        while IFS='=' read -r key value || [ -n "$key" ]; do
-            # Trim leading/trailing whitespace
-            key=$(echo "$key" | xargs)
-            value=$(echo "$value" | xargs)
-            # Set the variable using a temporary file
-            if [[ "$value" == "on" ]]; then
-                value="yes"
-            elif [[ "$value" == "off" ]]; then
-                value="no"
-            fi
-            printf "%s=%s\n" "$key" "$value" >> temp_env_vars                        
-        done < "$config_file"        
-        # Load the environment variables from the temporary file
-        source temp_env_vars        
-        rm temp_env_vars        
-        case "$cpu_or_gpu" in
-            "c" | "cpu")
-                cpu_or_gpu="c"
-                deploy_habana_ai_operator="no"
-                ;;
-            "g" | "gpu")
-                cpu_or_gpu="g"
-                deploy_habana_ai_operator="yes"
-                ;;
-            *)
-                echo "Invalid value for cpu_or_gpu. It should be either 'c' or 'cpu' for CPU, or 'g' or 'gpu' for GPU."
-                exit 1
-                ;;
-        esac
-        case "$deploy_keycloak_apisix" in
-            "no")
-                deploy_apisix="no"
-                deploy_keycloak="no"                
-                ;;
-            "yes")
-                deploy_apisix="yes"
-                deploy_keycloak="yes"                
-                ;;
-            *)
-                echo "Incorrect value for deploy_keycloak_apisix"
-                exit 1
-                ;;
-        esac
-    else
-        echo "Configuration file not found. Using default values or prompting for input."
-    fi    
-}
-
-
 invoke_prereq_workflows() {
     if [ $prereq_executed -eq 0 ]; then
         read_config_file
@@ -322,8 +323,8 @@ reset_cluster() {
     echo "-------------------------------------------------------"
     echo "${YELLOW}NOTICE: You are initiating a reset of the existing Inference Service Cluster."
     echo "This action will erase all current configurations, services and resources. Potentially causing service interruptions and data loss. This operation cannot be undone. ${NC}"
-    read -p "Are you sure you want to proceed? (yes/no): " confirm_reset        
-    if [ "$confirm_reset" = "yes" ]; then
+    read -p "Are you sure you want to proceed? (yes/no): " confirm_reset            
+    if [[ "$confirm_reset" =~ ^(yes|y|Y)$ ]]; then
         echo "Resetting the existing Inference as service cluster..."
         setup_initial_env
         run_reset_playbook
