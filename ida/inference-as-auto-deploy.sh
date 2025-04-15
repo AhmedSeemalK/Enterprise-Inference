@@ -468,7 +468,7 @@ deploy_observability_playbook() {
 
 deploy_cluster_config_playbook() {    
     if [ "${deploy_observability}" = "on" ]; then
-        tags="deploy_admin_dashboard"
+        tags="deploy_cluster_dashboard"
     else
         tags=""        
     fi
