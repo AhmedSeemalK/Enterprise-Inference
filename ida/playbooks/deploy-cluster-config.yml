@@ -13,18 +13,21 @@
         name: python3-pip
         state: present
       become: true
+      tags: deploy_admin_dashboard
     - name: Install Kubernetes Python SDK
       ansible.builtin.pip:
         name: kubernetes
         state: present
         executable: /usr/bin/pip3
       become: true
+      tags: deploy_admin_dashboard
     - name: Install Deployment Client
       ansible.builtin.shell: |
         curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
       args:
         executable: /bin/bash
       become: true       
+      tags: deploy_admin_dashboard
     # - name: Label worker nodes with inference-workload
     #   ansible.builtin.command: >
     #     kubectl label nodes --selector='!node-role.kubernetes.io/control-plane'
@@ -42,8 +45,9 @@
           data:
             tls.crt: "{{ lookup('file', cert_file) | b64encode }}"
             tls.key: "{{ lookup('file', key_file) | b64encode }}"
-      register: kubectl_output        
-    - name: Create Admin dashboard ingress
+      register: kubectl_output 
+      tags: deploy_admin_dashboard       
+    - name: Create Admin dashboard ingress    
       community.kubernetes.k8s:
         state: present
         definition:
@@ -72,6 +76,7 @@
             - hosts:
               - "{{ secret_name }}"
               secretName: "{{ secret_name }}"
+      tags: deploy_admin_dashboard
     - name: Create ServiceAccount for Admin Dashboard
       community.kubernetes.k8s:
         state: present
@@ -81,6 +86,7 @@
           metadata:
             name: dashboard-user
             namespace: kube-system
+      tags: deploy_admin_dashboard
     - name: Create ClusterRole for Kubernetes Dashboard
       community.kubernetes.k8s:
         state: present
@@ -106,6 +112,7 @@
             resources: ["services/proxy"]
             resourceNames: ["https:kubernetes-dashboard:https"]
             verbs: ["get", "create", "update"]
+      tags: deploy_admin_dashboard
     - name: Create ClusterRoleBinding for Admin Dashboard
       community.kubernetes.k8s:
         state: present
@@ -122,7 +129,9 @@
           - kind: ServiceAccount
             name: dashboard-user
             namespace: kube-system
+      tags: deploy_admin_dashboard
     - name: Remove any existing deployment directory
       ansible.builtin.file:
         path: "{{ remote_helm_charts_base }}"
         state: absent
+      tags: always
