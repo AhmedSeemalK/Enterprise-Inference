@@ -243,7 +243,7 @@ Please follow above steps for verifying the installed firmware, driver and runti
    #### DNS and SSL/TLS Setup
    
    #### Production Environment
-   ##### DNS Setup
+   ###### DNS Setup
    1. Purchase a domain name from a reputable domain registrar (e.g., GoDaddy, Namecheap, Google Domains).
    2. Configure the domain's DNS records to point to your production server or load balancer IP address.
    ##### SSL/TLS Setup with a Trusted Certificate Authority (CA)
@@ -263,7 +263,7 @@ Please follow above steps for verifying the installed firmware, driver and runti
    - If you're using a reverse proxy or load balancer, configure it to terminate SSL/TLS connections and forward the traffic to the backend servers.
       
    #### Development Environment
-   ##### DNS Setup
+   ###### DNS Setup
    1. Set up a subdomain (e.g., `dev.example.com`) or a separate domain (e.g., `mydevdomain.com`) for your development environment.
    2. Point the subdomain or domain to the IP address of your development server or cluster.
    3. Alternatively, if you don't have a DNS server, you can modify the `/etc/hosts` file on your local machine to map the domain or subdomain to the IP address of your development server or cluster.
