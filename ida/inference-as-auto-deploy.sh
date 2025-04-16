@@ -453,7 +453,13 @@ deploy_inference_llm_models_playbook() {
     for model in $model_name_list; do
         tags+="install-$model,"
     done    
+    
+    if [ -n "$huggingface_model_id" ] && [[ "$tags" != *"install-$huggingface_model_id"* ]]; then
+        tags+="install-$huggingface_model_deployment_name,"
+    fi
+    
     tags=${tags%,}
+        
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
         --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name} deploy_inference_llm_models_playbook=${deploy_inference_llm_models_playbook} huggingface_tensor_parellel_size=${huggingface_tensor_parellel_size} vllm_metrics_enabled=${vllm_metrics_enabled} " --tags "$tags"
 }
@@ -488,7 +494,10 @@ remove_inference_llm_models_playbook() {
     tags=""    
     for model in $model_name_list; do
         tags+="uninstall-$model,"
-    done    
+    done
+    if [ -n "$hugging_face_model_remove_name" ] && [[ "$tags" != *"install-$hugging_face_model_remove_name"* ]]; then
+        tags+="uninstall-$hugging_face_model_remove_name,"
+    fi
     tags=${tags%,}        
     uninstall_true="true"               
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
@@ -1190,9 +1199,9 @@ remove_model_deployed_via_huggingface(){
         execute_and_check "Removing Inference LLM Models..." remove_inference_llm_models_playbook "$@" \
             "Inference LLM Model is removed successfully." \
             "Failed to remove Inference LLM Model Exiting!."
-        echo "------------------------------------------------------------"
-        echo "|     LLM Model Removed from AI Inference as Service Cluster! |"
-        echo "------------------------------------------------------------"
+        echo "---------------------------------------------------------------------"
+        echo "|     LLM Model Being Removed from AI Inference as Service Cluster! |"
+        echo "---------------------------------------------------------------------"
         echo ""        
     else
         echo "Required huggingface model name and model id not provided. Exiting!!"
@@ -1212,7 +1221,8 @@ deploy_from_huggingface() {
     fi        
         
     read -p "Enter the Huggingface Model ID: " huggingface_model_id    
-    read -p "Enter the name of the model deployment name: " huggingface_model_deployment_name
+    echo "${YELLOW}NOTICE: The model deployment name will be used as the release identifier for deployment. It must be unique, meaningful, and follow Kubernetes naming conventions — lowercase letters, numbers, and hyphens only. Capital letters or special characters are not allowed. ${NC}"
+    read -p "Enter Deployment Name for the Model: " huggingface_model_deployment_name
     echo "${YELLOW}NOTICE: Ensure the Tensor Parallel size value corresponds to the number of available Gaudi cards. Providing an incorrect value may result in the model being in a not ready state. ${NC}" 
     if [ "$cpu_or_gpu" = "g" ]; then
         read -p "Enter the Tensor Parallel size:" -r huggingface_tensor_parellel_size        
