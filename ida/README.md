@@ -133,7 +133,7 @@ Firmware [SPI] Version : Preboot version hl-gaudi2-1.20.0-fw-58.0.0-sec-9 (Jan 1
 Use the following commands to check the required driver version installed on your Gaudi nodes:
 
 ```bash
-hl-smi -L 
+hl-smi 
 ```
 Look for output similar to:
 ```
