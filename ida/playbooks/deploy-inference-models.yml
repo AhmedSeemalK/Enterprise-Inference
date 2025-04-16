@@ -198,14 +198,14 @@
             namespace: default
             name: "{{huggingface_model_deployment_name}}-ingress"
             state: absent
-          tags: "install-{{ huggingface_model_id }}"
+          tags: "install-{{ huggingface_model_deployment_name }}"
         - name: Delete Ingress resource "{{ huggingface_model_id }}" from auth-apisix namespace
           kubernetes.core.k8s:
             kind: Ingress
             namespace: auth-apisix
             name: "{{huggingface_model_deployment_name}}-ingress"
             state: absent
-          tags: "install-{{ huggingface_model_id }}"
+          tags: "install-{{ huggingface_model_deployment_name }}"
         - name: Deploy LLM model "{{ huggingface_model_id }}"
           ansible.builtin.command: >-
             helm upgrade --install "{{huggingface_model_deployment_name}}" "{{ remote_helm_charts_base }}/vllm"
@@ -233,7 +233,7 @@
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
       run_once: true
-      tags: "install-{{ huggingface_model_id }}"
+      tags: "install-{{ huggingface_model_deployment_name }}"
       when:                        
         - hugging_face_model_deployment == 'true'
         - install_true == 'true'
@@ -246,12 +246,12 @@
       register: helm_release_installed
       ignore_errors: true
       run_once: true
-      tags: "uninstall-{{ huggingface_model_id }}"
+      tags: "uninstall-{{ hugging_face_model_remove_name }}"
     - name: Uninstall "{{ hugging_face_model_remove_name }}" Model 
       ansible.builtin.command:
         cmd: "helm uninstall {{ hugging_face_model_remove_name }}"
       run_once: true
-      tags: "uninstall-{{ huggingface_model_id }}"
+      tags: "uninstall-{{ hugging_face_model_remove_name }}"
       when:        
         - uninstall_true == 'true'
         - hugging_face_model_remove_deployment == 'true'
