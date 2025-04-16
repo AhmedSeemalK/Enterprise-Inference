@@ -38,37 +38,27 @@
       ansible.builtin.shell: helm repo update      
       when: helm_repo_list.stdout != ""    
     
-    
+            
     - name: Retrieving the Number of Inference Infrastructure Nodes
-      ansible.builtin.shell: kubectl get nodes --selector=node-role.kubernetes.io/inference-infra=true --no-headers | wc -l
+      ansible.builtin.shell: kubectl get nodes --selector=node-role.kubernetes.io/inference-infra=true -o jsonpath='{.items[*].metadata.name}' | wc -w
       register: inference_node_count
       changed_when: false
-    - name: Set the Replica Count based on Inference Infrastructure Nodes
-      set_fact:
-        inference_infra_replica_count: "{{ inference_node_count.stdout | int }}"
-      when: inference_node_count.stdout | int > 0
+
     - name: Retrieving the Number of Control Plane Nodes
-      ansible.builtin.shell: kubectl get nodes --selector=node-role.kubernetes.io/control-plane= --no-headers | wc -l
+      ansible.builtin.shell: kubectl get nodes --selector=node-role.kubernetes.io/control-plane= -o jsonpath='{.items[*].metadata.name}' | wc -w
       register: control_plane_node_count
       changed_when: false
       when: inference_node_count.stdout | int == 0
-    - name: Set the Replica Count based on Control Plane Nodes
+
+    - name: Determine Replica Node 
       set_fact:
-        inference_infra_replica_count: "{{ control_plane_node_count.stdout | int }}"
-      when: inference_node_count.stdout | int == 0 and control_plane_node_count.stdout | int > 0            
-    - name: Display the Number of Nodes on which Ingress is deployed
-      debug:
-        msg: "Number of Nodes on which Ingress is deployed: {{ inference_infra_replica_count }}"  
-      run_once: true       
-    - name: Set the Replica Count based upon Infrastructure Nodes
-      set_fact:
-        inference_infra_replica_count: "{{ inference_node_count.stdout | int if inference_node_count.stdout | int > 0 else 1 }}"    
-    
-    - name: Set default replica count if no labeled nodes are found
-      set_fact:
-        inference_infra_replica_count: 1
-      when: inference_node_count.stdout | int == 0 and control_plane_node_count.stdout | int == 0
-    
+        inference_infra_replica_count: >-
+          {{ 
+            inference_node_count.stdout | int if inference_node_count.stdout | int > 0
+            else (control_plane_node_count.stdout | int if control_plane_node_count is defined and control_plane_node_count.stdout | int > 0
+            else 1)
+          }}
+        
     - name: Display the Number of Nodes on which Ingress is deployed
       debug:        
         msg: "Number of Nodes on which Ingress is deployed: {{ inference_infra_replica_count }}"  
@@ -118,7 +108,7 @@
                           app: ingress-nginx
                       topologyKey: "kubernetes.io/hostname"                     
       run_once: true   
-    - name: Pause to allow the controller to initialize
+    - name: Pause to Allow Controller to Initialize
       pause:
         seconds: 10    
     - name: Wait for all ingress-nginx pods to be in a running and ready state
