@@ -37,7 +37,7 @@ Unleash the Power of AI Inference
 - [Designing Inventory for Inference Cluster Deployment](#designing-inventory-for-inference-cluster-deployment)
    - [Control Plane Node Sizing](#control-plane-node-sizing)
    - [Workload Node Sizing](#workload-node-sizing)
-   - [CPU-based Workloads](#cpu-based-workloads)
+   - [CPU-based Workloads (Intel Xeon)](#cpu-based-workloads-intel-xeon)
    - [HPU-based Workloads (Intel Gaudi)](#hpu-based-workloads-intel-gaudi)
    - [Infrastructure Node Sizing](#infrastructure-node-sizing)
    - [Setting Dedicated Infra Nodes](#setting-dedicated-inference-infra-nodes)
@@ -316,7 +316,7 @@ Please follow above steps for verifying the installed firmware, driver and runti
    ##### Workload Node Sizing
    The workload node sizing will depend on the specific requirements of the inference models and the workloads they need to handle. Here are some recommendations:
       
-   ##### CPU-based Workloads
+   ##### CPU-based Workloads (Intel Xeon)
    For CPU-based inference workloads, the workload nodes should have a sufficient number of vCPUs based on the number of models and the expected concurrency. A general guideline is to allocate 32 vCPUs per model instance, depending on the model complexity and resource requirements.
 
    ##### HPU-based Workloads (Intel Gaudi)
