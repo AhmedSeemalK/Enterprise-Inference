@@ -1,4 +1,4 @@
-# AI Inference as a Service Deployment Automation
+# Intel AI for Enterprise Inference
 
 
 ## Usage
