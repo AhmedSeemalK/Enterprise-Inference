@@ -10,8 +10,7 @@ all:
         master:
     kube_node:
       hosts:
-        master:
-        master:
+        master:        
     etcd:
       hosts:
         master:
