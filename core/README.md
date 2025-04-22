@@ -126,7 +126,7 @@ Firmware [SPI] Version : Preboot version hl-gaudi2-1.20.0-fw-58.0.0-sec-9 (Jan 1
 ```
 ###### For visual assistance, refer to the following snapshot for Firmware version:
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Firmware-version.png" alt="AI Inference Firmware Snapshot" width="800" height="120"/>   
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Firmware-version.png" alt="AI Inference Firmware Snapshot" width="800" height="120"/>   
    
 
 #### Step 2: Verify Current Driver Version
@@ -145,7 +145,7 @@ Look for output similar to:
 ```
 ###### For visual assistance, refer to the following snapshot for Driver version:
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Driver-version.png" alt="AI Inference Driver Snapshot" width="800" height="120"/>    
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Driver-version.png" alt="AI Inference Driver Snapshot" width="800" height="120"/>    
    
 #### Step 3: Verify Current Habana Runtime Version
 Use the following commands to check the required Habana runtime version installed on your Gaudi nodes:
@@ -300,13 +300,13 @@ Please follow above steps for verifying the installed firmware, driver and runti
    4. Click on the "New Token" button to generate a new access token.
    5. In the "New Token" modal, you can optionally provide a description for the token (e.g., "My Development Token").
    6. Click on the "Generate" button to create the new token.
-   7. Configure the token in the inference-config.cfg file under ida/ directory 
+   7. Configure the token in the inference-config.cfg file under core/ directory 
 
 
 
 ## Designing Inventory for Inference Cluster Deployment
    
-   Design your inventory file located at `ida/inventory/hosts.yaml` according to your enterprise deployment requirements for the inference cluster.    
+   Design your inventory file located at `core/inventory/hosts.yaml` according to your enterprise deployment requirements for the inference cluster.    
 
 
    ##### Control Plane Node Sizing
@@ -913,7 +913,7 @@ Make sure to update the values in the inference-config.cfg file according to you
 ### Deploying the cluster
 
 Once you have configured the `inference-config.cfg` file and selected the components to be deployed, as well as   
-updated the `ida/inventory/hosts.yml` file with your desired requirement as documented, you are ready to proceed with the deployment. 
+updated the `core/inventory/hosts.yml` file with your desired requirement as documented, you are ready to proceed with the deployment. 
 
 #### Alternative Deployment Method
 
@@ -1213,21 +1213,21 @@ The observability stack offers monitoring solution designed to operate natively 
 
 ###### For visual assistance, refer to the following Cluster observability dashboard 
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Observability-dashboard.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/catalog/docs/pictures/AI-Inference-as-Service-Observability-dashboard.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Observability-dashboard-two.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/catalog/docs/pictures/AI-Inference-as-Service-Observability-dashboard-two.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
 
 ###### For visual assistance, refer to the following for Habana observability dashboard 
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Observability.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Observability.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
 
 ###### For visual assistance, refer to the following for Models observability dashboard 
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Model-Observability.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/catalog/docs/pictures/AI-Inference-as-Service-Model-Observability.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
 
 ###### For visual assistance, refer to the following for Cluster wide observability dashboard 
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Utilization-Cluster-Observability.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/catalog/docs/pictures/AI-Inference-as-Service-Gaudi-Utilization-Cluster-Observability.png" alt="AI Inference Model Observability dashboard" width="800" height="220"/>
 
 #### To access the observability dashboard, follow these steps:
 Initiate your web browser and proceed to navigate to the specified URL:
@@ -1276,21 +1276,21 @@ Choose the client or platform that aligns with your preferences and requirements
 To interact with the inference model APIs through Postman, perform the following steps to configure your environment:
 1. Launch Postman on your system.
 2. Navigate to the 'Environment' tab located at the top right corner of the Postman interface.
-3. Locate the Environment file located at `ida/catalog/AI-Inference-as-Service-Environment.postman-environment.json`
+3. Locate the Environment file located at `core/catalog/AI-Inference-as-Service-Environment.postman-environment.json`
 4. Click on the 'import' button to import environment.
 5. Populate the values for each variable according to the details provided in your `inference-config.cfg` file.
 #### Importing Postman Collection
 Follow these instructions to import the Postman collection for your deployed models:
 1. Select the 'Import' button within Postman.
-2. Locate the collection file located at `ida/catalog/AI-Inference-as-Service-postman-collection.json`.
+2. Locate the collection file located at `core/catalog/AI-Inference-as-Service-postman-collection.json`.
 3. Confirm the import to add the collection to your Postman workspace.
 
 For visual assistance, refer to the following example image of a Postman request setup:
 ###### Imported Intel AI for Enterprise Inference Collection Request and Response
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Postman-Collection.png" alt="AI Inference Model API Example" width="800" height="200"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/catalog/docs/pictures/AI-Inference-as-Service-Postman-Collection.png" alt="AI Inference Model API Example" width="800" height="200"/>
 
 ###### Imported Intel AI for Enterprise Inference Service Environment
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-Postman-Environment.png" alt="AI Inference Model Environment Example" width="800" height="200"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/catalog/docs/pictures/AI-Inference-as-Service-Postman-Environment.png" alt="AI Inference Model Environment Example" width="800" height="200"/>
 
 ### Accessing Models from OpenAI based Client
 For interacting with deployed models you can utilize any client that supports OpenAPI specification, such as Swagger UI or Open WebUI. 
@@ -1298,17 +1298,17 @@ These tools facilitate seamless integration by offering interactive documentatio
 As an example, we will demonstrate how to use Open WebUI to connect with these models, allowing you to execute API calls and effectively manage your interactions with the models.
 
 ###### For visual assistance, refer to the following example image of a OpenAPI based client request and response:
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-openapi-based-client.png" alt="AI Inference Model API openAPI request" width="800" height="220"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/catalog/docs/pictures/AI-Inference-as-Service-openapi-based-client.png" alt="AI Inference Model API openAPI request" width="800" height="220"/>
 
 
 Please reference to this instruction to deploy the OpenAPI based client   
-[openapi-client-deployment](https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/openapi-client-deployment.md)
+[openapi-client-deployment](https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/catalog/openapi-client-deployment.md)
 
 
 
 ### Accessing Models from curl Client
 To configure your environment with the necessary variables for connecting to Keycloak, you will need to set the following environment variables.  
-Please replace the placeholder values with your actual configuration details, which has been configured in `inference-config.cfg` file under the `ida/` directory during deployment.
+Please replace the placeholder values with your actual configuration details, which has been configured in `inference-config.cfg` file under the `core/` directory during deployment.
 
 
 #### Accessing Models Deployed with Keycloak and APISIX
@@ -1379,7 +1379,7 @@ curl -k ${KEYCLOAK_ADDR}/DeepSeek-R1-Distill-Llama-8B-vllmcpu/v1/completions -X 
 
 ###### For visual assistance, refer to the following example image of a curl request and response:
 
-<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/catalog/docs/pictures/AI-Inference-as-Service-curl-request.png" alt="AI Inference Model API curl request" width="900" height="100"/>
+<img src="https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/catalog/docs/pictures/AI-Inference-as-Service-curl-request.png" alt="AI Inference Model API curl request" width="900" height="100"/>
 
 
 #### Accessing the model from Inference Cluster deployed without APISIX and Keycloak

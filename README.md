@@ -2,8 +2,8 @@
 
 
 ## Usage
-The Usage instructions for the AI Inference as a Service Deployment Automation can be found in the [ida/README.md](https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/ida/README.md) file.
-To setup, follow the step-by-step instructions provided in the `ida/README.md` file.
+The Usage instructions for the AI Inference as a Service Deployment Automation can be found in the [core/README.md](https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/core/README.md) file.
+To setup, follow the step-by-step instructions provided in the `core/README.md` file.
 
 ## Contributing
 If you have feature requests, encounter any bugs or have questions about the project, please [open an issue](https://github.com/intel-innersource/applications.ai.erag.infra-automation/issues) on the project's issue tracker. Provide as much detail as possible, including steps to reproduce the issue, expected behavior, and actual behavior.
