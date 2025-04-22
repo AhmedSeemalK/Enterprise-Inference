@@ -78,39 +78,8 @@ Unleash the Power of AI Inference
    - [Accessing Models Deployed with Keycloak and APISIX](#accessing-models-deployed-with-keycloak-and-apisix)
    - [Accessing Models Deployed without Keycloak and APISIX](#accessing-the-model-from-inference-cluster-deployed-without-apisix-and-keycloak)
 
-## Models for Inference Cluster
-The following table lists the pre-validated models for the Intel AI for Enterprise Inference.      
-These models can be selectively deployed based on the configuration settings of models in the `inference-config.cfg` file, allowing organizations to choose the appropriate models that meet their specific business needs and applications.
-| Model                                  | Description                                                  |
-|----------------------------------------|---------------------------------------------------------------|
-| 1. [**llama-8b**](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) | Large Language Model (LLM) with 8 billion parameters, suitable for a wide range of natural language processing tasks. |
-| 2. [**llama-70b**](https://huggingface.co/meta-llama/Llama-3.1-70B-Instruct) | LLM with 70 billion parameters, offering enhanced performance for complex language tasks. |
-| 3. [**codellama-34b**](https://huggingface.co/codellama/CodeLlama-34b-Instruct-hf) | Specialized LLM with 34 billion parameters, designed for code generation and understanding. |
-| 4. [**mixtral-8x7b**](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1) | Multimodal LLM with 8x7 billion parameters, optimized for efficient inference and knowledge retrieval. |
-| 5. [**mistral-7b**](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3) | General-purpose LLM with 7 billion parameters, capable of handling various natural language tasks. |
-| 6. [**tei**](https://github.com/huggingface/tei-gaudi/pkgs/container/tei-gaudi) | Text Embedding Inference model for efficient text representation and similarity search. |
-| 7. [**tei-rerank**](https://github.com/huggingface/text-embeddings-inference/pkgs/container/text-embeddings-inference) | Text Embedding Inference model with re-ranking capabilities for improved search relevance. |
-| 8. [**falcon3-7b**](https://huggingface.co/tiiuae/Falcon3-7B-Instruct) | Instruction-following LLM with 7 billion parameters, designed for task-oriented language understanding and generation. |
-| 9. [**deepseek-r1-distill-qwen-32b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B) | Distilled version of the Qwen-32B model, optimized for efficient inference and knowledge retrieval. |
-| 10. [**deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | Distilled version of the LLama-8B model, optimized for efficient inference and knowledge retrieval. |
-| 11. [**llama3-405b**](https://huggingface.co/meta-llama/Llama-3.1-405B-Instruct) | Large Language Model (LLM) with 405 billion parameters, suitable for a wide range of natural language processing tasks.. |
-| 21. [**cpu-llama-8b**](https://github.com/huggingface/text-generation-inference/pkgs/container/text-generation-inference) | CPU-optimized version of the LLama-8B model for efficient inference on CPUs. |
-| 22. [**cpu-deepseek-r1-distill-qwen-32b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B) | CPU-optimized version of the Distilled Qwen-32B model for efficient inference on CPUs. |
-| 23. [**cpu-deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | CPU-optimized version of the Distilled LLama-8B model for efficient inference on CPUs. |
-
-##### Notice:
-   > Please note that this list is subject to change, and additional models may be added or removed based on business requirements and model performance evaluations.
-
-For deploying models that are not part of the prevalidated models list from Hugging Face [please refer to the this steps](deploy-llm-model-from-hugging-face)
-##### Notice:
-   > Deploying models that is not part of above prevalidated models list by our team. Additional validation and optimization may be required to ensure seamless deployment in an Enterprise environment.
-
-
-Both Prevalidated and Non-validated Models can be deployed, enabling a range of Inference capabilities to support diverse Enterprise needs and applications.
-
 
 ## Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster
-
 
 #### System Requirement:
 
@@ -226,7 +195,6 @@ sudo modprobe  habanalabs_ib && sudo modprobe  habanalabs_en
 Please follow above steps for verifying the installed firmware, driver and runtime versions.
 
 > **For detailed documentation, refer to the official guide:** [Intel Gaudi Software Installation Documentation](https://docs.habana.ai/en/v1.20.1/Installation_Guide/Driver_Installation.html)
-
    
 ---   
    ##### SSH Key Setup
@@ -310,11 +278,9 @@ Please follow above steps for verifying the installed firmware, driver and runti
    7. Configure the token in the inference-config.cfg file under core/ directory 
 
 
-
 ## Designing Inventory for Inference Cluster Deployment
    
    Design your inventory file located at `core/inventory/hosts.yaml` according to your enterprise deployment requirements for the inference cluster.    
-
 
    ##### Control Plane Node Sizing
    For an inference model deployment cluster in Kubernetes (K8s), the control plane nodes should have sufficient resources to handle the management and orchestration of the cluster. It's recommended to have at least 8 vCPUs and 32 GB of RAM per control plane node.    
@@ -867,6 +833,39 @@ Please follow above steps for verifying the installed firmware, driver and runti
       -  In this flow, Keycloak and APISIX are deployed to provide authentication, authorization, and API gateway functionality, ensuring secure and controlled access to the deployed AI models.
    - **Without Keycloak and APISIX**:
       - In this flow, the AI models are deployed directly within the Kubernetes cluster, without the additional security and API gateway layers provided by Keycloak and APISIX. This deployment option is suitable for scenarios where these components are not required or are handled separately.
+
+
+
+## Models for Inference Cluster
+The following table lists the pre-validated models for the Intel AI for Enterprise Inference.      
+These models can be selectively deployed based on the configuration settings of models in the `inference-config.cfg` file, allowing organizations to choose the appropriate models that meet their specific business needs and applications.
+| Model                                  | Description                                                  |
+|----------------------------------------|---------------------------------------------------------------|
+| 1. [**llama-8b**](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) | Large Language Model (LLM) with 8 billion parameters, suitable for a wide range of natural language processing tasks. |
+| 2. [**llama-70b**](https://huggingface.co/meta-llama/Llama-3.1-70B-Instruct) | LLM with 70 billion parameters, offering enhanced performance for complex language tasks. |
+| 3. [**codellama-34b**](https://huggingface.co/codellama/CodeLlama-34b-Instruct-hf) | Specialized LLM with 34 billion parameters, designed for code generation and understanding. |
+| 4. [**mixtral-8x7b**](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1) | Multimodal LLM with 8x7 billion parameters, optimized for efficient inference and knowledge retrieval. |
+| 5. [**mistral-7b**](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3) | General-purpose LLM with 7 billion parameters, capable of handling various natural language tasks. |
+| 6. [**tei**](https://github.com/huggingface/tei-gaudi/pkgs/container/tei-gaudi) | Text Embedding Inference model for efficient text representation and similarity search. |
+| 7. [**tei-rerank**](https://github.com/huggingface/text-embeddings-inference/pkgs/container/text-embeddings-inference) | Text Embedding Inference model with re-ranking capabilities for improved search relevance. |
+| 8. [**falcon3-7b**](https://huggingface.co/tiiuae/Falcon3-7B-Instruct) | Instruction-following LLM with 7 billion parameters, designed for task-oriented language understanding and generation. |
+| 9. [**deepseek-r1-distill-qwen-32b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B) | Distilled version of the Qwen-32B model, optimized for efficient inference and knowledge retrieval. |
+| 10. [**deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | Distilled version of the LLama-8B model, optimized for efficient inference and knowledge retrieval. |
+| 11. [**llama3-405b**](https://huggingface.co/meta-llama/Llama-3.1-405B-Instruct) | Large Language Model (LLM) with 405 billion parameters, suitable for a wide range of natural language processing tasks.. |
+| 21. [**cpu-llama-8b**](https://github.com/huggingface/text-generation-inference/pkgs/container/text-generation-inference) | CPU-optimized version of the LLama-8B model for efficient inference on CPUs. |
+| 22. [**cpu-deepseek-r1-distill-qwen-32b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B) | CPU-optimized version of the Distilled Qwen-32B model for efficient inference on CPUs. |
+| 23. [**cpu-deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | CPU-optimized version of the Distilled LLama-8B model for efficient inference on CPUs. |
+
+##### Notice:
+   > Please note that this list is subject to change, and additional models may be added or removed based on business requirements and model performance evaluations.
+
+For deploying models that are not part of the prevalidated models list from Hugging Face [please refer to the this steps](deploy-llm-model-from-hugging-face)
+##### Notice:
+   > Deploying models that is not part of above prevalidated models list by our team. Additional validation and optimization may be required to ensure seamless deployment in an Enterprise environment.
+
+
+Both Prevalidated and Non-validated Models can be deployed, enabling a range of Inference capabilities to support diverse Enterprise needs and applications.
+
 
 --- 
 
