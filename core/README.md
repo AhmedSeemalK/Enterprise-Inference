@@ -26,9 +26,9 @@ Unleash the Power of AI Inference
 - [Intel AI for Enterprise Inference Deployment Suite](#intel-ai-for-enterprise-inference)
 - [Models for Inference Cluster](#models-for-inference-cluster)
 - [Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster](#prerequisites-for-setting-up-intel-ai-for-enterprise-inference-cluster)
+   - [System Requirement](#system-requirement)
    - [Gaudi Node Requirement](#gaudi-node-requirements-and-setup-guide)
    - [SSH Key Setup](#ssh-key-setup)
-   - [Supported Linux Distributions](#supported-linux-distributions)
    - [Network and Storage Requirement](#network-and-storage-requirement)
    - [DNS and SSL/TLS Setup](#dns-and-ssltls-setup)
      - [Production Environment](#production-environment)
@@ -110,6 +110,17 @@ Both Prevalidated and Non-validated Models can be deployed, enabling a range of 
 
 
 ## Prerequisites for Setting Up Intel AI for Enterprise Inference Cluster
+
+
+#### System Requirement:
+
+| Category            | Details                                                                                                           |
+|---------------------|-------------------------------------------------------------------------------------------------------------------|
+| Operating System    | 22.04                                                                                                |
+| Hardware Platforms  | 4th Gen Intel® Xeon® Scalable processors<br>5th Gen Intel® Xeon® Scalable processors<br>6th Gen Intel® Xeon® Scalable processors<br>3rd Gen Intel® Xeon® Scalable processors and Intel® Gaudi® 2 AI Accelerator<br>4th Gen Intel® Xeon® Scalable processors and Intel® Gaudi® 2 AI Accelerator <br>6th Gen Intel® Xeon® Scalable processors and Intel® Gaudi® 3 AI Accelerator|
+| Gaudi Firmware Version | 1.20.0
+
+
 
 #### Gaudi Node Requirements and Setup Guide:
 This guide helps you verify and install the required firmware and driver version **1.20.0** for **Habana Gaudi** nodes in your Kubernetes or Standalone Environment.
@@ -289,10 +300,6 @@ Please follow above steps for verifying the installed firmware, driver and runti
    5. The issued certificate files (fullchain.pem and privkey.pem) will be located in `/etc/letsencrypt/live/dev.example.com/`.
 
    
-   ##### Supported Linux Distributions
-   - ubuntu 22.04
-   
-
    #### Hugging Face Token Generation
    1. Go to the [Hugging Face website](https://huggingface.co/) and sign in to your account (or create a new account if you don't have one).
    2. Once signed in, click on your profile picture in the top-right corner, and select "Settings" from the dropdown menu.
