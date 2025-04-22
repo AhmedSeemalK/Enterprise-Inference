@@ -1,0 +1,151 @@
+{
+    "products": [
+        {
+            "label": "iaas-deployable-arch-iaas",
+            "name": "iaas-deployable-arch-iaas",
+            "version": "2.0.0",
+            "product_kind": "solution",
+            "tags": [
+                "virtualservers"
+            ],
+            "offering_icon_url": "https://globalcatalog.cloud.ibm.com/api/v1/1082e7d2-5e2f-0a11-a3bc-f88a8e1931fc/artifacts/solution.svg",
+            "flavors": [
+                {
+                    "label": "IaaS",
+                    "name": "iaas",
+                    "compliance": {},
+                    "architecture": {},
+                    "install_type": "fullstack",
+                    "configuration": [
+                        {
+                            "key": "ssh_key",
+                            "type": "string",
+                            "default_value": "ssh_key",
+                            "description": "This variable specifies the ssh key.",
+                            "required": true
+                        },
+                        {
+                            "key": "ssh_private_key",
+                            "type": "multiline_secure_value",
+                            "display_name": "Multiline secure value",
+                            "default_value": "-----BEGIN OPENSSH PRIVATE KEY-----",
+                            "description": "This variable specifies the ssh key.",
+                            "required": true,
+			    "custom_config": {
+                                "grouping": "deployment",
+                                "original_grouping": "deployment",
+                                "type": "multiline_secure_value"
+                            }
+                        },
+                        {
+                            "key": "ibmcloud_region",
+                            "type": "string",
+                            "default_value": "us-south",
+                            "description": "IBM Cloud Region",
+                            "required": true
+                        },
+                        {
+                            "key": "cluster_url",
+                            "type": "string",
+                            "default_value": "api.example.com",
+                            "description": "The URL of the cluster",
+                            "required": true
+                        },
+                        {
+                            "key": "hugging_face_token",
+                            "type": "string",
+                            "default_value": "",
+                            "description": "This variable specifies the hf token.",
+                            "required": true
+                        },
+                        {
+                            "key": "cert_file",
+                            "type": "string",
+                            "default_value": "~/certs/cert.pem",
+                            "description": "The path to the certificate file"
+                        },
+                        {
+                            "key": "key_file",
+                            "type": "string",
+                            "default_value": "~/certs/key.pem",
+                            "description": "The path to the key file"
+                        },
+                        {
+                            "key": "keycloak_client_id",
+                            "type": "string",
+                            "default_value": "ibm-app",
+                            "description": "Keycloak client id"
+                        },
+                        {
+                            "key": "keycloak_admin_user",
+                            "type": "string",
+                            "default_value": "admin",
+                            "description": "Keycloak admin user name"
+                        },
+                        {
+                            "key": "keycloak_admin_password",
+                            "type": "string",
+                            "default_value": "admin",
+                            "description": "Keycloak admin password"
+                        },
+                        {
+                            "key": "models",
+                            "type": "string",
+                            "default_value": "11",
+                            "description": "Model number to be deployed",
+                            "required": true
+                        },
+                        {
+                            "key": "cpu_or_gpu",
+                            "type": "string",
+                            "default_value": "cpu",
+                            "description": "This variable specifies where the model should be running",
+                            "required": true
+                        },
+                        {
+                            "key": "deploy_kubernetes_fresh",
+                            "type": "string",
+                            "default_value": "yes",
+                            "description": "This variable specfies whether to deploy Kubernetes cluster freshly",
+                            "required": true
+                        },
+                        {
+                            "key": "deploy_ingress_controller",
+                            "type": "string",
+                            "default_value": "yes",
+                            "description": "This variable specfies whether to deploy NGNIX ingress controller or not",
+                            "required": true
+                        },
+                        {
+                            "key": "deploy_keycloak_and_apisix",
+                            "type": "string",
+                            "default_value": "no",
+                            "description": "This variable specfies whether we need to run keycloak and Apisix components"
+                        },
+                        {
+                            "key": "deploy_llm_models",
+                            "type": "string",
+                            "default_value": "yes",
+                            "description": "This variable specfies whether we need to deploy LLM models",
+                            "required": true
+                        },
+                        {
+                            "key": "deploy_keycloak_apisix",
+                            "type": "string",
+                            "default_value": "no",
+                            "description": "This variable specfies whether we need to run keycloak and Apisix components",
+                            "required": true
+                        },
+                        {
+                            "key": "github_pat",
+                            "type": "string",
+                            "default_value": "",
+                            "description": "Pass the token to for Github repo access",
+                            "required": true
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
