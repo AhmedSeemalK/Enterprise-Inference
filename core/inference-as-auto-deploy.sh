@@ -965,7 +965,7 @@ fresh_installation() {
             echo "" 
             else
             echo -e "${BLUE}-------------------------------------------------------------------------------------${NC}"
-            echo -e "${GREEN}|  AI Inference Deployment Complete!                                                   |${NC}"
+            echo -e "${GREEN}|  AI Inference Deployment Complete!                                                |${NC}"
             echo -e "${GREEN}|  Resources are transitioning to a state ready for Inference.                      |${NC}"
             echo -e "${GREEN}|  This may take some time depending on system resources and other factors.         |${NC}"
             echo -e "${GREEN}|  Please standby...                                                                |${NC}"
