@@ -1,0 +1,15 @@
+Pre-validated models for the Intel® AI for Enterprise Inference.      
+1. [**llama-8b**](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct),  
+2. [**llama-70b**](https://huggingface.co/meta-llama/Llama-3.1-70B-Instruct),  
+3. [**codellama-34b**](https://huggingface.co/codellama/CodeLlama-34b-Instruct-hf),  
+4. [**mixtral-8x7b**](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1),  
+5. [**mistral-7b**](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3),  
+6. [**tei**](https://github.com/huggingface/tei-gaudi/pkgs/container/tei-gaudi),  
+7. [**tei-rerank**](https://github.com/huggingface/text-embeddings-inference/pkgs/container/text-embeddings-inference),  
+8. [**falcon3-7b**](https://huggingface.co/tiiuae/Falcon3-7B-Instruct),  
+9. [**deepseek-r1-distill-qwen-32b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B),  
+10. [**deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B),  
+11. [**llama3-405b**](https://huggingface.co/meta-llama/Llama-3.1-405B-Instruct),  
+21. [**cpu-llama-8b**](https://github.com/huggingface/text-generation-inference/pkgs/container/text-generation-inference),  
+22. [**cpu-deepseek-r1-distill-qwen-32b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B),  
+23. [**cpu-deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B)

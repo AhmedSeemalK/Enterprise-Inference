@@ -7,7 +7,9 @@ YELLOW=$(tput setaf 3)
 BLUE=$(tput setaf 4)
 NC=$(tput sgr0)  # Reset color
 
-# ©2025 Intel Corporation
+
+# Copyright (C) 2024-2025 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 # Permission is granted for recipient to internally use and modify this software for purposes of benchmarking and testing on Intel architectures. 
 # This software is provided "AS IS" possibly with faults, bugs or errors; it is not intended for production use, and recipient uses this design at their own risk with no liability to Intel.
 # Intel disclaims all warranties, express or implied, including warranties of merchantability, fitness for a particular purpose, and non-infringement. 
@@ -38,7 +40,7 @@ NC=$(tput sgr0)  # Reset color
 
 # To run the script, execute the following command in your terminal:
 
-# ./inference-as-auto-deploy.sh [OPTIONS]
+# ./inference-stack-deploy.sh [OPTIONS]
 
 # Options
 
@@ -88,7 +90,7 @@ NC=$(tput sgr0)  # Reset color
 
 # Example
 # To perform a fresh installation with specific parameters, you can run:
-# ./inference-as-auto-deploy.sh --cluster-url "https://example.com" --cert-file "/path/to/cert.pem" --key-file "/path/to/key.pem" --keycloak-client-id "my-client-id" --keycloak-admin-user "user" --keycloak-admin-password "password" --hugging-face-token "token" --models "1,3,5" --cpu-or-gpu "g"
+# ./inference-stack-deploy.sh --cluster-url "https://example.com" --cert-file "/path/to/cert.pem" --key-file "/path/to/key.pem" --keycloak-client-id "my-client-id" --keycloak-admin-user "user" --keycloak-admin-password "password" --hugging-face-token "token" --models "1,3,5" --cpu-or-gpu "g"
 
 ##############################################################################
 
@@ -102,7 +104,7 @@ function usage() {
 Inference as a Service Deployment Automation
 --------------------------------------------
 
-Usage: ./inference-as-auto-deploy.sh [OPTIONS]
+Usage: ./inference-stack-deploy.sh [OPTIONS]
 
 Automates Kubernetes cluster setup and management for Inference as a Service.
 
@@ -118,7 +120,7 @@ Options:
   --cpu-or-gpu <c/g>             Run on CPU (c) or GPU (g).
 
 Examples:
-  Setup cluster: ./inference-as-auto-deploy.sh --cluster-url "https://example.com" --cert-file "/path/cert.pem" --key-file "/path/key.pem" --keycloak-client-id "client-id" --keycloak-admin-user "user" --keycloak-admin-password "password" --hugging-face-token "token" --models "1,3,5" --cpu-or-gpu "g"
+  Setup cluster: ./inference-stack-deploy.sh --cluster-url "https://example.com" --cert-file "/path/cert.pem" --key-file "/path/key.pem" --keycloak-client-id "client-id" --keycloak-admin-user "user" --keycloak-admin-password "password" --hugging-face-token "token" --models "1,3,5" --cpu-or-gpu "g"
 
 ###############################################################################  
 EOF

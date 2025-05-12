@@ -1,3 +1,5 @@
+# Copyright (C) 2024-2025 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 apiVersion: v2
 name: auth-apisix
 description: A Helm chart for installing a specific version of APISIX API gateway and APISIX ingress controller

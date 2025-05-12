@@ -1,3 +1,5 @@
+# Copyright (C) 2024-2025 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 ---
 - name: Create Keycloak TLS secret
   hosts: kube_control_plane
