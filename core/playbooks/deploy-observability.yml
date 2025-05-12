@@ -10,7 +10,7 @@
     deploy_logging: "no"
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env | default({}) }}"  
+  environment: "{{ proxy_disable_env | default(env_proxy | default({})) }}"  
   tasks:
     - name: Ensure Python pip module is installed
       ansible.builtin.package:

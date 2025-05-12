@@ -30,7 +30,7 @@
     vllm_metrics_enabled: 'false'
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env | default({}) }}"
+  environment: "{{ proxy_disable_env | default(env_proxy | default({})) }}"
   tasks:
     - name: Print active tags for this task
       debug:

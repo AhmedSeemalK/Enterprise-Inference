@@ -8,7 +8,7 @@
     remote_home_dir: "{{ lookup('env', 'PWD') }}/scripts"
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
-  environment: "{{ proxy_disable_env | default({}) }}"
+  environment: "{{ proxy_disable_env | default(env_proxy | default({})) }}"
   tasks:
     - name: Ensure pip is installed
       ansible.builtin.package:
