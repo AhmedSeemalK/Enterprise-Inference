@@ -35,3 +35,6 @@ Make sure to update the values in the inference-config.cfg file according to you
 > - The `hugging_face_token` is the token used for pulling LLM models from Hugging Face. 
 > - If `deploy_llm_models` is set to `off`, the `hugging_face_token` value will be ignored.
 > - The `cpu_or_gpu` value specifies whether to deploy models for CPU or Intel Gaudi.
+>
+
+For running behind corporate proxy, please refer to this [guide](#running-behind-proxy.md)
