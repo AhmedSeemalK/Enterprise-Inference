@@ -182,9 +182,27 @@ read_config_file() {
             fi
             printf "%s=%s\n" "$key" "$value" >> temp_env_vars                        
         done < "$config_file"        
+        
         # Load the environment variables from the temporary file
         source temp_env_vars        
         rm temp_env_vars        
+        
+        INVENTORY_ALL_FILE="$HOMEDIR"/inventory/all.yml        
+        if [[ -n "$http_proxy" ]]; then
+            sed -i -E "s|^[[:space:]]*#?[[:space:]]*http_proxy:.*|http_proxy: \"$http_proxy\"|" "$INVENTORY_ALL_FILE"
+            sed -i -E "/^env_proxy:/,/^[^[:space:]]/s|^[[:space:]]*http_proxy:.*|  http_proxy: \"$http_proxy\"|" "$INVENTORY_ALL_FILE"
+        fi
+
+        if [[ -n "$https_proxy" ]]; then
+            sed -i -E "s|^[[:space:]]*#?[[:space:]]*https_proxy:.*|https_proxy: \"$https_proxy\"|" "$INVENTORY_ALL_FILE"
+            sed -i -E "/^env_proxy:/,/^[^[:space:]]/s|^[[:space:]]*https_proxy:.*|  https_proxy: \"$https_proxy\"|" "$INVENTORY_ALL_FILE"
+        fi
+                                
+        if [[ -n "$no_proxy" ]]; then
+            sed -i -E "/^env_proxy:/,/^[^[:space:]]/s|^[[:space:]]*no_proxy:.*|  no_proxy: \"$no_proxy\"|" "$INVENTORY_ALL_FILE"
+        fi
+        
+        
         case "$cpu_or_gpu" in
             "c" | "cpu")
                 cpu_or_gpu="c"
