@@ -106,8 +106,12 @@
     - name: Fetch the keycloak client secret
       block:
         - name: Fetch the keycloak client secret
-          command: "{{ remote_helm_charts_base }}/keycloak-realmcreation.sh {{ secret_name }} {{ keycloak_admin_user }} {{ keycloak_admin_password }} {{ keycloak_client_id }}"
-          register: script_output
+          command: "{{ remote_helm_charts_base }}/keycloak-realmcreation.sh {{ secret_name }} {{ keycloak_admin_user }} {{ keycloak_admin_password }} {{ keycloak_client_id }}"          
+          register: script_output          
+          environment:
+            http_proxy: ""
+            https_proxy: ""
+            no_proxy: ""
         - name: Set Keycloak client fact
           set_fact:
             client_secret: "{{ script_output.stdout | regex_search('Client secret: (.*)') | join('') | regex_replace('^Client secret: ') }}"
@@ -117,8 +121,7 @@
             msg: "The client key is: {{ client_secret }}"        
       run_once: true
       when: deploy_keycloak == 'yes'
-      tags: always
-            
+      tags: always            
     - name: Print model_name_list
       debug:
         var: model_name_list
