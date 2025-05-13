@@ -37,4 +37,4 @@ Make sure to update the values in the inference-config.cfg file according to you
 > - The `cpu_or_gpu` value specifies whether to deploy models for CPU or Intel Gaudi.
 >
 
-For running behind corporate proxy, please refer to this [guide](#running-behind-proxy.md)
+For running behind corporate proxy, please refer to this [guide](./running-behind-proxy.md)
