@@ -191,15 +191,18 @@ read_config_file() {
         if [[ -n "$http_proxy" ]]; then
             sed -i -E "s|^[[:space:]]*#?[[:space:]]*http_proxy:.*|http_proxy: \"$http_proxy\"|" "$INVENTORY_ALL_FILE"
             sed -i -E "/^env_proxy:/,/^[^[:space:]]/s|^[[:space:]]*http_proxy:.*|  http_proxy: \"$http_proxy\"|" "$INVENTORY_ALL_FILE"
+            export http_proxy
         fi
 
         if [[ -n "$https_proxy" ]]; then
             sed -i -E "s|^[[:space:]]*#?[[:space:]]*https_proxy:.*|https_proxy: \"$https_proxy\"|" "$INVENTORY_ALL_FILE"
             sed -i -E "/^env_proxy:/,/^[^[:space:]]/s|^[[:space:]]*https_proxy:.*|  https_proxy: \"$https_proxy\"|" "$INVENTORY_ALL_FILE"
+            export https_proxy
         fi
                                 
         if [[ -n "$no_proxy" ]]; then
             sed -i -E "/^env_proxy:/,/^[^[:space:]]/s|^[[:space:]]*no_proxy:.*|  no_proxy: \"$no_proxy\"|" "$INVENTORY_ALL_FILE"
+            export no_proxy
         fi
         
         
@@ -238,6 +241,10 @@ read_config_file() {
 
 setup_initial_env() {\
     echo "Setting up the Initial Environment..."    
+    if [[ -n "$https_proxy" ]]; then
+        git config --global http.proxy "$https_proxy"
+        git config --global https.proxy "$https_proxy"
+    fi
     if [ ! -d "$KUBESPRAYDIR" ]; then
         git clone https://github.com/kubernetes-sigs/kubespray.git $KUBESPRAYDIR
         cd $KUBESPRAYDIR
@@ -246,6 +253,11 @@ setup_initial_env() {\
         echo "Kubespray directory already exists, skipping clone."
         cd $KUBESPRAYDIR
     fi
+    if [[ -n "$https_proxy" ]]; then
+        git config --global --unset http.proxy
+        git config --global --unset https.proxy
+    fi
+
      # Install pip if not present
     if ! command -v pip &> /dev/null && ! command -v pip3 &> /dev/null; then
         echo "pip not found, attempting to install..."
