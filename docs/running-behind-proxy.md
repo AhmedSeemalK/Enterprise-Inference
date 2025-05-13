@@ -33,3 +33,6 @@ http_proxy="http://proxy.corporate.com:8080"
 https_proxy="http://proxy.corporate.com:8080"
 no_proxy="localhost,127.0.0.1,.mycompany.com"
 ```
+
+To Unset proxy from apt configure please remove proxy configurations from below file
+sudo nano  /etc/apt/apt.conf
