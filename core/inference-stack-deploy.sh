@@ -288,11 +288,12 @@ setup_initial_env() {\
     cp -r "$KUBESPRAYDIR"/inventory/sample/ "$KUBESPRAYDIR"/inventory/mycluster
     cp  "$HOMEDIR"/inventory/hosts.yaml $KUBESPRAYDIR/inventory/mycluster/
     cp "$HOMEDIR"/inventory/addons.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/k8s_cluster/addons.yml
-    
+    cp "$HOMEDIR"/inventory/all.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/all/all.yml
     # Copy playbooks directory
     cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/    
     echo "Additional files and directories copied to Kubespray directory."
     ansible-galaxy collection install community.kubernetes    
+    
 }
 
 
