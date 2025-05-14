@@ -12,7 +12,7 @@ The following table lists the pre-validated models for Intel® AI for Enterprise
 | 10.        | [**deepseek-r1-distill-llama8b**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) |
 | 11.        | [**llama3-405b**](https://huggingface.co/meta-llama/Llama-3.1-405B-Instruct)             |
 
-### CPU-Supported Models
+### Xeon-Supported Models
 
 | **Number** | **Model**                                                                                  |
 |------------|--------------------------------------------------------------------------------------------|
