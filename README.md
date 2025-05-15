@@ -20,16 +20,12 @@ Intel® AI for Enterprise Inference, powered by OPEA, is compatible with OpenAI 
    - **Model Deployments**: Automated deployment and management of AI LLM models within the Kubernetes inference cluster, enabling scalable and reliable AI inference capabilities.
    
 ## Table of Contents
--   [Supported Models](#supported-models)
 -   [Usage](#usage)
 -   [Support](#support)
 -   [License](#license)
 -   [Security](#security)
 -   [Trademark Information](#trademark-information)
 
-
-## Supported Models
-For list of models support please navigate in to this [guide](./docs/supported-models.md)
 
 ## Usage
 The Usage instructions for the AI Inference as a Service Deployment Automation can be found in the [docs/README.md](docs/README.md) file.
