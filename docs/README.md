@@ -17,7 +17,7 @@ To setup prerequisities and quickstart deployment of Intel® AI for Enterprise I
 | **Multi-Master, Multiple Workers**      | Recommended for HA enterprise clusters ([Guide](./inventory-design-guide.md#multi-master-multi-workload-node-deployment)) |
 ---
 ## Supported Models
-- View the [Pre-validated Model List](../README.md#supported-models)
+- View the [Pre-validated Model List](./docs/supported-models.md)
 - To deploy custom models from Hugging Face, follow the [Hugging Face Deployment Guide](./deploy-llm-model-from-hugging-face.md)
 
 > 💡 Both validated and custom models are supported to meet diverse enterprise needs.
