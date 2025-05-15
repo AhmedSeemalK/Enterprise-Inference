@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
-  title: Intel AI for Enterprise Inference
-  version: 0.1.0
+  title: Intel® AI for Enterprise Inference
+  version: 1.0.0
 paths:
   /v1/chat/completions:
     post:
