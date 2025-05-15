@@ -40,14 +40,14 @@ Move the single node preset inference config file to the runnig directory
 cd ~
 git clone https://github.com/opea-project/Enterprise-Inference.git
 cd Enterprise-Inference
-cp -f docs/Examples/Single_Node/inference-config.cfg core/inference-config.cfg
+cp -f docs/examples/single-node/inference-config.cfg core/inference-config.cfg
 ```
 
 ### Step 4: Update `hosts.yaml` File
 Move the single node preset hosts config file to the runnig directory
 
 ```
-cp -f docs/Examples/Single_Node/hosts.yaml core/inventory/hosts.yaml
+cp -f docs/examples/single-node/hosts.yaml core/inventory/hosts.yaml
 ```
 
 ### Step 5: Run the Automation
@@ -79,16 +79,20 @@ On the Node run the following commands to test the successful deployment of Inte
 
 ```
 export USER=api-admin
-export PASSWORD=changeme!!
+export PASSWORD='changeme!!'
 export BASE_URL=https://api.example.com
 export KEYCLOAK_REALM=master
 export KEYCLOAK_CLIENT_ID=api
-export KEYCLOAK_CLIENT_SECRET=$(bash ~/core/scripts/keycloak-fetch-client-secret.sh api.example.com api-admin 'changeme!!' api | awk -F': ' '/Client secret:/ {print $2}')
+export KEYCLOAK_CLIENT_SECRET=$(bash scripts/keycloak-fetch-client-secret.sh api.example.com api-admin 'changeme!!' api | awk -F': ' '/Client secret:/ {print $2}')
 export TOKEN=$(curl -k -X POST $BASE_URL/token  -H 'Content-Type: application/x-www-form-urlencoded' -d "grant_type=client_credentials&client_id=${KEYCLOAK_CLIENT_ID}&client_secret=${KEYCLOAK_CLIENT_SECRET}" | jq -r .access_token)
 ```
 
-Run below command to get response from API
+To test on CPU only deployment
+```
+curl -k ${BASE_URL}/Meta-Llama-3.1-8B-Instruct-vllmcpu/v1/completions -X POST -d '{"model": "meta-llama/Meta-Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 25, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
+```
+
+To test on GPU only deployment
 ```
 curl -k ${BASE_URL}/Meta-Llama-3.1-8B-Instruct/v1/completions -X POST -d '{"model": "meta-llama/Meta-Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 25, "temperature": 0}' -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN"
-
 ```
