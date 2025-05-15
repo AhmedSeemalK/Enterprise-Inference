@@ -4,7 +4,7 @@ The following table lists the pre-validated models for Intel® AI for Enterprise
 
 ### ✅ **Model Support Matrix**
 
- **Model**                                                                                  | **Xeon ** | **Gaudi ** |
+ **Model**                                                                                  | **Xeon** | **Gaudi** |
 ---------------------------------------------------------------------------------------------|:-------------------:|:---------------------:|
 [**deepseek-ai/DeepSeek-R1-Distill-Qwen-32B**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B) | ✓              | ✓                    |
 [**deepseek-ai/DeepSeek-R1-Distill-Llama-8B**](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | ✓           | ✓                   |
