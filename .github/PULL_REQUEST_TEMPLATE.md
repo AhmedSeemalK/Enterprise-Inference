@@ -6,7 +6,7 @@ Related to [requirements document/specification]
 
 ## Components Impacted
 - [ ] Kubernetes Deployment
-- [ ] Habana Operator
+- [ ] Intel Gaudi Base Operator
 - [ ] Ingress Configuration
 - [ ] Keycloak Configuration
 - [ ] APISIX Configuration
