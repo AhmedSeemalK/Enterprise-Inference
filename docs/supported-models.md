@@ -14,5 +14,5 @@ The following table lists the pre-validated models for Intel® AI for Enterprise
 [**mistralai/Mixtral-8x7B-Instruct-v0.1**](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1)          |                     | ✓                    |
 [**mistralai/Mistral-7B-Instruct-v0.3**](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3)              |                     | ✓                    |
 [**BAAI/bge-reranker-base**](https://huggingface.co/BAAI/bge-reranker-base)             |                     | ✓  
-[**BAAI/bge-base-en-v1.5**](https://huggingface.co/BAAI/bge-base-en-v1.5)             | 
+[**BAAI/bge-base-en-v1.5**](https://huggingface.co/BAAI/bge-base-en-v1.5)             |  | ✓
 
