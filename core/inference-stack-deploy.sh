@@ -518,8 +518,8 @@ add_inference_nodes_playbook() {
         return 1
     fi
     invoke_prereq_workflows     
-    #ansible-playbook -i "${INVENTORY_PATH}" playbooks/facts.yml --become --become-user=root       
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/cluster.yml --limit="$worker_node_name" --become --become-user=root
+
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/cluster.yml --become --become-user=root
     
 }
 
