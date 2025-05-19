@@ -5,7 +5,7 @@
   hosts: kube_control_plane
   vars:
     ansible_python_interpreter: /usr/bin/python3
-    helm_charts_base: "{{ lookup('env', 'PWD') }}/helm-charts"    
+    helm_charts_base: "{{ lookup('env', 'PWD') }}/helm-charts"        
     remote_home_dir: "{{ lookup('env', 'PWD') }}/scripts"
     remote_helm_charts_base: "/tmp/helm-charts"
     ingress_file: "all_models_apisix_ingres_nginx.yaml"
@@ -59,6 +59,7 @@
             executable: /bin/bash
           become: true
           tags: always    
+
         - name: Create/Update Kubernetes Secret for Hugging Face Token
           kubernetes.core.k8s:
             name: hugging-face-token
@@ -106,8 +107,8 @@
     - name: Fetch the keycloak client secret
       block:
         - name: Fetch the keycloak client secret
-          command: "{{ remote_helm_charts_base }}/keycloak-realmcreation.sh {{ secret_name }} {{ keycloak_admin_user }} {{ keycloak_admin_password }} {{ keycloak_client_id }}"          
-          register: script_output          
+          command: "{{ remote_helm_charts_base }}/keycloak-realmcreation.sh {{ secret_name }} {{ keycloak_admin_user }} {{ keycloak_admin_password }} {{ keycloak_client_id }}"
+          register: script_output
           environment:
             http_proxy: ""
             https_proxy: ""
@@ -121,7 +122,9 @@
             msg: "The client key is: {{ client_secret }}"        
       run_once: true
       when: deploy_keycloak == 'yes'
-      tags: always            
+      tags: always
+            
+                
     - name: Print model_name_list
       debug:
         var: model_name_list
@@ -936,6 +939,26 @@
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""        
     
+    
+    
+    
+    - name: Debug env_proxy contents
+      debug:
+        var: env_proxy
+      tags: always
+    
+    - name: Set proxy args if proxy is defined
+      set_fact:
+        helm_proxy_args: >-
+          {% if env_proxy is defined %}
+          --set global.http_proxy="{{ env_proxy.http_proxy | default('') | replace(',', '\\,') }}"
+          --set global.https_proxy="{{ env_proxy.https_proxy | default('') | replace(',', '\\,') }}"
+          --set global.no_proxy="{{ env_proxy.no_proxy | default('') | replace(',', '\\,') }}"
+          {% else %}
+          {{ '' }}
+          {% endif %}
+      tags: always
+    
     - name: Deploy CPU based LLM model  llama 8b
       block:        
         - name: Delete Ingress resource Llama8b from default namespace
@@ -970,7 +993,8 @@
             {% if deploy_keycloak == 'yes' and apisix_enabled %}
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
-            {% endif %}            
+            {% endif %}
+            {{ helm_proxy_args | default('') }}
             --force                                                
           register: helm_upgrade_install_model_deployment_cpu_llama8b
           failed_when: helm_upgrade_install_model_deployment_cpu_llama8b.rc != 0          
