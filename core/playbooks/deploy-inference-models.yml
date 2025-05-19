@@ -125,6 +125,24 @@
       tags: always
             
                 
+    - name: Debug env_proxy contents
+      debug:
+        var: env_proxy
+      tags: always
+    
+    - name: Set proxy args if proxy is defined
+      set_fact:
+        helm_proxy_args: >-
+          {% if env_proxy is defined %}
+          --set global.http_proxy="{{ env_proxy.http_proxy | default('') | replace(',', '\\,') }}"
+          --set global.https_proxy="{{ env_proxy.https_proxy | default('') | replace(',', '\\,') }}"
+          --set global.no_proxy="{{ env_proxy.no_proxy | default('') | replace(',', '\\,') }}"
+          {% else %}
+          {{ '' }}
+          {% endif %}
+      tags: always
+    
+    
     - name: Print model_name_list
       debug:
         var: model_name_list
@@ -169,6 +187,7 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
+            {{ helm_proxy_args | default('') }}
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
@@ -237,6 +256,7 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
+            {{ helm_proxy_args | default('') }}
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
@@ -304,6 +324,7 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
+            {{ helm_proxy_args | default('') }}
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
@@ -371,6 +392,7 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
+            {{ helm_proxy_args | default('') }}
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
@@ -438,6 +460,7 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
+            {{ helm_proxy_args | default('') }}
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
@@ -503,6 +526,7 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
+            {{ helm_proxy_args | default('') }}
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
@@ -568,6 +592,7 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
+            {{ helm_proxy_args | default('') }}
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
@@ -631,7 +656,8 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
-            --set teirerank.namespace=default            
+            --set teirerank.namespace=default   
+            {{ helm_proxy_args | default('') }}         
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
@@ -695,6 +721,7 @@
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
             --set teirerank.namespace=default
+            {{ helm_proxy_args | default('') }}
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
@@ -761,6 +788,7 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
+            {{ helm_proxy_args | default('') }}
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
@@ -829,6 +857,7 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
+            {{ helm_proxy_args | default('') }}
             --force           
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
@@ -895,6 +924,7 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}
+            {{ helm_proxy_args | default('') }}
             --force
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
@@ -942,22 +972,6 @@
     
     
     
-    - name: Debug env_proxy contents
-      debug:
-        var: env_proxy
-      tags: always
-    
-    - name: Set proxy args if proxy is defined
-      set_fact:
-        helm_proxy_args: >-
-          {% if env_proxy is defined %}
-          --set global.http_proxy="{{ env_proxy.http_proxy | default('') | replace(',', '\\,') }}"
-          --set global.https_proxy="{{ env_proxy.https_proxy | default('') | replace(',', '\\,') }}"
-          --set global.no_proxy="{{ env_proxy.no_proxy | default('') | replace(',', '\\,') }}"
-          {% else %}
-          {{ '' }}
-          {% endif %}
-      tags: always
     
     - name: Deploy CPU based LLM model  llama 8b
       block:        
@@ -1058,7 +1072,8 @@
             {% if deploy_keycloak == 'yes' and apisix_enabled %}
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
-            {% endif %}            
+            {% endif %}       
+            {{ helm_proxy_args | default('') }}     
             --force                                                
           register: helm_upgrade_install_model_deployment_cpu_deepseek_qwen32b
           failed_when: helm_upgrade_install_model_deployment_cpu_deepseek_qwen32b.rc != 0
@@ -1122,6 +1137,7 @@
               --set oidc.client_id={{ keycloak_client_id | default('') }}
               --set oidc.client_secret={{ client_secret | default('') }}
             {% endif %}            
+            {{ helm_proxy_args | default('') }}
             --force                                                
           register: helm_upgrade_install_model_deployment_cpu_deepseek_llama_8b
           failed_when: helm_upgrade_install_model_deployment_cpu_deepseek_llama_8b.rc != 0          
