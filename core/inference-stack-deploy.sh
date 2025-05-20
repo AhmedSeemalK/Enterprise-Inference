@@ -248,7 +248,7 @@ setup_initial_env() {\
     if [ ! -d "$KUBESPRAYDIR" ]; then
         git clone https://github.com/kubernetes-sigs/kubespray.git $KUBESPRAYDIR
         cd $KUBESPRAYDIR
-        git checkout v2.25.0
+        git checkout v2.27.0
     else
         echo "Kubespray directory already exists, skipping clone."
         cd $KUBESPRAYDIR
@@ -272,8 +272,7 @@ setup_initial_env() {\
     fi
     # Create and activate virtual environment within Kubespray directory
     VENVDIR="$KUBESPRAYDIR/venv"
-    if [ ! -d "$VENVDIR" ]; then
-        python3 -m pip install --upgrade pip
+    if [ ! -d "$VENVDIR" ]; then        
         python3 -m pip install virtualenv
         python3 -m virtualenv $VENVDIR
         echo "Virtual environment created within Kubespray directory."
@@ -290,8 +289,9 @@ setup_initial_env() {\
         echo "Virtual environment activated successfully. Path: $VIRTUAL_ENV"
     fi
     export PIP_BREAK_SYSTEM_PACKAGES=1
-    # Install Kubespray requirements
-    pip install -U -r requirements.txt
+    # Install Kubespray requirements    
+    python3 -m pip install --upgrade pip
+    pip install -U -r requirements.txt    
     echo "Kubespray requirements installed."    
     # Move deploy files to Kubespray directory
     cp -r "$HOMEDIR"/deploy-* $KUBESPRAYDIR/
@@ -351,14 +351,14 @@ run_reset_playbook() {
 }
 
 reset_cluster() {
-    echo "-------------------------------------------------------"
-    echo "|     Purge Cluster! Inference as Service!             |"
-    echo "-------------------------------------------------------"
+    echo "-----------------------------------------------------------"
+    echo "|     Purge Cluster! Intel AI for Enterprise!             |"
+    echo "-----------------------------------------------------------"
     echo "${YELLOW}NOTICE: You are initiating a reset of the existing Inference Service Cluster."
     echo "This action will erase all current configurations, services and resources. Potentially causing service interruptions and data loss. This operation cannot be undone. ${NC}"
     read -p "Are you sure you want to proceed? (yes/no): " confirm_reset            
     if [[ "$confirm_reset" =~ ^(yes|y|Y)$ ]]; then
-        echo "Resetting the existing Inference as service cluster..."
+        echo "Resetting the existing Enterprise Inference cluster..."
         setup_initial_env
         run_reset_playbook
         # Check if the playbook execution was successful
@@ -510,8 +510,8 @@ deploy_observability_playbook() {
     
 }
 
-deploy_cluster_config_playbook() {    
-    if [ "${deploy_observability}" = "on" ]; then
+deploy_cluster_config_playbook() {       
+    if [ "${deploy_observability}" = "yes" ]; then
         tags="deploy_cluster_dashboard"
     else
         tags=""        
@@ -915,9 +915,9 @@ fresh_installation() {
     read_config_file        
     if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak" == "no" && "$deploy_apisix" == "no" && "$deploy_llm_models" == "no" && "$deploy_observability" == "no" ]]; then
         echo "No installation or deployment steps selected. Skipping setup_initial_env..."
-        echo "-------------------------------------------------------"
-        echo "|     Deployment Skipped for Inference as Service!    |"
-        echo "-------------------------------------------------------"
+        echo "--------------------------------------------------------------------"
+        echo "|     Deployment Skipped for Intel AI for Enterprise Inference!    |"
+        echo "--------------------------------------------------------------------"
     else
         prompt_for_input                        
         read -p "${YELLOW}ATTENTION: Ensure that the nodes do not contain existing workloads. If necessary, please purge any previous cluster configurations before initiating a fresh installation to avoid an inappropriate cluster state. Proceeding without this precaution could lead to service disruptions or data loss. Do you wish to continue with the setup? (yes/no) ${NC}" -r proceed_with_installation        
@@ -1011,9 +1011,9 @@ fresh_installation() {
             echo "" 
             fi                     
         else
-            echo "-------------------------------------------------------"
-            echo "|     Deployment Skipped for Inference as Service!    |"
-            echo "-------------------------------------------------------"
+            echo "-------------------------------------------------------------------"
+            echo "|     Deployment Skipped for Intel AI for Enterprise Inference!    |"
+            echo "--------------------------------------------------------------------"
         fi
     fi
 }
@@ -1233,7 +1233,7 @@ remove_model_deployed_via_huggingface(){
             "Inference LLM Model is removed successfully." \
             "Failed to remove Inference LLM Model Exiting!."
         echo "---------------------------------------------------------------------"
-        echo "|     LLM Model Being Removed from AI Inference as Service Cluster! |"
+        echo "|     LLM Model Being Removed from Intel AI for Enterprise Inference! |"
         echo "---------------------------------------------------------------------"
         echo ""        
     else
@@ -1356,7 +1356,7 @@ remove_model() {
             "Inference LLM Model is removed successfully." \
             "Failed to remove Inference LLM Model Exiting!."
         echo -e "${BLUE}------------------------------------------------------------------------------${NC}"
-        echo -e "${GREEN}|  AI LLM Model is being removed from AI Inference as Service Cluster!       |${NC}"
+        echo -e "${GREEN}|  AI LLM Model is being removed from Intel AI for Enterprise Inference!       |${NC}"
         echo -e "${GREEN}|  This may take some time depending on system resources and other factors.  |${NC}"
         echo -e "${GREEN}|  Please standby...                                                         |${NC}"
         echo -e "${BLUE}------------------------------------------------------------------------------${NC}"
@@ -1364,7 +1364,7 @@ remove_model() {
 }
 
 add_worker_node() {
-    echo "Adding a new worker node to the AI Inference as Service cluster..."    
+    echo "Adding a new worker node to the Intel AI for Enterprise Inference cluster..."
     read -p "${YELLOW}WARNING: Adding a node that is already managed by another Kubernetes cluster or has been manually configured using kubeadm, kubelet, or other tools can cause severe disruptions to your existing cluster. This may lead to issues such as pod restarts, service interruptions, and potential data loss. Do you want to proceed? (y/n) ${NC}" -r user_response
     echo ""
     if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
@@ -1376,7 +1376,7 @@ add_worker_node() {
             "Failed to add worker node Exiting!."
         
     echo -e "${BLUE}------------------------------------------------------------------------------${NC}"
-    echo -e "${GREEN}|  Node is being added to the AI Inference as Service Cluster!              |${NC}"
+    echo -e "${GREEN}|  Node is being added to the Intel AI for Enterprise Inference Cluster!    |${NC}"
     echo -e "${GREEN}|  This process depends on network and available system resources.          |${NC}"
     echo -e "${GREEN}|  Please stand by while the node is being added...                         |${NC}"
     echo -e "${BLUE}------------------------------------------------------------------------------${NC}"    
@@ -1385,7 +1385,7 @@ add_worker_node() {
 
 
 remove_worker_node() {
-    echo "Removing a worker node from the AI Inference as Service cluster..."    
+    echo "Removing a worker node from the Intel AI for Enterprise Inference cluster..."
     read -p "${YELLOW}WARNING: Removing a worker node will drain all resources from the node, which may cause service interruptions or data loss. This process cannot be undone. Do you want to proceed? (y/n)${NC} " -r user_response
     if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
         echo "Aborting node removal process. Exiting!!"
@@ -1395,9 +1395,9 @@ remove_worker_node() {
     execute_and_check "Removing worker nodes..." remove_inference_nodes_playbook "$@" \
             "Removing  worker node is successful." \
             "Failed to remove worker node Exiting!."
-    echo "-------------------------------------------------------------------"
-    echo "|     Node is being removed from AI Inference as Service Cluster!    |"
-    echo "--------------------------------------------------------------------"
+    echo "------------------------------------------------------------------------"
+    echo "|     Node is being removed from Intel AI for Enterprise Inference!    |"
+    echo "------------------------------------------------------------------------"
     
 }
 
@@ -1406,7 +1406,7 @@ main_menu() {
     echo "----------------------------------------------------------"
     echo "${BLUE}|  Intel AI for Enterprise Inference                      |${NC}"
     echo "|---------------------------------------------------------|"
-    echo "| 1) Provision Inference as Service Cluster               |"
+    echo "| 1) Provision Enterprise Inference Cluster               |"
     echo "| 2) Decommission Existing Cluster                        |"
     echo "| 3) Update Deployed Inference Cluster                    |"    
     echo "|---------------------------------------------------------|"

@@ -76,6 +76,8 @@
         state: present
         values:
           controller:
+            progressDeadlineSeconds: 300
+            minReadySeconds: 0
             replicaCount: "{{ inference_infra_replica_count | int }}"
             hostPort:
               enabled: true
