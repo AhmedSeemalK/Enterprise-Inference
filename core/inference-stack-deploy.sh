@@ -1222,7 +1222,8 @@ remove_model_deployed_via_huggingface(){
     fi
     read -p "${YELLOW}CAUTION: Removing the Inference LLM Model will also remove its associated services and resources, which may cause service downtime and potential data loss. This action is irreversible. Are you absolutely certain you want to proceed? (y/n) ${NC}" -r user_response    
     echo ""
-    if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
+    user_response=$(echo "$user_response" | tr '[:upper:]' '[:lower:]')        
+    if [[ ! $user_response =~ ^(yes|y|Y|YES)$ ]]; then        
         echo "Aborting LLM Model removal process. Exiting!!"
         exit 1
     fi        
@@ -1267,7 +1268,8 @@ deploy_from_huggingface() {
     if [ -n "$huggingface_model_deployment_name" ] && [ -n "$huggingface_model_id" ]; then
         read -p "${YELLOW}NOTICE: You are about to deploy a model directly from Hugging Face, which has not been pre-validated by our team. Do you wish to continue? (y/n) ${NC}" -r user_response
         echo ""
-        if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then        
+        user_response=$(echo "$user_response" | tr '[:upper:]' '[:lower:]')        
+        if [[ ! $user_response =~ ^(yes|y|Y|YES)$ ]]; then        
             echo "Deployment process has been cancelled. Exiting!!"
             exit 1
         fi
@@ -1308,10 +1310,11 @@ add_model() {
     if [ -n "$models" ]; then
         read -p "${YELLOW}NOTICE: You are initiating a model deployment. This will create the required services. Do you wish to continue? (y/n) ${NC}" -r user_response
         echo ""
-        if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
+        user_response=$(echo "$user_response" | tr '[:upper:]' '[:lower:]')        
+        if [[ ! $user_response =~ ^(yes|y|Y|YES)$ ]]; then        
             echo "Deployment process has been cancelled. Exiting!!"
             exit 1
-        fi
+        fi        
         setup_initial_env                
         execute_and_check "Deploying Inference LLM Models..." deploy_inference_llm_models_playbook "$@" \
             "Inference LLM Model is deployed successfully." \
@@ -1347,7 +1350,8 @@ remove_model() {
     if [ -n "$models" ]; then
         read -p "${YELLOW}CAUTION: Removing the Inference LLM Model will also remove its associated services and resources, which may cause service downtime and potential data loss. This action is irreversible. Are you absolutely certain you want to proceed? (y/n)${NC} " -r user_response
         echo ""
-        if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
+        user_response=$(echo "$user_response" | tr '[:upper:]' '[:lower:]')        
+        if [[ ! $user_response =~ ^(yes|y|Y|YES)$ ]]; then                
             echo "Aborting LLM Model removal process. Exiting!!"
             exit 1
         fi
@@ -1367,7 +1371,8 @@ add_worker_node() {
     echo "Adding a new worker node to the Intel AI for Enterprise Inference cluster..."
     read -p "${YELLOW}WARNING: Adding a node that is already managed by another Kubernetes cluster or has been manually configured using kubeadm, kubelet, or other tools can cause severe disruptions to your existing cluster. This may lead to issues such as pod restarts, service interruptions, and potential data loss. Do you want to proceed? (y/n) ${NC}" -r user_response
     echo ""
-    if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
+    user_response=$(echo "$user_response" | tr '[:upper:]' '[:lower:]')        
+    if [[ ! $user_response =~ ^(yes|y|Y|YES)$ ]]; then            
         echo "Aborting node addition process. Exiting!!"
         exit 1
     fi
@@ -1387,7 +1392,8 @@ add_worker_node() {
 remove_worker_node() {
     echo "Removing a worker node from the Intel AI for Enterprise Inference cluster..."
     read -p "${YELLOW}WARNING: Removing a worker node will drain all resources from the node, which may cause service interruptions or data loss. This process cannot be undone. Do you want to proceed? (y/n)${NC} " -r user_response
-    if [[ ! $user_response =~ ^[YyNn]([Ee][Ss])?$ ]]; then
+    user_response=$(echo "$user_response" | tr '[:upper:]' '[:lower:]')        
+    if [[ ! $user_response =~ ^(yes|y|Y|YES)$ ]]; then        
         echo "Aborting node removal process. Exiting!!"
         exit 1
     fi
