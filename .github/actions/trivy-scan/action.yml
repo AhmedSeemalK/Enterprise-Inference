@@ -43,8 +43,7 @@ runs:
     - name: List Available Dockerfiles
       run: |
         echo "Found the following Dockerfiles:"
-        find . -name "Dockerfile"
-      shell: bash
+        find . -name "Dockerfile"      
     - name: Build and Scan All Docker Images
       run: |
         mkdir -p trivy-reports
@@ -55,8 +54,7 @@ runs:
 
           docker build -t "$image_name" "$dir"
           trivy image --ignore-unfixed --format json --output "trivy-reports/$image_name.json" "$image_name"
-        done
-      shell: bash
+        done      
 
     - name: Upload Scan Reports
       uses: actions/upload-artifact@v3
