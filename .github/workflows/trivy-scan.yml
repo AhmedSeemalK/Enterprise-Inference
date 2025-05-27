@@ -1,9 +1,9 @@
 name: "Trivy Scan"
 on: 
   pull_request:
-    branches: [ ci-cd ]
+    branches: [ main ]
   push:
-    branches: [ ci-cd ]    
+    branches: [ main ]    
 jobs:
   Trivy-scan:
     if: ${{ github.repository == 'intel-innersource/applications.ai.erag.infra-automation' }}
