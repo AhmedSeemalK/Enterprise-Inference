@@ -46,6 +46,7 @@ runs:
         echo "Found the following Dockerfiles:"
         find . -name "Dockerfile"      
     - name: Build and Scan All Docker Images
+      shell: bash
       run: |
         mkdir -p trivy-reports
         find . -name "Dockerfile" | while read dockerfile; do
