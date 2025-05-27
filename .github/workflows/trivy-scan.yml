@@ -27,7 +27,7 @@ jobs:
           TRIVY_EXIT_CODE: '1'
           TRIVY_VULN_TYPE: 'os,library'
           TRIVY_SEVERITY: 'CRITICAL,HIGH'
-          TRIVY_CUSTOM_PARAMS: "--quiet --debug --list-all-pkgs --clear-cache"
+          TRIVY_CUSTOM_PARAMS: "--quiet --debug --list-all-pkgs"
       - name: Upload artifacts - csv
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
