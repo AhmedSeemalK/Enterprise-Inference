@@ -1,10 +1,14 @@
 name: "Trivy Scan"
-on:
+on: 
+  pull_request:
+    branches: [ ci-cd ]
+  push:
+    branches: [ ci-cd ]
   workflow_dispatch:
     inputs:
       PR_number:
         description: 'Pull request number'
-        required: true
+        required: true        
 jobs:
   Trivy-scan:
     if: ${{ github.repository == 'intel-innersource/applications.ai.erag.infra-automation' }}
