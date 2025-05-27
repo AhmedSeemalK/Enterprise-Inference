@@ -58,3 +58,9 @@ jobs:
             trivy image --ignore-unfixed --format json --output "trivy-reports/$image_name.json" "$image_name"            
           done
           ls -la     
+      - name: Upload artifacts - report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: "trivy_fs_reports_${{ github.sha }}"
+          path: trivy-reports
