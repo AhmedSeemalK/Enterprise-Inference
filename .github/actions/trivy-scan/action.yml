@@ -10,6 +10,7 @@ runs:
   steps:   
     - name: Checkout code
         uses: actions/checkout@v3
+        
     - name: Run Trivy vulnerability scanner
       uses: intel-innersource/frameworks.actions.trivy@main
       with:
@@ -20,6 +21,7 @@ runs:
         TRIVY_VULN_TYPE: 'os,library'
         TRIVY_SEVERITY: 'CRITICAL,HIGH'
         TRIVY_CUSTOM_PARAMS: "--quiet --debug --list-all-pkgs --clear-cache"       
+        
     - name: Upload artifacts - csv
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v4
