@@ -41,6 +41,11 @@ jobs:
           format: 'table'
           exit-code: 1
           severity: 'CRITICAL,HIGH'
+      - name: List Available Dockerfiles
+        shell: bash 
+        run: |
+          echo "Found the following Dockerfiles:"
+          find . -name "Dockerfile"  
 
       
         
