@@ -46,7 +46,14 @@ jobs:
         run: |
           echo "Found the following Dockerfiles:"
           find . -name "Dockerfile"  
-
-      
-        
-    
+      - name: Build and Scan All Docker Images
+        shell: bash
+        run: |
+          mkdir -p trivy-reports
+          find . -name "Dockerfile" | while read dockerfile; do
+            dir=$(dirname "$dockerfile")
+            image_name="repo-scan-$(basename "$dir")"
+            echo "Building and scanning image: $image_name"  
+            docker build -t "$image_name" "$dir"
+            trivy image --ignore-unfixed --format json --output "trivy-reports/$image_name.json" "$image_name"
+          done
