@@ -27,12 +27,6 @@ jobs:
           TRIVY_VULN_TYPE: 'os,library'
           TRIVY_SEVERITY: 'CRITICAL,HIGH'
           TRIVY_CUSTOM_PARAMS: "--quiet --debug --list-all-pkgs"      
-      - name: Upload artifacts - csv
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: "trivy_fs_report_${{ github.sha }}"
-          path: "trivy_fs_report_${{ github.sha }}.json"
       - name: Set up Trivy reports directory
         shell: bash 
         run: |
