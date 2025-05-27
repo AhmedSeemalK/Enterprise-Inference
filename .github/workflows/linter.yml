@@ -2,10 +2,10 @@ name: Linter
 
 on:
   pull_request:
-    branches: [ ci-cd ]
+    branches: [ main ]
 
   push:
-    branches: [ ci-cd ]
+    branches: [ main ]
 
 jobs:
   lint:
@@ -37,4 +37,4 @@ jobs:
           VALIDATE_PYTHON_RUFF: true
           VALIDATE_DOCKERFILE_HADOLINT: true
           GITHUB_TOKEN: ${{ github.token }}                    
-          DEFAULT_BRANCH: ci-cd
+          DEFAULT_BRANCH: main
