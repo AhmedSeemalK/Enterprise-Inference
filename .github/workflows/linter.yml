@@ -2,10 +2,10 @@ name: Linter
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ ci-cd ]
 
   push:
-    branches: [ main ]
+    branches: [ ci-cd ]
 
 jobs:
   lint:
