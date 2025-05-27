@@ -1,0 +1,7 @@
+failure-threshold: error
+ignored:
+  - DL3006
+  - DL3007
+  - DL3008
+  - DL3042 # avoid use of cache dir with pip
+  - DL3013 # pin versions in pip
