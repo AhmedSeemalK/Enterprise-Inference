@@ -33,6 +33,10 @@ jobs:
         with:
           name: "trivy_fs_report_${{ github.sha }}"
           path: "trivy_fs_report_${{ github.sha }}.json"
+      - name: Set up Trivy reports directory
+        shell: bash 
+        run: |
+          mkdir -p trivy-reports
       - name: Run Trivy Scan on Repository Files
         uses: aquasecurity/trivy-action@master
         with:
