@@ -39,4 +39,4 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           YAML_CONFIG_FILE: .github/linters/.yaml-lint.yml
           HADOLINT_CONFIG_FILE: .github/linters/.hadolint.yaml
-          DEFAULT_BRANCH: main
+          DEFAULT_BRANCH: ci-cd
