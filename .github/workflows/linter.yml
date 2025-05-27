@@ -36,7 +36,6 @@ jobs:
           VALIDATE_YAML: true
           VALIDATE_PYTHON_RUFF: true
           VALIDATE_DOCKERFILE_HADOLINT: true
-          GITHUB_TOKEN: ${{ github.token }}
-          YAML_CONFIG_FILE: .github/linters/.yaml-lint.yml
+          GITHUB_TOKEN: ${{ github.token }}          
           HADOLINT_CONFIG_FILE: .github/linters/.hadolint.yaml
           DEFAULT_BRANCH: ci-cd
