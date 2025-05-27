@@ -57,7 +57,8 @@ jobs:
             docker build -t "$image_name" "$dir"
             trivy image --ignore-unfixed --format json --output "trivy-reports/$image_name.json" "$image_name"            
           done
-          ls -la     
+          ls -la
+          ls -la trivy-reports
       - name: Upload artifacts - report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
