@@ -4,7 +4,7 @@ on:
     inputs:
       PR_number:
         description: 'Pull request number'
-        required: true
+        required: false
 
 jobs:
   Trivy-scan:
