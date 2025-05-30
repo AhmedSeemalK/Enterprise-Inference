@@ -35,6 +35,7 @@ jobs:
           FILTER_REGEX_EXCLUDE: ".*/templates/.*\\.yaml|.*/config/manifests/.*\\.yaml|.*/gmc-router\\.yaml|\\.github/.*"
           VALIDATE_YAML: true
           VALIDATE_PYTHON_RUFF: true
+          HADOLINT_CONFIG_FILE: .github/linters/.hadolint.yaml
           VALIDATE_DOCKERFILE_HADOLINT: true
           GITHUB_TOKEN: ${{ github.token }}                    
           DEFAULT_BRANCH: main
