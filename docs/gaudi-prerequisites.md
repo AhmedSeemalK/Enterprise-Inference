@@ -77,7 +77,7 @@ sudo apt install -y habanalabs-container-runtime
 #### Step 4: Install or Upgrade Habana Base Installer
 ```
 echo "Downloading Habana installer..."
-wget -nv https://vault.habana.ai/artifactory/gaudi-installer/1.20.0/habanalabs-installer.sh
+wget -nv https://vault.habana.ai/artifactory/gaudi-installer/1.20.1/habanalabs-installer.sh
 chmod +x habanalabs-installer.sh
 
 # For Fresh Installation
