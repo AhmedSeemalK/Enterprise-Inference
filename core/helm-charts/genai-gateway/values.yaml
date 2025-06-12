@@ -61,7 +61,7 @@ redis:
     persistence:
       enabled: true
       size: 2Gi
-      #storageClass: ""
+      storageClass: ""
 backup:
   enabled: false
   s3:
