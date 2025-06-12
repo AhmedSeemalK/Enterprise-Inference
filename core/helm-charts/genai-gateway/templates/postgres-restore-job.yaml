@@ -1,0 +1,63 @@
+{{- if .Values.restoreJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: genai-gateway-postgres-restore    
+spec:
+  template:
+    spec:
+      containers:
+      - name: pg-restore
+        image: postgres:17.5
+        env:
+        - name: PGURL
+          value: "{{ .Values.env.DATABASE_URL }}"
+        - name: AWS_ACCESS_KEY_ID
+          value: "{{ .Values.backup.s3.accessKeyId }}"
+        - name: AWS_SECRET_ACCESS_KEY
+          value: "{{ .Values.backup.s3.secretAccessKey }}"
+        - name: AWS_DEFAULT_REGION
+          value: "{{ .Values.backup.s3.region }}"
+        command:
+          - "/bin/bash"
+          - "-c"
+          - |
+            if [ "{{ .Values.restoreJob.source }}" = "s3" ]; then
+              apt-get update && apt-get install -y awscli && \
+              until pg_isready -d "$PGURL"; do echo "Waiting for PostgreSQL..."; sleep 5; done && \
+              aws s3 ls s3://{{ .Values.backup.s3.bucket }}/ && \
+              echo "Downloading restore file..." && \
+              aws s3 cp s3://{{ .Values.backup.s3.bucket }}/{{ .Values.restoreJob.restoreFile }} /restore/restore.sql && \
+              ls -a /restore && \
+              if [ -f /restore/restore.sql ]; then \
+                echo "Restoring database from S3..."; \
+                psql $PGURL < /restore/restore.sql; \
+              else \
+                echo "Restore file not found from S3!"; \
+                exit 1; \
+              fi; \
+            elif [ "{{ .Values.restoreJob.source }}" = "pvc" ]; then
+              until pg_isready -d "$PGURL"; do echo "Waiting for PostgreSQL..."; sleep 5; done && 
+              ls -a / &&
+              cd backup &&
+              echo "Checking for restore file in PVC..." && 
+              if [ -f /backup/{{ .Values.restoreJob.restoreFile }} ]; then 
+                echo "Restoring database from PVC..."; 
+                psql $PGURL < /backup/{{ .Values.restoreJob.restoreFile }}; 
+              else 
+                echo "Restore file not found in PVC!"; 
+                exit 1; 
+              fi; \
+            else
+              echo "Unknown restore source: {{ .Values.restoreJob.source }}"; \
+              exit 1;
+            fi
+        volumeMounts:
+        - name: backup-volume
+          mountPath: /backup
+      restartPolicy: OnFailure
+      volumes:
+      - name: backup-volume
+        persistentVolumeClaim:
+          claimName: postgres-backup-pvc
+{{- end }}

@@ -1,0 +1,78 @@
+replicaCount: 1
+image:
+  repository: ghcr.io/berriai/litellm-database
+  tag: main-stable
+  pullPolicy: Always
+service:
+  type: LoadBalancer
+  port: 4000
+ingress:  
+  host: ""  
+  secretname: ""
+env:  
+  LITELLM_MASTER_KEY: "<REPLACE_WITH_MASTER_KEY>"
+  LITELLM_SALT_KEY: "<REPLACE_WITH_SALT_KEY>"
+  LITELLM_LABEL: GenAIGateway  
+  DATABASE_URL: "postgresql://<DB_USER>:<DB_PASS>@genai-gateway-postgresql:5432/litellm"
+  REDIS_HOST: genai-gateway-redis-master
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: "<REPLACE_WITH_REDIS_PASSWORD>"
+  STORE_MODEL_IN_DB: "True"
+  PROXY_LOGOUT_URL: /sso/key/generate
+  LANGFUSE_SECRET_KEY: "<REPLACE_WITH_LANGFUSE_SECRET_KEY>"
+  LANGFUSE_PUBLIC_KEY: "<REPLACE_WITH_LANGFUSE_PUBLIC_KEY>"
+  LANGFUSE_HOST: http://langfuse-web:3000  
+config:
+  proxy_config_yaml: |
+    router_settings:
+      routing_strategy: usage-based-routing-v2
+      redis_host: os.environ/REDIS_HOST
+      redis_port: os.environ/REDIS_PORT
+      redis_password: os.environ/REDIS_PASSWORD
+    litellm_settings:
+      drop_params: true
+      return_response_headers: false
+      callbacks: ["langfuse"]
+      turn_off_message_logging: true
+      redact_user_api_key_info: false
+    general_settings:
+      disable_spend_logs: True
+      disable_error_logs: True      
+postgresql:
+  enabled: true
+  architecture: standalone
+  auth:
+    username: "<DB_USER>"
+    password: "<DB_PASS>"
+    database: litellm
+    postgresPassword: "<DB_PASS>"
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: ""    
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: true
+    password: "<REPLACE_WITH_REDIS_PASSWORD>"
+  master:
+    persistence:
+      enabled: true
+      size: 2Gi
+      #storageClass: ""
+backup:
+  enabled: false
+  s3:
+    bucket: s3-for-lite-llm-logs
+    region: us-west-2    
+    accessKeyId: "<REPLACE_WITH_AWS_ACCESS_KEY>"
+    secretAccessKey: "<REPLACE_WITH_AWS_SECRET_KEY>"     
+  uploadToS3: false
+  postgresBackupSchedule: "*/1 * * * *" # Every day at 2am
+restoreJob:
+  enabled: false # Set to true to enable the restore job
+  restoreFile: backup-file.sql  
+  source: s3 # options: pvc or s3
+namespace: genai-gateway
