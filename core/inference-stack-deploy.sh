@@ -146,7 +146,7 @@ cpu_or_gpu=""
 deploy_kubernetes_fresh=""
 deploy_habana_ai_operator=""
 deploy_ingress_controller=""
-deploy_keycloak_and_apisix=""
+deploy_genai_gateway=""
 deploy_llm_models=""
 list_model_menu=""
 apisix_enabled=""
@@ -234,6 +234,20 @@ read_config_file() {
                 exit 1
                 ;;
         esac
+        case "$deploy_genai_gateway" in
+            "no")
+                deploy_genai_gateway="no"                
+                ;;
+            "yes")
+                deploy_genai_gateway="yes"                                
+                ;;
+            *)
+                echo "Incorrect value for deploy_genai_gateway"
+                exit 1
+                ;;
+        esac
+
+
     else
         echo "Configuration file not found. Using default values or prompting for input."
     fi    
@@ -447,6 +461,12 @@ create_keycloak_tls_secret_playbook() {
         --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} model_name_list='${model_name_list//\ /,}'  deploy_keycloak=${deploy_keycloak}  deploy_apisix=${deploy_apisix} "
 }
 
+run_genai_gateway_playbook() {
+    echo "Deploying GenAI Gateway Service..."
+    echo "************************************"        
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-genai-gateway.yml --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} deploy_genai_gateway=${deploy_genai_gateway} model_name_list='${model_name_list//\ /,}' " 
+}
+
 deploy_inference_llm_models_playbook() {
     echo "Deploying Inference LLM Models playbook..."    
     install_true="true"        
@@ -610,6 +630,13 @@ prompt_for_input() {
     else
         echo "Proceeding with the setup of Apisix: $deploy_apisix"
     fi
+
+
+    if [ -z "$deploy_genai_gateway" ]; then
+        read -p "Do you want to proceed with deploying GenAI Gateway? (yes/no): " deploy_genai_gateway
+    else
+        echo "Proceeding with the setup of GenAI Gateway: $deploy_genai_gateway"
+    fi
     
     if [ -z "$deploy_observability" ]; then
         read -p "Do you want to proceed with deploying Observability? (yes/no): " deploy_observability
@@ -629,28 +656,30 @@ prompt_for_input() {
         read -p "Enter the full path to the certificate file: " cert_file
     else
         echo "Using provided certificate file: $cert_file"
-    fi
+    fi    
     if [ -z "$key_file" ]; then
         read -p "Enter the full path to the key file: " key_file
     else
         echo "Using provided key file: $key_file"
     fi
-    if [ -z "$keycloak_client_id" ]; then
-        read -p "Enter the keycloak client id: " keycloak_client_id
-    else
-        echo "Using provided keycloak client id: $keycloak_client_id"
-    fi
-    if [ -z "$keycloak_admin_user" ]; then
-        read -p "Enter the Keycloak admin username: " keycloak_admin_user
-    else
-        echo "Using provided Keycloak admin username: $keycloak_admin_user"
-    fi
-    if [ -z "$keycloak_admin_password" ]; then
-        read -sp "Enter the Keycloak admin password: " keycloak_admin_password
-        echo
-    else
-        echo "Using provided Keycloak admin password"
-    fi
+    if [ $deploy_keycloak == "yes" ]; then
+        if [ -z "$keycloak_client_id" ]; then
+            read -p "Enter the keycloak client id: " keycloak_client_id
+        else
+            echo "Using provided keycloak client id: $keycloak_client_id"
+        fi
+        if [ -z "$keycloak_admin_user" ]; then
+            read -p "Enter the Keycloak admin username: " keycloak_admin_user
+        else
+            echo "Using provided Keycloak admin username: $keycloak_admin_user"
+        fi
+        if [ -z "$keycloak_admin_password" ]; then
+            read -sp "Enter the Keycloak admin password: " keycloak_admin_password
+            echo
+        else
+            echo "Using provided Keycloak admin password"
+        fi
+    fi        
     
     if [[ -z "$cpu_or_gpu" ]]; then
         read -p "Do you want to run on CPU or GPU? (c/g): " cpu_or_gpu
@@ -913,7 +942,7 @@ install_kubernetes() {
 
 fresh_installation() {    
     read_config_file        
-    if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak" == "no" && "$deploy_apisix" == "no" && "$deploy_llm_models" == "no" && "$deploy_observability" == "no" ]]; then
+    if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak" == "no" && "$deploy_apisix" == "no" && "$deploy_llm_models" == "no" && "$deploy_observability" == "no" && "$deploy_genai_gateway" == "no" ]]; then
         echo "No installation or deployment steps selected. Skipping setup_initial_env..."
         echo "--------------------------------------------------------------------"
         echo "|     Deployment Skipped for Intel AI for Enterprise Inference!    |"
@@ -957,7 +986,18 @@ fresh_installation() {
             else
                 echo "Skipping Keycloak deployment..."
             fi
+
+            if [[ "$deploy_genai_gateway" == "yes" ]]; then
+                echo "successfully deploying genai gateway"
+                execute_and_check "Deploying GenAI Gateway..." run_genai_gateway_playbook \
+                    "GenAI Gateway is deployed successfully." \
+                    "Failed to deploy GenAI Gateway. Exiting."                
+            else
+                echo "Skipping GenAI Gateway deployment..."
+            fi
             
+
+
             if [[ "$deploy_observability" == "yes" ]]; then
                 echo "Deploying observability..."
                 execute_and_check "Deploying Observability..." deploy_observability_playbook "$@" \
