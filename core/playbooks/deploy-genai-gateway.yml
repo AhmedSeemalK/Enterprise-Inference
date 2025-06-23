@@ -5,6 +5,9 @@
   hosts: kube_control_plane
   vars:
     ansible_python_interpreter: /usr/bin/python3
+    helm_charts_base_genai: "{{ lookup('env', 'PWD') }}/helm-charts/genai-gateway"
+    helm_charts_base_genai_trace: "{{ lookup('env', 'PWD') }}/helm-charts/genai-gateway-trace"
+    remote_helm_charts_base: "/tmp/helm-charts"
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default(env_proxy | default({})) }}"
@@ -26,4 +29,123 @@
       args:
         executable: /bin/bash
       become: true
+    - name: Output config
+      debug:
+        var: cert_file, key_file, secret_name     
+    - name: Create Namespace for GenAI Gateway
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: genai-gateway          
+    - name: Create TLS secret for GenAI Gateway
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ secret_name }}"
+            namespace: genai-gateway
+          type: kubernetes.io/tls
+          data:
+            tls.crt: "{{ lookup('file', cert_file) | b64encode }}"
+            tls.key: "{{ lookup('file', key_file) | b64encode }}"
+      register: kubectl_output
+    - name: TLS Create 
+      debug:
+        msg: "Secret {{ secret_name }} created."            
+    - name: Copy Dependency Files Message
+      debug:
+        msg: "Copying dependency files to the nodes please wait..."            
     
+    - name: Ensure Remote Directory Exists
+      ansible.builtin.file:
+        path: "{{ remote_helm_charts_base }}"
+        state: directory
+        mode: '0755'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+    
+    - name: Sync dependency files to Deployment Nodes
+      ansible.posix.synchronize:
+        src: "{{ item.src }}/"
+        dest: "{{ item.dest }}/"
+        recursive: yes
+        delete: no
+        mode: push
+      loop:
+        - { src: "{{ helm_charts_base_genai }}", dest: "{{ remote_helm_charts_base }}/genai-gateway" }
+        - { src: "{{ helm_charts_base_genai_trace }}", dest: "{{ remote_helm_charts_base }}/genai-gateway-trace" }
+    
+    
+    
+    
+    
+    
+    
+    
+    # - name: Copy dependency files to Deployment Nodes
+    #   ansible.builtin.copy:
+    #     src: "{{ item.src }}/"
+    #     dest: "{{ item.dest }}/"
+    #     mode: '0755'
+    #     owner: "{{ ansible_user }}"
+    #     group: "{{ ansible_user }}"
+    #     remote_src: no
+    #   loop:
+    #     - { src: "{{ helm_charts_base_genai }}", dest: "{{ remote_helm_charts_base }}/genai-gateway" }
+    #     - { src: "{{ helm_charts_base_genai_trace }}", dest: "{{ remote_helm_charts_base }}/genai-gateway-trace" }
+    # - name: Install GenAI Gateway System
+    #   community.kubernetes.helm:
+    #     name: genai-gateway
+    #     chart_path: /home/ubuntu/helm-charts/genai-gateway
+    #     release_namespace: genai-gateway
+    #     create_namespace: true
+    #     set_values:
+    #       - env.LITELLM_MASTER_KEY={{ litellm_master_key }}
+    #       - env.LITELLM_SALT_KEY={{ litellm_salt_key }}
+    #       - env.REDIS_PASSWORD={{ redis_password }}
+    #       - env.LANGFUSE_SECRET_KEY={{ langfuse_secret_key }}
+    #       - env.LANGFUSE_PUBLIC_KEY={{ langfuse_public_key }}
+    #       - env.DATABASE_URL={{ database_url }}
+    #       - postgresql.auth.username={{ postgresql_username }}
+    #       - postgresql.auth.password={{ postgresql_password }}
+    #       - postgresql.auth.postgresPassword={{ postgresql_password }}
+    #       - redis.auth.password={{ redis_auth_password }}
+    #       - backup.s3.accessKeyId={{ aws_access_key }}
+    #       - backup.s3.secretAccessKey={{ aws_secret_key }}
+    #       - ingress.host={{ secret_name }}
+    #       - ingress.secretname={{ secret_name }}
+    #   vars_files:
+    #     - group_vars/all/vault.yml
+
+    # - name: Remove any existing deployment directory
+    #   ansible.builtin.file:
+    #     path: "{{ remote_helm_charts_base }}"
+    #     state: absent
+    # - name: Install genai-gateway-trace Helm chart
+    #   community.kubernetes.helm:
+    #     name: genai-gateway-trace
+    #     chart_path: ./langfuse
+    #     release_namespace: default
+    #     values: {}
+    #     set_values:
+    #       - clickhouse.auth.username={{ clickhouse_username }}
+    #       - clickhouse.auth.password={{ clickhouse_password }}
+    #       - langfuse.additionalEnv[0].value={{ redis_url }}
+    #       - langfuse.additionalEnv[3].value={{ clickhouse_username }}
+    #       - langfuse.additionalEnv[4].value={{ clickhouse_password }}
+    #       - langfuse.additionalEnv[13].value={{ langfuse_pk }}
+    #       - langfuse.additionalEnv[14].value={{ langfuse_sk }}
+    #       - langfuse.additionalEnv[17].value={{ langfuse_secret }}
+    #       - langfuse.nextauth.secret={{ langfuse_secret }}
+    #       - langfuse.salt={{ langfuse_salt }}
+    #       - langfuse.additionalEnv[22].value={{ minio_secret }}
+    #       - minio.auth.rootPassword={{ minio_secret }}
+    #       - postgresql.auth.password={{ postgres_password }}
+    #       - valkey.auth.password={{ valkey_password }}
+    #   vars_files:
+    #     - group_vars/all/vault.yml
