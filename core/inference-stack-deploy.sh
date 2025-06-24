@@ -189,9 +189,9 @@ read_config_file() {
         rm temp_env_vars        
         
         
-        if [[ -n "$vault_password" ]]; then
+        if [[ -n "$vault_pass_code" ]]; then
             echo "Vault password is set."            
-            echo -n "$vault_password" > .vault-passfile
+            echo -n "$vault_pass_code" > .vault-passfile
             vault_pass_file="$HOMEDIR/.vault-passfile"                        
         else
             echo "Vault password is not set. Please set it in the configuration file."            
@@ -472,9 +472,8 @@ create_keycloak_tls_secret_playbook() {
 
 run_genai_gateway_playbook() {
     echo "Deploying GenAI Gateway Service..."
-    echo "************************************"    
-    echo "Using vault password file: $vault_pass_file"    
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-genai-gateway.yml --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} deploy_genai_gateway=${deploy_genai_gateway} model_name_list='${model_name_list//\ /,}' " --vault-password-file "$vault_pass_file"
+    echo "************************************"        
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-genai-gateway.yml --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} deploy_genai_gateway=${deploy_genai_gateway} model_name_list='${model_name_list//\ /,}' " --vault-password-file "$vault_pass_file" 
 }
 
 deploy_inference_llm_models_playbook() {
