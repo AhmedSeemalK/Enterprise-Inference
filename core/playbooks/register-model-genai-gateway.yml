@@ -7,7 +7,8 @@
           accept: "*/*"
           cache-control: "no-cache"
           content-type: "application/json"
-          Authorization: "{{ litellm_master_key }}"
+          Authorization: "Bearer {{ litellm_master_key }}"
+        validate_certs: no
         body_format: json
         body:
           model_name: "{{ reg_model_name }}"
