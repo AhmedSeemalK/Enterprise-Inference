@@ -205,7 +205,6 @@
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
           tags: install-llama-8b
-
         - name: Register Llama8b model
           include_tasks: register-model-genai-gateway.yml
           vars:
@@ -215,14 +214,12 @@
             reg_api_base: "http://vllm-llama-8b-service/v1"
             reg_input_cost_per_token: 0.001
             reg_output_cost_per_token: 0.002
-          tags: install-llama-8b
-      
+          tags: install-llama-8b      
       run_once: true
       when:                
         - model_name_list is defined        
         - "'llama-8b' in (model_name_list | regex_replace(',', ' ') | split())"
         - install_true == 'true'
-
 
     - name: Check if vllm-llama-8b Model is deployed
       ansible.builtin.command:
@@ -285,14 +282,22 @@
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+        - name: Register "{{ huggingface_model_id }}" model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "{{ huggingface_model_id }}"
+            reg_litellm_model: "openai/{{ huggingface_model_id }}"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://{{huggingface_model_deployment_name}}-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: "install-{{ huggingface_model_deployment_name }}"
       run_once: true
       tags: "install-{{ huggingface_model_deployment_name }}"
       when:                        
         - hugging_face_model_deployment == 'true'
         - install_true == 'true'
-        
-                
-    
+                            
     - name: Check if "{{ hugging_face_model_remove_name }}" Model is deployed
       ansible.builtin.command:
         cmd: "helm list --filter {{ hugging_face_model_remove_name }} --short"
@@ -352,13 +357,22 @@
             {{ helm_proxy_args | default('') }}
             --force             
           register: helm_upgrade_install_model_deployment
-          failed_when: helm_upgrade_install_model_deployment.rc != 0
+          failed_when: helm_upgrade_install_model_deployment.rc != 0        
+        - name: Register Llama70b model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "meta-llama/Meta-Llama-3.1-70B-Instruct"
+            reg_litellm_model: "openai/meta-llama/Meta-Llama-3.1-70B-Instruct"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-llama-70b-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-llama-70b
       run_once: true
       tags: install-llama-70b
       when:
         - '"llama-70b" in model_name_list'
         - install_true == 'true'
-
 
     - name: Check if vllm-llama-70b Model is deployed
       ansible.builtin.command:
@@ -421,12 +435,21 @@
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+        - name: Register Mixtral7b model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "mistralai/Mixtral-8x7B-Instruct-v0.1"
+            reg_litellm_model: "openai/mistralai/Mixtral-8x7B-Instruct-v0.1"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-mixtral-7b-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-mixtral-8x-7b
       run_once: true
       tags: install-mixtral-8x-7b
       when:
         - '"mixtral-8x-7b" in model_name_list'
         - install_true == 'true'
-
 
     - name: Check if Mixtral7b Model is deployed
       ansible.builtin.command:
@@ -489,7 +512,16 @@
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
-      run_once: true
+        - name: Register Codellama model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "codellama/CodeLlama-34b-Instruct-hf"
+            reg_litellm_model: "openai/codellama/CodeLlama-34b-Instruct-hf"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-codellama-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-codellama-34b
       tags: install-codellama-34b
       when:
         - '"codellama-34b" in model_name_list'
@@ -511,7 +543,6 @@
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""
 
-
     - name: Deploy Faclon3 7b LLM Model
       block:
         - name: Delete Ingress resource Falcon3 7b from default namespace
@@ -528,7 +559,7 @@
             namespace: auth-apisix
             name: vllm-falcon3-7b-ingress
             state: absent
-        - name: Deploy LLM model codellama
+        - name: Deploy LLM model Falcon3-7b
           ansible.builtin.command: >-
             helm upgrade --install vllm-falcon3-7b "{{ remote_helm_charts_base }}/vllm"
             --set LLM_MODEL_ID="tiiuae/Falcon3-7B-Instruct"
@@ -555,19 +586,29 @@
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+        - name: Register Falcon3-7b model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "tiiuae/Falcon3-7B-Instruct"
+            reg_litellm_model: "openai/tiiuae/Falcon3-7B-Instruct"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-falcon3-7b-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-falcon3-7b
       run_once: true
       tags: install-falcon3-7b
       when:
         - '"falcon3-7b" in model_name_list'
         - install_true == 'true'
-    - name: Check if Faclon3 7b Model is deployed
+    - name: Check if Falcon3 7b Model is deployed
       ansible.builtin.command:
         cmd: "helm list --filter vllm-falcon3-7b --short"
       register: helm_release_installed
       ignore_errors: true
       run_once: true
       tags: uninstall-falcon3-7b
-    - name: Uninstall Faclon3 7b Model 
+    - name: Uninstall Falcon3 7b Model
       ansible.builtin.command:
         cmd: "helm uninstall vllm-falcon3-7b"
       run_once: true
@@ -576,7 +617,6 @@
         - "'falcon3-7b' in model_name_list"
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""
-
 
     - name: Deploy Mistral_7b LLM Model
       block:
@@ -621,6 +661,16 @@
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+        - name: Register Mistral_7b model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "mistralai/Mistral-7B-Instruct-v0.3"
+            reg_litellm_model: "openai/mistralai/Mistral-7B-Instruct-v0.3"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-mistral-7b-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-mistral-7b
       run_once: true
       tags: install-mistral-7b
       when:
@@ -642,7 +692,6 @@
         - "'mistral-7b' in model_name_list"
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""
-
 
     - name: Deploy tei LLM Model
       block:
@@ -686,6 +735,16 @@
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+        - name: Register vllm-tei model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "BAAI/bge-base-en-v1.5"
+            reg_litellm_model: "openai/BAAI/bge-base-en-v1.5"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-tei-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-mistral-7b
       run_once: true
       tags: install-tei
       when:
