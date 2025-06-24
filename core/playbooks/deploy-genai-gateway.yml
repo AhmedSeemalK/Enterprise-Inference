@@ -98,32 +98,32 @@
         --set backup.s3.accessKeyId={{ aws_access_key }}
         --set backup.s3.secretAccessKey={{ aws_secret_key }}
         --set ingress.host={{ secret_name }}
-        --set ingress.secretname={{ secret_name }}    
+        --set ingress.secretname={{ secret_name }}  
+        -f {{ remote_helm_charts_base }}/genai-gateway/values.yaml  
 
-    # - name: Remove any existing deployment directory
-    #   ansible.builtin.file:
-    #     path: "{{ remote_helm_charts_base }}"
-    #     state: absent
-    # - name: Install genai-gateway-trace Helm chart
-    #   community.kubernetes.helm:
-    #     name: genai-gateway-trace
-    #     chart_path: ./langfuse
-    #     release_namespace: default
-    #     values: {}
-    #     set_values:
-    #       - clickhouse.auth.username={{ clickhouse_username }}
-    #       - clickhouse.auth.password={{ clickhouse_password }}
-    #       - langfuse.additionalEnv[0].value={{ redis_url }}
-    #       - langfuse.additionalEnv[3].value={{ clickhouse_username }}
-    #       - langfuse.additionalEnv[4].value={{ clickhouse_password }}
-    #       - langfuse.additionalEnv[13].value={{ langfuse_pk }}
-    #       - langfuse.additionalEnv[14].value={{ langfuse_sk }}
-    #       - langfuse.additionalEnv[17].value={{ langfuse_secret }}
-    #       - langfuse.nextauth.secret={{ langfuse_secret }}
-    #       - langfuse.salt={{ langfuse_salt }}
-    #       - langfuse.additionalEnv[22].value={{ minio_secret }}
-    #       - minio.auth.rootPassword={{ minio_secret }}
-    #       - postgresql.auth.password={{ postgres_password }}
-    #       - valkey.auth.password={{ valkey_password }}
-    #   vars_files:
-    #     - group_vars/all/vault.yml
+    - name: Install GenAI Gateway Trace System
+      command: >
+        helm upgrade --install genai-gateway-trace {{ remote_helm_charts_base }}/genai-gateway-trace/charts/langfuse
+        --namespace genai-gateway
+        --set clickhouse.auth.username={{ clickhouse_username }} \
+        --set clickhouse.auth.password={{ clickhouse_password }} \
+        --set langfuse.additionalEnv[0].value={{ clickhouse_redis_url }} \
+        --set langfuse.additionalEnv[3].value={{ clickhouse_username }} \
+        --set langfuse.additionalEnv[4].value={{ clickhouse_password }} \
+        --set langfuse.additionalEnv[9].value={{ langfuse_public_key }} \
+        --set langfuse.additionalEnv[10].value={{ langfuse_secret_key }} \
+        --set langfuse.additionalEnv[11].value={{ langfuse_login }} \
+        --set langfuse.additionalEnv[12].value={{ langfuse_user }} \
+        --set langfuse.additionalEnv[13].value={{ langfuse_password }} \
+        --set langfuse.additionalEnv[18].value={{ minio_secret }} \
+        --set langfuse.nextauth.secret={{ clickhouse_password }} \
+        --set langfuse.salt={{ clickhouse_password }} \        
+        --set minio.auth.rootPassword={{ minio_secret }} \
+        --set minio.auth.rootUser={{ minio_user }} \
+        --set postgresql.auth.password={{ postgres_password }} \
+        --set postgresql.auth.username={{ postgres_user }} \
+        --set valkey.auth.password={{ clickhouse_password }} \
+        --set ingress.host="trace.{{ secret_name }}" \
+        --set ingress.secretname="trace.{{ secret_name }}" \
+        --set langfuse.nextauth.url="https://trace.{{ secret_name }}" \
+        -f {{ remote_helm_charts_base }}/genai-gateway-trace/charts/langfuse/values.yaml
