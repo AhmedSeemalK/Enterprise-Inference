@@ -155,6 +155,7 @@ deploy_keycloak=""
 deploy_apisix=""
 delete_pv_on_purge=""
 prereq_executed=0
+vault_pass_file=""
 hugging_face_model_deployment=""
 huggingface_model_id=""
 huggingface_model_deployment_name=""
@@ -186,6 +187,15 @@ read_config_file() {
         # Load the environment variables from the temporary file
         source temp_env_vars        
         rm temp_env_vars        
+        
+        
+        if [[ -n "$vault_password" ]]; then
+            echo "Vault password is set."            
+            echo -n "$vault_password" > .vault-passfile
+            vault_pass_file="$HOMEDIR/.vault-passfile"                        
+        else
+            echo "Vault password is not set. Please set it in the configuration file."            
+        fi
         
         INVENTORY_ALL_FILE="$HOMEDIR"/inventory/all.yml        
         if [[ -n "$http_proxy" ]]; then
@@ -305,7 +315,7 @@ setup_initial_env() {\
     export PIP_BREAK_SYSTEM_PACKAGES=1
     # Install Kubespray requirements    
     python3 -m pip install --upgrade pip
-    pip install -U -r requirements.txt    
+    python3 -m pip install -U -r requirements.txt    
     echo "Kubespray requirements installed."    
     # Move deploy files to Kubespray directory
     cp -r "$HOMEDIR"/deploy-* $KUBESPRAYDIR/
@@ -315,11 +325,10 @@ setup_initial_env() {\
     cp  "$HOMEDIR"/inventory/hosts.yaml $KUBESPRAYDIR/inventory/mycluster/
     cp "$HOMEDIR"/inventory/addons.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/k8s_cluster/addons.yml
     cp "$HOMEDIR"/inventory/all.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/all/all.yml
-    # Copy playbooks directory
+    cp "$HOMEDIR"/inventory/vault.yml $KUBESPRAYDIR/scripts/vault.yml    
     cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/    
     echo "Additional files and directories copied to Kubespray directory."
-    ansible-galaxy collection install community.kubernetes    
-    
+    ansible-galaxy collection install community.kubernetes        
 }
 
 
@@ -463,8 +472,9 @@ create_keycloak_tls_secret_playbook() {
 
 run_genai_gateway_playbook() {
     echo "Deploying GenAI Gateway Service..."
-    echo "************************************"        
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-genai-gateway.yml --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} deploy_genai_gateway=${deploy_genai_gateway} model_name_list='${model_name_list//\ /,}' " 
+    echo "************************************"    
+    echo "Using vault password file: $vault_pass_file"    
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-genai-gateway.yml --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} deploy_genai_gateway=${deploy_genai_gateway} model_name_list='${model_name_list//\ /,}' " --vault-password-file "$vault_pass_file"
 }
 
 deploy_inference_llm_models_playbook() {
