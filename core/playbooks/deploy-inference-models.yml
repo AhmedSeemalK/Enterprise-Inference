@@ -27,8 +27,10 @@
     hugging_face_model_remove_name: 'false'
     gaudi_values_file: "{{ remote_helm_charts_base }}/vllm/gaudi-values.yaml"        
     huggingface_tensor_parellel_size: 'false'
-    vllm_metrics_enabled: 'false'
+    vllm_metrics_enabled: 'false'  
   gather_facts: false
+  vars_files:
+    - "{{ lookup('env', 'PWD') }}/config/vault.yml"
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default(env_proxy | default({})) }}"
   tasks:
@@ -73,15 +75,26 @@
           run_once: true
           when: hugging_face_token is defined    
           tags: always
-        - name: Transfer Dependency files
-          ansible.builtin.copy:
-            src: "{{ helm_charts_base }}/"
-            dest: "{{ remote_helm_charts_base }}/"
+        
+        - name: Ensure Remote Directory Exists
+          ansible.builtin.file:
+            path: "{{ remote_helm_charts_base }}"
+            state: directory
             mode: '0755'
             owner: "{{ ansible_user }}"
-            group: "{{ ansible_user }}"
-            remote_src: no
+            group: "{{ ansible_user }}"    
           tags: always
+        - name: Sync dependency files to Deployment Nodes
+          ansible.posix.synchronize:
+            src: "{{ item.src }}/"
+            dest: "{{ item.dest }}/"
+            recursive: yes
+            delete: no
+            mode: push
+          loop:
+            - { src: "{{ helm_charts_base }}", dest: "{{ remote_helm_charts_base }}/" }
+          tags: always
+                    
         - name: Transfer Dependency keycloak-realmcreationfile
           ansible.builtin.copy:
             src: "{{ remote_home_dir }}/"
@@ -192,6 +205,18 @@
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
           tags: install-llama-8b
+
+        - name: Register Llama8b model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
+            reg_litellm_model: "openai/meta-llama/Meta-Llama-3.1-8B-Instruct"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-llama-8b-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-llama-8b
+      
       run_once: true
       when:                
         - model_name_list is defined        
@@ -1163,18 +1188,9 @@
       ansible.builtin.debug:
         msg: "Installed Models: {{ inference_models.stdout_lines | join(', ') }}"
       when: inference_models.stdout_lines is defined and inference_models.stdout_lines | length > 0
-    
+            
     - name: Clean up remote dependencies directory
       tags: always
       ansible.builtin.file:
         path: "{{ remote_helm_charts_base }}"
         state: absent
-
-
-
-
-
-
-
-
-
