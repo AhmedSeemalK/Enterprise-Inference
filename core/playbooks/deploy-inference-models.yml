@@ -744,7 +744,7 @@
             reg_api_base: "http://vllm-tei-service/v1"
             reg_input_cost_per_token: 0.001
             reg_output_cost_per_token: 0.002
-          tags: install-mistral-7b
+          tags: install-tei
       run_once: true
       tags: install-tei
       when:
@@ -809,6 +809,16 @@
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+        - name: Register vllm-teirerank model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "BAAI/bge-reranker-base"
+            reg_litellm_model: "openai/BAAI/bge-reranker-base"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-teirerank-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-rerank
       run_once: true
       tags: install-rerank
       when:
@@ -876,12 +886,21 @@
             --force             
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+        - name: Register Deepkseek R1 Distill Qwen 32b model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+            reg_litellm_model: "openai/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-deepkseek-r1-qwen-32b-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-deepseek-r1-distill-qwen-32b
       run_once: true    
       tags: install-deepseek-r1-distill-qwen-32b
       when:                
         - "'deepseek-r1-distill-qwen-32b' in (model_name_list | regex_replace(',', ' ') | split())"        
         - install_true == 'true'
-
 
     - name: Check if vllm-deepkseek-r1-qwen-32b Model is deployed
       ansible.builtin.command:
@@ -899,8 +918,6 @@
         - "'deepseek-r1-distill-qwen-32b' in (model_name_list | regex_replace(',', ' ') | split())"
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""
-
-
 
     - name: Deploy Deepkseek R1 Distill Llama 8b LLM Model
       block:
@@ -945,12 +962,21 @@
             --force           
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+        - name: Register Deepkseek R1 Distill Llama 8b model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+            reg_litellm_model: "openai/deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-deepkseek-r1-llama-8b-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-deepseek-r1-distill-llama8b
       run_once: true
       tags: install-deepseek-r1-distill-llama8b
       when:                        
         - "'deepseek-r1-distill-llama8b' in (model_name_list | regex_replace(',', ' ') | split())"
         - install_true == 'true'
-
 
     - name: Check if vllm-deepkseek-r1-llama-8b Model is deployed
       ansible.builtin.command:
@@ -1012,6 +1038,16 @@
             --force
           register: helm_upgrade_install_model_deployment
           failed_when: helm_upgrade_install_model_deployment.rc != 0
+        - name: Register Llama3.405b model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "meta-llama/Llama-3.1-405B-Instruct"
+            reg_litellm_model: "openai/meta-llama/Llama-3.1-405B-Instruct"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-llama3-405b-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-llama3-405b 
       run_once: true
       tags: install-llama3-405b
       when:
@@ -1052,11 +1088,7 @@
         - "'cpu-llama-8b' in (model_name_list | regex_replace(',', ' ') | split())"
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""        
-    
-    
-    
-    
-    
+                    
     - name: Deploy CPU based LLM model  llama 8b
       block:        
         - name: Delete Ingress resource Llama8b from default namespace
@@ -1096,6 +1128,16 @@
             --force                                                
           register: helm_upgrade_install_model_deployment_cpu_llama8b
           failed_when: helm_upgrade_install_model_deployment_cpu_llama8b.rc != 0          
+        - name: Register Xeon/CPU llama 8b model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
+            reg_litellm_model: "openai/meta-llama/Meta-Llama-3.1-8B-Instruct"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-llama8b-cpu-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-cpu-llama-8b
       run_once: true
       tags: install-cpu-llama-8b
       when:
@@ -1161,6 +1203,16 @@
             --force                                                
           register: helm_upgrade_install_model_deployment_cpu_deepseek_qwen32b
           failed_when: helm_upgrade_install_model_deployment_cpu_deepseek_qwen32b.rc != 0
+        - name: Register Xeon/CPU Deepseek R1 Distill Qwen 32b model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+            reg_litellm_model: "openai/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-deepseek-r1-qwen32b-cpu-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-cpu-deepseek-r1-distill-qwen-32b
       run_once: true
       tags: install-cpu-deepseek-r1-distill-qwen-32b
       when:
@@ -1225,6 +1277,16 @@
             --force                                                
           register: helm_upgrade_install_model_deployment_cpu_deepseek_llama_8b
           failed_when: helm_upgrade_install_model_deployment_cpu_deepseek_llama_8b.rc != 0          
+        - name: Register Xeon/CPU Deepseek R1 Distill Llama 8B model
+          include_tasks: register-model-genai-gateway.yml
+          vars:
+            reg_model_name: "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+            reg_litellm_model: "openai/deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+            reg_custom_llm_provider: "openai"
+            reg_api_base: "http://vllm-deepseek-r1-llama8b-cpu-service/v1"
+            reg_input_cost_per_token: 0.001
+            reg_output_cost_per_token: 0.002
+          tags: install-cpu-deepseek-r1-distill-llama8b
       run_once: true
       tags: install-cpu-deepseek-r1-distill-llama8b
       when:
