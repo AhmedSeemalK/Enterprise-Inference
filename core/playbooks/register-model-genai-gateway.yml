@@ -1,0 +1,24 @@
+--- 
+    - name: Register deployed model with API
+      uri:
+        url: "https://inference-development.edgecollaborate.com/model/new"
+        method: POST
+        headers:
+          accept: "*/*"
+          cache-control: "no-cache"
+          content-type: "application/json"
+          Authorization: "{{ litellm_master_key }}"
+        body_format: json
+        body:
+          model_name: "{{ reg_model_name }}"
+          litellm_params:
+            model: "{{ reg_litellm_model }}"
+            custom_llm_provider: "{{ reg_custom_llm_provider }}"
+            api_key: "none"
+            api_base: "{{ reg_api_base }}"
+            input_cost_per_token: "{{ reg_input_cost_per_token }}"
+            output_cost_per_token: "{{ reg_output_cost_per_token }}"
+            model_info: {}
+        status_code: 200
+      register: api_register_result
+      tags: always      
