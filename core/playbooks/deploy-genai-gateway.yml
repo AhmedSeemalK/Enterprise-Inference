@@ -9,7 +9,7 @@
     helm_charts_base_genai_trace: "{{ lookup('env', 'PWD') }}/helm-charts/genai-gateway-trace"
     remote_helm_charts_base: "/tmp/helm-charts"    
   vars_files:
-        - "{{ lookup('env', 'PWD') }}/scripts/vault.yml"
+        - "{{ lookup('env', 'PWD') }}/config/vault.yml"
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default(env_proxy | default({})) }}"
