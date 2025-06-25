@@ -80,6 +80,13 @@
         - { src: "{{ helm_charts_base_genai }}", dest: "{{ remote_helm_charts_base }}/genai-gateway" }
         - { src: "{{ helm_charts_base_genai_trace }}", dest: "{{ remote_helm_charts_base }}/genai-gateway-trace" }
                                             
+    
+    - name: Delete Ingress Resource
+      kubernetes.core.k8s:
+        state: absent
+        kind: Ingress
+        name: keycloak
+        namespace: default
     - name: Install GenAI Gateway System
       command: >
         helm upgrade --install genai-gateway {{ remote_helm_charts_base }}/genai-gateway
