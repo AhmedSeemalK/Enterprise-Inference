@@ -33,7 +33,7 @@ jobs:
           VALIDATE_BASH: true
           BASH_SEVERITY: error
           FILTER_REGEX_EXCLUDE: ".*/templates/.*\\.yaml|.*/config/manifests/.*\\.yaml|.*/gmc-router\\.yaml|\\.github/.*|helm-charts/.*"
-          VALIDATE_YAML: false
+          VALIDATE_YAML: true
           VALIDATE_PYTHON_RUFF: true
           HADOLINT_CONFIG_FILE: .github/linters/.hadolint.yaml
           VALIDATE_DOCKERFILE_HADOLINT: true
