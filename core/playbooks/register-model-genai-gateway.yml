@@ -1,7 +1,7 @@
 --- 
     - name: Register deployed model with API
       uri:
-        url: "https://inference-development.edgecollaborate.com/model/new"
+        url: "https://{{ secret_name }}/model/new"
         method: POST
         headers:
           accept: "*/*"
