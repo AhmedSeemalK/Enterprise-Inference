@@ -103,20 +103,20 @@
             owner: "{{ ansible_user }}"
             group: "{{ ansible_user }}"
             remote_src: no
-          tags: always
+          tags: install-keycloak-apisix
         - name: Ensure the script is executable
           file:
             path: "{{ remote_helm_charts_base }}/keycloak-realmcreation.sh"
             mode: '0755'
             owner: "{{ ansible_user }}"
             group: "{{ ansible_user }}"
-          tags: always        
+          tags: install-keycloak-apisix        
         - name: Update Dependencies for Auth-Apisix on Nodes
           ansible.builtin.command: helm dependency update "{{ remote_helm_charts_base }}/apisix-helm/"
           register: helm_dependency_update
           failed_when: helm_dependency_update.rc != 0
           when: apisix_enabled == "yes"
-          tags: always      
+          tags: install-keycloak-apisix      
     - name: Fetch the keycloak client secret
       block:
         - name: Fetch the keycloak client secret
@@ -135,7 +135,7 @@
             msg: "The client key is: {{ client_secret }}"        
       run_once: true
       when: deploy_keycloak == 'yes'
-      tags: always
+      tags: install-keycloak-apisix
             
                 
     - name: env_proxy Contents
