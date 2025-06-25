@@ -520,6 +520,10 @@ deploy_inference_llm_models_playbook() {
     if [ -n "$huggingface_model_id" ] && [[ "$tags" != *"install-$huggingface_model_id"* ]]; then
         tags+="install-$huggingface_model_deployment_name,"
     fi
+
+    if [ "$deploy_keycloak" == "yes" ]; then
+        tags+="install-keycloak-apisix,"
+    fi
     
     tags=${tags%,}
         
