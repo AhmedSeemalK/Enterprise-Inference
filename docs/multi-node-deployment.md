@@ -125,7 +125,7 @@ Set up test environment variables:
 
 ```sh
 export USER=api-admin
-export PASSWORD='changeme!!'
+export PASSWORD=''
 export BASE_URL=https://api.example.com
 export KEYCLOAK_REALM=master
 export KEYCLOAK_CLIENT_ID=api
