@@ -148,6 +148,7 @@ deploy_habana_ai_operator=""
 deploy_ingress_controller=""
 deploy_genai_gateway=""
 deploy_llm_models=""
+deploy_istio=""
 list_model_menu=""
 apisix_enabled=""
 ingress_enabled=""
@@ -544,6 +545,16 @@ deploy_observability_playbook() {
     
 }
 
+deploy_istio_playbook() {
+    echo "Deploying Istio playbook..."    
+    if [ "$deploy_istio" = "yes" ]; then
+        ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-istio.yml 
+    else
+        echo "Skipping Istio deployment as deploy_istio is set to 'no'."
+    fi
+}
+
+
 deploy_cluster_config_playbook() {       
     if [ "${deploy_observability}" = "yes" ]; then
         tags="deploy_cluster_dashboard"
@@ -656,6 +667,12 @@ prompt_for_input() {
         read -p "Do you want to proceed with deploying Observability? (yes/no): " deploy_observability
     else
         echo "Proceeding with the setup of Observability: $deploy_observability"
+    fi
+
+    if [ -z "$deploy_istio" ]; then
+        read -p "Do you want to proceed with deploying Istio? (yes/no): " deploy_istio
+    else
+        echo "Proceeding with the setup of Istio: $deploy_istio"
     fi
 
     model_selection "$@"
@@ -956,7 +973,7 @@ install_kubernetes() {
 
 fresh_installation() {    
     read_config_file        
-    if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak" == "no" && "$deploy_apisix" == "no" && "$deploy_llm_models" == "no" && "$deploy_observability" == "no" && "$deploy_genai_gateway" == "no" ]]; then
+    if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak" == "no" && "$deploy_apisix" == "no" && "$deploy_llm_models" == "no" && "$deploy_observability" == "no" && "$deploy_genai_gateway" == "no" && "$deploy_istio" == "no" ]]; then
         echo "No installation or deployment steps selected. Skipping setup_initial_env..."
         echo "--------------------------------------------------------------------"
         echo "|     Deployment Skipped for Intel AI for Enterprise Inference!    |"
@@ -1021,6 +1038,14 @@ fresh_installation() {
                 echo "Skipping Observability deployment..."
             fi
             
+            if [[ "$deploy_istio" == "yes" ]]; then
+                echo "Deploying Istio..."
+                execute_and_check "Deploying Istio..." deploy_istio_playbook "$@" \
+                    "Istio is deployed successfully." \
+                    "Failed to deploy Istio. Exiting!."
+            else
+                echo "Skipping Istio deployment..."
+            fi
             
             if [[ "$deploy_llm_models" == "yes" ]]; then
                 model_name_list=$(get_model_names)                

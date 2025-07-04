@@ -109,6 +109,14 @@ Follow steps here [**Quick Start Guide**](./single-node-deployment.md)
 1. Go to the [Hugging Face website](https://huggingface.co/) and sign in or create a new account.
 2. Generate a [user access token](https://huggingface.co/docs/transformers.js/en/guides/private#step-1-generating-a-user-access-token). Write down the value of the token in some place safe.
 
+## Istio
+
+Istio is an open-source service mesh platform that provides a way to manage, secure, and observe microservices in a distributed application architecture, particularly in Kubernetes environments. Refer [Istio Documentation](https://istio.io/latest/docs/) for more information on Istio.
+
+Configure `inference-config.cfg` file to add `deploy_istio=on` option to install Istio.
+
+To verify mutual TLS refer [Verify mutual TLS](https://istio.io/latest/docs/ambient/usage/verify-mtls-enabled/).
+
 
 ## Next Steps
 After completing the prerequisites, proceed to the [Deployment Configuration](./README.md#customizing-components-for-inference-deployment-with-inference-configcfg) section of the guide to set up Enterprise Inference.

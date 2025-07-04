@@ -251,7 +251,22 @@
           --set apisix.etcd.replicaCount={{ inference_infra_replica_count }}          
           --namespace auth-apisix --create-namespace          
       when: deploy_apisix == "yes"
-      run_once: true    
+      run_once: true
+    - name: Wait for APISIX pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: auth-apisix
+        label_selectors:
+          - app.kubernetes.io/instance=auth-apisix
+      register: apisix_pods
+      until:
+        - apisix_pods.resources | length > 0
+        - apisix_pods.resources | selectattr('status.phase', 'equalto', 'Running') | list | length == apisix_pods.resources | length
+        - apisix_pods.resources | map(attribute='status.containerStatuses') | flatten | selectattr('ready', 'equalto', true) | list | length == (apisix_pods.resources | map(attribute='status.containerStatuses') | flatten | list | length)
+      retries: 60
+      delay: 10
+      changed_when: false
+      when: deploy_apisix == "yes"
     - name: Print Model List to be Deployed
       debug:
         var: model_name_list
