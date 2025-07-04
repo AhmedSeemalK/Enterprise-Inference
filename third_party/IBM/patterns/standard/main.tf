@@ -124,9 +124,9 @@ output "reserved_ip" {
 
 locals {
   model_map = {
-    "1"  = "Meta-Llama-3.1-8B-Instruct"
-    "2"  = "Meta-Llama-3.1-70B-Instruct"
+    "1"  = "Llama-3.1-8B-Instruct"
     "11" = "Llama-3.1-405B-Instruct"
+	"12"  = "Llama-3.3-70B-Instruct"
   }
 
   selected_model = lookup(local.model_map, var.models, "unknown-model")
@@ -169,7 +169,7 @@ resource "null_resource" "wait_for_ssh" {
     connection {
       type        = "ssh"
       user        = "ubuntu"
-      private_key = var.ssh_private_key
+      private_key = can(file(var.ssh_private_key)) ? file(var.ssh_private_key) : var.ssh_private_key
       host        = ibm_is_floating_ip.public_ip.address
       timeout     = "10m"  # Total time to keep retrying
     }
@@ -197,7 +197,7 @@ resource "null_resource" "run_script" {
     connection {
       type        = "ssh"
       user        = "ubuntu"
-      private_key = var.ssh_private_key
+      private_key = can(file(var.ssh_private_key)) ? file(var.ssh_private_key) : var.ssh_private_key
       host        = ibm_is_floating_ip.public_ip.address
     }
   }
@@ -208,7 +208,7 @@ resource "null_resource" "run_script" {
     connection {
       type        = "ssh"
       user        = "ubuntu"
-      private_key = var.ssh_private_key
+      private_key = can(file(var.ssh_private_key)) ? file(var.ssh_private_key) : var.ssh_private_key
       host        = ibm_is_floating_ip.public_ip.address
     }
   }
@@ -216,7 +216,7 @@ resource "null_resource" "run_script" {
     connection {
       type        = "ssh"
       user        = "ubuntu"
-      private_key = var.ssh_private_key
+      private_key = can(file(var.ssh_private_key)) ? file(var.ssh_private_key) : var.ssh_private_key
       host        = ibm_is_floating_ip.public_ip.address
     }
     content     = local.encoded_cert
@@ -227,7 +227,7 @@ resource "null_resource" "run_script" {
     connection {
       type        = "ssh"
       user        = "ubuntu"
-      private_key = var.ssh_private_key
+      private_key = can(file(var.ssh_private_key)) ? file(var.ssh_private_key) : var.ssh_private_key
       host        = ibm_is_floating_ip.public_ip.address
     }
     content     = local.encoded_key
@@ -237,7 +237,7 @@ resource "null_resource" "run_script" {
     connection {
       type        = "ssh"
       user        = "ubuntu"
-      private_key = var.ssh_private_key
+      private_key = can(file(var.ssh_private_key)) ? file(var.ssh_private_key) : var.ssh_private_key
       host        = ibm_is_floating_ip.public_ip.address
     }
     inline = [
@@ -260,7 +260,7 @@ resource "null_resource" "patch_storage" {
     connection {
       type        = "ssh"
       user        = "ubuntu"
-      private_key = var.ssh_private_key
+      private_key = can(file(var.ssh_private_key)) ? file(var.ssh_private_key) : var.ssh_private_key
       host        = ibm_is_floating_ip.public_ip.address
     }
   }
@@ -268,7 +268,7 @@ resource "null_resource" "patch_storage" {
     connection {
       type        = "ssh"
       user        = "ubuntu"
-      private_key = var.ssh_private_key
+      private_key = can(file(var.ssh_private_key)) ? file(var.ssh_private_key) : var.ssh_private_key
       host        = ibm_is_floating_ip.public_ip.address
     }
     inline = [
@@ -289,7 +289,7 @@ resource "null_resource" "model_deploy" {
     connection {
       type        = "ssh"
       user        = "ubuntu"
-      private_key = var.ssh_private_key
+      private_key = can(file(var.ssh_private_key)) ? file(var.ssh_private_key) : var.ssh_private_key
       host        = ibm_is_floating_ip.public_ip.address
     }
   }
@@ -297,7 +297,7 @@ resource "null_resource" "model_deploy" {
     connection {
       type        = "ssh"
       user        = "ubuntu"
-      private_key = var.ssh_private_key
+      private_key = can(file(var.ssh_private_key)) ? file(var.ssh_private_key) : var.ssh_private_key
       host        = ibm_is_floating_ip.public_ip.address
     }
     inline = [

@@ -26,7 +26,7 @@ variable "ibmcloud_region" {
 variable "instance_zone" {
   description = "IBM Cloud instance zone"
   type        = string
-  default     = "us-east-2"
+  default     = ""
 }
 
 variable "ibmcloud_api_key" {
@@ -38,7 +38,7 @@ variable "ibmcloud_api_key" {
 variable "cluster_url" {
   description = "The URL of the cluster"
   type        = string
-  default     = "api.example.com"
+  default     = ""
 }
 variable "cert_path" {
   description = "The path to the certificate file"
@@ -72,12 +72,12 @@ variable "keycloak_client_id" {
 variable "keycloak_admin_user" {
   description = "Keycloak admin user name"
   type        = string
-  default     = "admin"
+  default     = ""
 }
 variable "keycloak_admin_password" {
   description = "Keycloak admin password"
   type        = string
-  default     = "admin"
+  default     = ""
 }
 variable "hugging_face_token" {
   description = "This variable specifies the hf token."

@@ -82,7 +82,7 @@ fi
 
 cd ~
 rm -rf /home/ubuntu/Enterprise-Inference
-git clone -b test_vllm_pvc https://github.com/devpramod/Enterprise-Inference.git /home/ubuntu/Enterprise-Inference
+git clone https://github.com/opea-project/Enterprise-Inference.git /home/ubuntu/Enterprise-Inference
 cd /home/ubuntu/Enterprise-Inference
 cp -f docs/examples/single-node/hosts.yaml core/inventory/hosts.yaml
 cp -f /home/ubuntu/inference-config.cfg core/inference-config.cfg

@@ -10,3 +10,4 @@ deploy_kubernetes_fresh=${deploy_kubernetes_fresh}
 deploy_ingress_controller=${deploy_ingress_controller}
 deploy_llm_models=${deploy_llm_models}
 deploy_keycloak_apisix=${deploy_keycloak_apisix}
+deploy_observability=${deploy_observability}

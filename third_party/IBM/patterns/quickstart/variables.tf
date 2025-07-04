@@ -107,12 +107,12 @@ variable "keycloak_client_id" {
 variable "keycloak_admin_user" {
   description = "Keycloak admin user name"
   type        = string
-  default     = "admin"
+  default     = ""
 }
 variable "keycloak_admin_password" {
   description = "Keycloak admin password"
   type        = string
-  default     = "admin"
+  default     = ""
 }
 variable "hugging_face_token" {
   description = "This variable specifies the hf token."

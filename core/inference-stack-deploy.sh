@@ -679,6 +679,7 @@ model_selection(){
                             echo "9. deepseek-r1-distill-qwen-32b"
                             echo "10. deepseek-r1-distill-llama8b"
                             echo "11. llama3-405b"
+                            echo "12. llama-3-3-70b"
                             read -p "Enter the numbers of the GPU models you want to deploy/remove (comma-separated, e.g., 1,3,5): " models
                         else
                             # Prompt for CPU models
@@ -822,6 +823,13 @@ get_model_names() {
                 fi
                 model_names+=("llama3-405b")
                 ;;
+            12)
+                if [ "$cpu_or_gpu" = "c" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("llama-3-3-70b")
+                ;;
             21)
                 if [ "$cpu_or_gpu" = "g" ]; then
                     echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
@@ -843,7 +851,7 @@ get_model_names() {
                 fi
                 model_names+=("cpu-deepseek-r1-distill-llama8b")
                 ;;
-            "llama-8b"|"llama-70b"|"codellama-34b"|"mixtral-8x-7b"|"mistral-7b"|"tei"|"tei-rerank"|"falcon3-7b"|"deepseek-r1-distill-qwen-32b"|"deepseek-r1-distill-llama8b"|"llama3-405b")
+            "llama-8b"|"llama-70b"|"codellama-34b"|"mixtral-8x-7b"|"mistral-7b"|"tei"|"tei-rerank"|"falcon3-7b"|"deepseek-r1-distill-qwen-32b"|"deepseek-r1-distill-llama8b"|"llama3-405b"|"llama-3-3-70b")
                 if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1

@@ -16,13 +16,12 @@
               "enterprise-inference"
             ],
 			"short_description": "Intel® AI for Enterprise Inference is aimed to streamline the deployment and management of inference services on Intel hardware.",
-            "long_description": "This solution leverages Terraform to automate the deployment of virtual machines on IBM Cloud, specifically tailored for AI workloads using Intel Gaudi hardware. It installs all necessary Intel Gaudi-specific operators and deploys large language models (LLMs) using OPEA's Enterprise Inference framework. By integrating cutting-edge AI infrastructure with cloud automation, this solution provides a streamlined approach to deploying and managing machine learning models in a scalable and efficient manner. Deploy this to automate the process of VM spin up, manage installation of Intel Gaudi operators and LLM models on K8S cluster using Terraform referring to OPEA's Enterprise Inference framework.",
-            "support_details": "This is a proof of concept and no official support is given.",
+            "long_description": "This solution leverages Terraform to automate the deployment of virtual machines on IBM Cloud, specifically tailored for AI workloads using Intel Gaudi hardware. It installs all necessary Intel Gaudi-specific operators and deploys large language models (LLMs) on single node K8S cluster using OPEA's Enterprise Inference framework. By integrating cutting-edge AI infrastructure with cloud automation, this solution provides a streamlined approach to deploying and managing machine learning models in a scalable and efficient manner. Deploy this to automate the process of VM spin up, manage installation of Intel Gaudi operators and LLM models on K8S cluster using Terraform referring to OPEA's Enterprise Inference framework.",
             "offering_icon_url": "https://intel.sharepoint.com/:i:/r/sites/gscgems/Image%20Gallery/Company%20Logos/Intel%20Logos/Boxed/logo-classicblue-onecolor-3000px.png",
             "features": [
 			  {
                 "title": "Optimized AI Deployment",
-                "description": "Leverage Intel Xeon/Gaudi hardware to maximize performance for AI workloads, ensuring efficient processing and model deployment"
+                "description": "Leverage Intel Gaudi hardware to maximize performance for AI workloads, ensuring efficient processing and model deployment"
               },
 			  {
                 "title": "Automated Infrastructure Setup",
@@ -37,7 +36,7 @@
                 {
                     "label": "QuickStart",
                     "name": "quickstart",
-		            "working_directory": "patterns/quickstart",
+		            "working_directory": "third_party/IBM/patterns/quickstart",
 		            "index": 1,
                     "compliance": {},
                     "architecture": {},
@@ -136,12 +135,12 @@
                             "required": true,
 							"options": [
 							  {
-								"displayname": "meta-llama/Meta-Llama-3.1-8B-Instruct (1 card,disk-20GB)",
+								"displayname": "meta-llama/Llama-3.1-8B-Instruct (1 card,disk-20GB)",
 								"value": "1"
 							  },
 							  {
-								"displayname": "meta-llama/Meta-Llama-3.1-70B-Instruct(4 card ,disk-150GB)",
-								"value": "2"
+								"displayname": "meta-llama/Llama-3.3-70B-Instruct(4 card ,disk-150GB)",
+								"value": "12"
 							  },
 							  {
 								"displayname": "meta-llama/Llama-3.1-405B-Instruct(8 card ,disk-900GB)",
@@ -193,7 +192,7 @@
                         },
 			            {
                             "key": "resource_group",
-                            "default_value": "",
+                            "default_value": "Default",
                             "description": "This variable lists resource group name used by the resources",
                             "required": true,
 							"custom_config": {
@@ -220,6 +219,20 @@
                             "default_value": "-----BEGIN PRIVATE KEY-----",
 			                "description": "The contents of the TLS private key (PEM format)",
 			                "required": true
+                        },
+						{
+                            "key": "keycloak_admin_user",
+                            "type": "string",
+                            "default_value": "admin",
+                            "description": "Keycloak admin user name",
+							"required": true
+                        },
+                        {
+                            "key": "keycloak_admin_password",
+                            "type": "multiline_secure_value",
+                            "default_value": "admin",
+                            "description": "Keycloak admin password",
+							"required": true
                         },
 			            {
                             "key": "image",
@@ -250,18 +263,6 @@
                             "type": "string",
                             "default_value": "ibm-app",
                             "description": "Keycloak client id"
-                        },
-                        {
-                            "key": "keycloak_admin_user",
-                            "type": "string",
-                            "default_value": "admin",
-                            "description": "Keycloak admin user name"
-                        },
-                        {
-                            "key": "keycloak_admin_password",
-                            "type": "multiline_secure_value",
-                            "default_value": "admin",
-                            "description": "Keycloak admin password"
                         },
 						{
                             "key": "cpu_or_gpu",
@@ -298,7 +299,7 @@
 		        {
                     "label": "standard",
                     "name": "standard",
-		            "working_directory": "patterns/standard",
+		            "working_directory": "third_party/IBM/patterns/standard",
                     "compliance": {},
 		            "index": 2,
                     "architecture": {},
@@ -397,12 +398,12 @@
                             "required": true,
 							"options": [
 							  {
-								"displayname": "meta-llama/Meta-Llama-3.1-8B-Instruct (1 card,disk-20GB)",
+								"displayname": "meta-llama/Llama-3.1-8B-Instruct (1 card,disk-20GB)",
 								"value": "1"
 							  },
 							  {
-								"displayname": "meta-llama/Meta-Llama-3.1-70B-Instruct(4 card ,disk-150GB)",
-								"value": "2"
+								"displayname": "meta-llama/Llama-3.3-70B-Instruct(4 card ,disk-150GB)",
+								"value": "12"
 							  },
 							  {
 								"displayname": "meta-llama/Llama-3.1-405B-Instruct(8 card ,disk-900GB)",
@@ -419,7 +420,7 @@
                         },
 			            {
                             "key": "resource_group",
-                            "default_value": "",
+                            "default_value": "Default",
                             "description": "This variable lists resource group name used by the resources",
                             "required": true,
 							"custom_config": {
@@ -447,7 +448,21 @@
 			                "description": "The contents of the TLS private key (PEM format)",
 			                "required": true
                         },
+						{
+                            "key": "keycloak_admin_user",
+                            "type": "string",
+                            "default_value": "admin",
+                            "description": "Keycloak admin user name",
+							"required": true
+                        },
                         {
+                            "key": "keycloak_admin_password",
+                            "type": "multiline_secure_value",
+                            "default_value": "admin",
+                            "description": "Keycloak admin password",
+							"required": true
+                        },
+						{
                             "key": "image",
                             "type": "string",
                             "default_value": "gaudi3-os-u22-01-21-0",
