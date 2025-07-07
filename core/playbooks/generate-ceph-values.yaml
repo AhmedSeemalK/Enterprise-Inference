@@ -1,0 +1,45 @@
+---
+- name: Generate Ceph cluster-values.yaml from inventory storage nodes
+  hosts: kube_control_plane
+  gather_facts: false
+  vars:
+    ceph_values_template: "{{ playbook_dir }}/../../helm-charts/ceph/cluster-values.yaml.j2"
+    ceph_values_template_single: "{{ playbook_dir }}/../../helm-charts/ceph/cluster-values-single-node.yaml.j2"
+    ceph_values_output: "{{ playbook_dir }}/../../helm-charts/ceph/cluster-values.yaml"
+    release_namespace: rook-ceph
+  tasks:
+    - name: Build storage_nodes list from inventory
+      set_fact:
+        storage_nodes: >-
+          [{% for host in groups['all'] if hostvars[host].devices is defined %}
+            {"name": "{{ host }}", "devices": {{ hostvars[host].devices | to_json }} }{% if not loop.last %},{% endif %}
+          {% endfor %}]
+
+    - name: Print the number of storage nodes
+      debug:
+        msg: "Number of storage nodes: {{ (storage_nodes | from_yaml | length) }}"
+
+    - name: Fail if no storage nodes are defined
+      fail:
+        msg: "No storage nodes are defined in the inventory. Ceph values file will not be generated."
+      when: (storage_nodes | from_yaml | length) == 0
+
+    - name: Choose Ceph values template based on node count
+      set_fact:
+        ceph_template_to_use: >-
+          {{ ceph_values_template_single if (storage_nodes | from_yaml | length == 1) else ceph_values_template }}
+
+    - name: Template Ceph cluster-values.yaml
+      ansible.builtin.template:
+        src: "{{ ceph_template_to_use }}"
+        dest: "{{ ceph_values_output }}"
+      vars:
+        storage_nodes: "{{ storage_nodes | from_yaml }}"
+
+    - name: Label storage nodes with type=storage-node
+      ansible.builtin.command:
+        cmd: kubectl label node {{ item.name }} type=storage-node --overwrite
+      loop: "{{ storage_nodes | from_yaml }}"
+      when: storage_nodes | from_yaml | length > 0
+      ignore_errors: true
+

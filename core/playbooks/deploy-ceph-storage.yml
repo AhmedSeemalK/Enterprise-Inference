@@ -1,0 +1,120 @@
+---
+- name: Rook Ceph Cluster Minimal Setup
+  hosts: kube_control_plane
+  gather_facts: false
+  vars:
+    operator_values_path: "{{ playbook_dir }}/../../helm-charts/ceph/operator-values.yaml"
+    cluster_values_path: "{{ playbook_dir }}/../../helm-charts/ceph/cluster-values.yaml"
+    rook_ceph_version: "v1.17.5"
+
+  tasks:
+
+    - name: Add rook-release Helm repo
+      ansible.builtin.command: helm repo add rook-release https://charts.rook.io/release
+      register: helm_repo
+      changed_when: "'has been added' in helm_repo.stdout or 'already exists' in helm_repo.stdout"
+
+    - name: Update Helm repositories
+      ansible.builtin.command: helm repo update
+
+    - name: Install rook-ceph operator
+      ansible.builtin.command: >
+        helm install --create-namespace --namespace rook-ceph rook-ceph rook-release/rook-ceph --version {{ rook_ceph_version }} -f {{ operator_values_path }}
+      args:
+        creates: /tmp/rook-ceph-operator-installed
+
+    - name: Install rook-ceph-cluster
+      ansible.builtin.command: >
+        helm install --create-namespace --namespace rook-ceph rook-ceph-cluster --set operatorNamespace=rook-ceph rook-release/rook-ceph-cluster --version {{ rook_ceph_version }} -f {{ cluster_values_path }}
+      args:
+        creates: /tmp/rook-ceph-cluster-installed
+
+    - name: Wait for all rook-ceph pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: rook-ceph
+      register: rook_ceph_pods
+      until:
+        - rook_ceph_pods.resources | length > 0
+        - rook_ceph_pods.resources | selectattr('status.phase', 'equalto', 'Running') | list | length == rook_ceph_pods.resources | length
+        - rook_ceph_pods.resources | map(attribute='status.containerStatuses', default=[]) | flatten | selectattr('ready', 'equalto', true) | list | length == (rook_ceph_pods.resources | map(attribute='status.containerStatuses', default=[]) | flatten | list | length)
+      retries: 60
+      delay: 10
+      changed_when: false
+
+    - name: Wait for Ceph tools deployment to be ready
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        namespace: rook-ceph
+        name: rook-ceph-tools
+      register: ceph_tools_deployment
+      until:
+        - ceph_tools_deployment.resources | length > 0
+        - ceph_tools_deployment.resources[0].status.readyReplicas is defined
+        - ceph_tools_deployment.resources[0].status.readyReplicas == ceph_tools_deployment.resources[0].spec.replicas
+      retries: 30
+      delay: 10
+      changed_when: false
+
+    - name: Wait for OSD pods to be created and running
+      ansible.builtin.shell: kubectl get pods -n rook-ceph | grep osd | wc -l
+      register: osd_pod_count
+      until: osd_pod_count.stdout | int > 0
+      retries: 30
+      delay: 20
+      changed_when: false
+
+    - name: Wait for OSD pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: rook-ceph
+        label_selectors:
+          - app=rook-ceph-osd
+      register: osd_pods
+      until:
+        - osd_pods.resources | length > 0
+        - osd_pods.resources | selectattr('status.phase', 'equalto', 'Running') | list | length == osd_pods.resources | length
+        - osd_pods.resources | map(attribute='status.containerStatuses', default=[]) | flatten | selectattr('ready', 'equalto', true) | list | length == (osd_pods.resources | map(attribute='status.containerStatuses', default=[]) | flatten | list | length)
+      retries: 30
+      delay: 20
+      changed_when: false
+    
+    - name: Check Ceph cluster health status
+      ansible.builtin.shell: kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status
+      register: ceph_health_status
+      retries: 10
+      delay: 30
+      until: ceph_health_status.rc == 0 and ('HEALTH_OK' in ceph_health_status.stdout or 'HEALTH_WARN' in ceph_health_status.stdout)
+      changed_when: false
+
+    - name: Display Ceph cluster health
+      debug:
+        msg: "{{ ceph_health_status.stdout_lines }}"
+
+    - name: Patch vLLM PVC template to use ReadWriteMany access mode
+      ansible.builtin.replace:
+        path: "{{ playbook_dir }}/../../helm-charts/vllm/templates/pvc.yaml"
+        regexp: '(\s+accessModes:\n\s+)- ReadWriteOnce'
+        replace: '\1- ReadWriteMany'
+      register: pvc_template_patch
+
+    - name: Display PVC template patching result
+      debug:
+        msg: "PVC template patched successfully to use ReadWriteMany"
+      when: pvc_template_patch.changed
+
+    - name: Patch local-path storageclass to not be default
+      ansible.builtin.command: >
+        kubectl patch storageclass local-path -p '{"metadata": {"annotations": {"storageclass.kubernetes.io/is-default-class": "false"}}}'
+
+    - name: Patch ceph-block storageclass to not be default
+      ansible.builtin.command: >
+        kubectl patch storageclass ceph-block -p '{"metadata": {"annotations": {"storageclass.kubernetes.io/is-default-class": "false"}}}'
+
+    - name: Patch ceph-bucket storageclass to not be default
+      ansible.builtin.command: >
+        kubectl patch storageclass ceph-bucket -p '{"metadata": {"annotations": {"storageclass.kubernetes.io/is-default-class": "false"}}}'
+
+    - name: Patch ceph-filesystem storageclass to be default
+      ansible.builtin.command: >
+        kubectl patch storageclass ceph-filesystem -p '{"metadata": {"annotations": {"storageclass.kubernetes.io/is-default-class": "true"}}}'

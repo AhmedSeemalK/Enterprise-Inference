@@ -120,5 +120,65 @@ Configure `inference-config.cfg` file to add `deploy_istio=on` option to install
 To verify mutual TLS refer [Verify mutual TLS](https://istio.io/latest/docs/ambient/usage/verify-mtls-enabled/).
 
 
+## Ceph Storage Filesystem
+Ceph is a distributed storage system that provides file, block and object storage and is deployed in large scale production clusters. For mode informaton refer [Rook Ceph Documentation](https://rook.io/docs/rook/latest/Getting-Started/intro/) 
+
+### Ceph Prerequisites
+
+To configure the Ceph storage cluster, ensure that at least one of the following local storage types is available:
+
+- **Raw devices** (no partitions or formatted filesystems)
+- **Raw partitions** (no formatted filesystem)
+- **LVM Logical Volumes** (no formatted filesystem)
+- **Persistent Volumes** available from a storage class in block mode
+
+To check if your devices or partitions are formatted with filesystems, use the following command:
+
+```bash
+lsblk -f
+```
+
+Example output:
+```
+NAME                  FSTYPE      LABEL UUID                                   MOUNTPOINT
+vda
+└─vda1                LVM2_member       >eSO50t-GkUV-YKTH-WsGq-hNJY-eKNf-3i07IB
+    ├─ubuntu--vg-root   ext4              c2366f76-6e21-4f10-a8f3-6776212e2fe4   /
+    └─ubuntu--vg-swap_1 swap              9492a3dc-ad75-47cd-9596-678e8cf17ff9   [SWAP]
+vdb
+```
+
+If the FSTYPE field is not empty, there is a filesystem on top of the corresponding device. In this example, vdb is available to Rook, while vda and its partitions have a filesystem and are not available.
+
+Configure `inference-config.cfg` file to add `deploy_ceph=on` option to enable ceph storage clutser setup.
+
+Configure `inventory/hosts.yaml` file to add the avialable device under the required hosts. Refer the below example where vdb and vdc devices are added to `master1.
+
+```yaml
+all:
+  hosts:
+    master1:
+      devices: [vdb, vdc]
+      ansible_connection: local
+      ansible_user: ubuntu
+      ansible_become: true
+  children:
+    kube_control_plane:
+      hosts:
+        master1:
+    kube_node:
+      hosts:
+        master1:
+    etcd:
+      hosts:
+        master1:
+    k8s_cluster:
+      children:
+        kube_control_plane:
+        kube_node:
+    calico_rr:
+      hosts: {}
+```
+
 ## Next Steps
 After completing the prerequisites, proceed to the [Deployment Configuration](./README.md#customizing-components-for-inference-deployment-with-inference-configcfg) section of the guide to set up Enterprise Inference.

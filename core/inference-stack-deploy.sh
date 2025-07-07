@@ -163,6 +163,7 @@ huggingface_model_deployment_name=""
 hugging_face_model_remove_deployment=""
 hugging_face_model_remove_name=""
 huggingface_tensor_parellel_size=""
+deploy_ceph=""
 
 
 
@@ -530,6 +531,17 @@ deploy_inference_llm_models_playbook() {
         
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
         --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name} deploy_inference_llm_models_playbook=${deploy_inference_llm_models_playbook} huggingface_tensor_parellel_size=${huggingface_tensor_parellel_size} $deploy_genai_gateway=${deploy_genai_gateway} vllm_metrics_enabled=${vllm_metrics_enabled} " --tags "$tags" --vault-password-file "$vault_pass_file"
+
+}
+
+deploy_ceph_cluster() {
+
+    echo "Deploying Ceph Cluster..."
+
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/generate-ceph-values.yaml
+
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-ceph-storage.yml
+        
 }
 
 deploy_observability_playbook() {
@@ -656,7 +668,6 @@ prompt_for_input() {
         echo "Proceeding with the setup of Apisix: $deploy_apisix"
     fi
 
-
     if [ -z "$deploy_genai_gateway" ]; then
         read -p "Do you want to proceed with deploying GenAI Gateway? (yes/no): " deploy_genai_gateway
     else
@@ -669,6 +680,12 @@ prompt_for_input() {
         echo "Proceeding with the setup of Observability: $deploy_observability"
     fi
 
+    if [ -z "$deploy_ceph" ]; then
+        read -p "Do you want to proceed with deploying Ceph cluster setup? (yes/no): " deploy_ceph
+    else
+        echo "Proceeding with the setup of Ceph cluster: $deploy_ceph"
+    fi
+   
     if [ -z "$deploy_istio" ]; then
         read -p "Do you want to proceed with deploying Istio? (yes/no): " deploy_istio
     else
@@ -973,7 +990,7 @@ install_kubernetes() {
 
 fresh_installation() {    
     read_config_file        
-    if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak" == "no" && "$deploy_apisix" == "no" && "$deploy_llm_models" == "no" && "$deploy_observability" == "no" && "$deploy_genai_gateway" == "no" && "$deploy_istio" == "no" ]]; then
+    if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak" == "no" && "$deploy_apisix" == "no" && "$deploy_llm_models" == "no" && "$deploy_observability" == "no" && "$deploy_genai_gateway" == "no" && "$deploy_istio" == "no" && "$deploy_ceph" == "no" ]]; then
         echo "No installation or deployment steps selected. Skipping setup_initial_env..."
         echo "--------------------------------------------------------------------"
         echo "|     Deployment Skipped for Intel AI for Enterprise Inference!    |"
@@ -1027,8 +1044,6 @@ fresh_installation() {
                 echo "Skipping GenAI Gateway deployment..."
             fi
             
-
-
             if [[ "$deploy_observability" == "yes" ]]; then
                 echo "Deploying observability..."
                 execute_and_check "Deploying Observability..." deploy_observability_playbook "$@" \
@@ -1037,6 +1052,13 @@ fresh_installation() {
             else
                 echo "Skipping Observability deployment..."
             fi
+            
+            if [[ "$deploy_ceph" == "yes" ]]; then
+                execute_and_check "Deploying CEPH storage..." deploy_ceph_cluster "$@" \
+                    "CEPH is deployed successfully." \
+                    "Failed to deploy CEPH. Exiting!."
+            else
+                echo "Skipping CEPH storage deployment..."
             
             if [[ "$deploy_istio" == "yes" ]]; then
                 echo "Deploying Istio..."
