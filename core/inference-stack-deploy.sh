@@ -1059,6 +1059,7 @@ fresh_installation() {
                     "Failed to deploy CEPH. Exiting!."
             else
                 echo "Skipping CEPH storage deployment..."
+            fi
             
             if [[ "$deploy_istio" == "yes" ]]; then
                 echo "Deploying Istio..."
