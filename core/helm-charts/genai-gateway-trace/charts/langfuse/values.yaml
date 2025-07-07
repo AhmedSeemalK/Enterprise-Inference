@@ -1,5 +1,14 @@
 affinity: {}
 clickhouse:
+  global:
+    defaultStorageClass: ""
+  resources:
+    limits:
+      cpu: "4"
+      memory: "16Gi"
+    requests:
+      cpu: "4"
+      memory: "16Gi"
   auth:
     password: "<PASSWORD_PLACEHOLDER>"
     username: "<USERNAME_PLACEHOLDER>"
@@ -7,6 +16,16 @@ clickhouse:
   replicaCount: 3
   resourcesPreset: 2xlarge
   shards: 1
+  zookeeper:
+    global:
+      storageClass: ""
+    resources:
+      limits:
+        cpu: "4"
+        memory: "8Gi"
+      requests:
+        cpu: "4"
+        memory: "8Gi
 extraManifests: []
 fullnameOverride: ""
 image:
@@ -124,6 +143,10 @@ postgresql:
   deploy: true
   host: genai-gateway-trace-postgresql
   primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: ""
     service:
       ports:
         postgresql: 5432
@@ -140,10 +163,19 @@ serviceAccount:
   name: ""
 tolerations: []
 valkey:
+  global:
+    defaultStorageClass: ""
   architecture: standalone
   auth:
     password: "<PASSWORD_PLACEHOLDER>"
   deploy: true
   primary:
+    resources:
+      limits:
+        cpu: "2"
+        memory: "3Gi"
+      requests:
+        cpu: "2"
+        memory: "3Gi"
     extraFlags:
     - --maxmemory-policy noeviction

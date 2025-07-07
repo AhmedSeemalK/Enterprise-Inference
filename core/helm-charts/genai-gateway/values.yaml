@@ -12,7 +12,6 @@ ingress:
 env:  
   LITELLM_MASTER_KEY: "<REPLACE_WITH_MASTER_KEY>"
   LITELLM_SALT_KEY: "<REPLACE_WITH_SALT_KEY>"
-  LITELLM_LABEL: GenAIGateway  
   DATABASE_URL: "postgresql://<DB_USER>:<DB_PASS>@genai-gateway-postgresql:5432/litellm"
   REDIS_HOST: genai-gateway-redis-master
   REDIS_PORT: "6379"
