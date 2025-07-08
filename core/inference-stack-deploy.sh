@@ -200,6 +200,9 @@ read_config_file() {
             done < "$metadata_config_file"            
             source temp_env_vars_metadata
             rm temp_env_vars_metadata
+        else
+            echo "Enterprise Inference Metadata configuration file not found"
+            exit 1        
         fi
 
         case "$cpu_or_gpu" in
