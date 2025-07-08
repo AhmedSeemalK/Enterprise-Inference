@@ -162,7 +162,7 @@ hugging_face_model_remove_deployment=""
 hugging_face_model_remove_name=""
 huggingface_tensor_parellel_size=""
 gaudi_platform=""
-guadi_operator=""
+gaudi_operator=""
 gaudi2_values_file_path=""
 gaudi3_values_file_path=""
 
@@ -294,8 +294,6 @@ setup_initial_env() {\
     cp -r "$KUBESPRAYDIR"/inventory/sample/ "$KUBESPRAYDIR"/inventory/mycluster
     cp  "$HOMEDIR"/inventory/hosts.yaml $KUBESPRAYDIR/inventory/mycluster/
     cp "$HOMEDIR"/inventory/addons.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/k8s_cluster/addons.yml    
-    gaudi2_values_file_path="$KUBESPRAYDIR/helm-charts/vllm/gaudi-values.yaml"
-    gaudi3_values_file_path="$KUBESPRAYDIR/helm-charts/vllm/gaudi3-values.yaml"
     cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/    
     gaudi2_values_file_path="$REMOTEDIR/vllm/gaudi-values.yaml"
     gaudi3_values_file_path="$REMOTEDIR/vllm/gaudi3-values.yaml"
