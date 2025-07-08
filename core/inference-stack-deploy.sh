@@ -265,6 +265,7 @@ setup_initial_env() {\
     fi
     # Create and activate virtual environment within Kubespray directory
     VENVDIR="$KUBESPRAYDIR/venv"
+    REMOTEDIR="/tmp/helm-charts"
     if [ ! -d "$VENVDIR" ]; then
         python3 -m pip install --upgrade pip
         python3 -m pip install virtualenv
@@ -296,6 +297,8 @@ setup_initial_env() {\
     gaudi2_values_file_path="$KUBESPRAYDIR/helm-charts/vllm/gaudi-values.yaml"
     gaudi3_values_file_path="$KUBESPRAYDIR/helm-charts/vllm/gaudi3-values.yaml"
     cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/    
+    gaudi2_values_file_path="$REMOTEDIR/vllm/gaudi-values.yaml"
+    gaudi3_values_file_path="$REMOTEDIR/vllm/gaudi3-values.yaml"
     echo "Additional files and directories copied to Kubespray directory."
     ansible-galaxy collection install community.kubernetes    
 }
