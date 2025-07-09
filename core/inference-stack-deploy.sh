@@ -164,6 +164,10 @@ hugging_face_model_remove_deployment=""
 hugging_face_model_remove_name=""
 huggingface_tensor_parellel_size=""
 deploy_ceph=""
+gaudi_platform=""
+gaudi_operator=""
+gaudi2_values_file_path=""
+gaudi3_values_file_path=""
 
 
 
@@ -190,6 +194,22 @@ read_config_file() {
         source temp_env_vars        
         rm temp_env_vars        
         
+        
+        local metadata_config_file="$HOMEDIR/inventory/metadata/inference-metadata.cfg"
+        if [ -f "$metadata_config_file" ]; then
+            echo "Metadata configuration file found, setting vars!"
+            echo "---------------------------------------"
+            while IFS='=' read -r key value || [ -n "$key" ]; do                
+                key=$(echo "$key" | xargs)
+                value=$(echo "$value" | xargs)                
+                printf "%s=%s\n" "$key" "$value" >> temp_env_vars_metadata
+            done < "$metadata_config_file"            
+            source temp_env_vars_metadata
+            rm temp_env_vars_metadata
+        else
+            echo "Enterprise Inference Metadata configuration file not found"
+            exit 1        
+        fi
         
         if [[ -n "$vault_pass_code" ]]; then
             echo "Vault password is set."            
@@ -220,17 +240,23 @@ read_config_file() {
         
         case "$cpu_or_gpu" in
             "c" | "cpu")
-                cpu_or_gpu="c"
-                deploy_habana_ai_operator="no"
-                ;;
-            "g" | "gpu")
-                cpu_or_gpu="g"
-                deploy_habana_ai_operator="yes"
-                ;;
+            cpu_or_gpu="c"
+            deploy_habana_ai_operator="no"
+            ;;
+            "g" | "gpu" | "gaudi2" | "gaudi3")
+            if [[ "$cpu_or_gpu" == "gaudi2" || "$cpu_or_gpu" == "gpu" ]]; then
+                gaudi_platform="gaudi2"
+                
+            elif [[ "$cpu_or_gpu" == "gaudi3" ]]; then
+                gaudi_platform="gaudi3"
+            fi
+            cpu_or_gpu="g"
+            deploy_habana_ai_operator="yes"            
+            ;;
             *)
-                echo "Invalid value for cpu_or_gpu. It should be either 'c' or 'cpu' for CPU, or 'g' or 'gpu' for GPU."
-                exit 1
-                ;;
+            echo "Invalid value for cpu_or_gpu. It should be 'c' or 'cpu' for CPU, or 'g', 'gpu', 'gaudi2', or 'gaudi3' for GPU."
+            exit 1
+            ;;
         esac
         case "$deploy_keycloak_apisix" in
             "no")
@@ -263,6 +289,10 @@ read_config_file() {
     else
         echo "Configuration file not found. Using default values or prompting for input."
     fi    
+
+
+
+
 }
 
 setup_initial_env() {\
@@ -298,6 +328,7 @@ setup_initial_env() {\
     fi
     # Create and activate virtual environment within Kubespray directory
     VENVDIR="$KUBESPRAYDIR/venv"
+    REMOTEDIR="/tmp/helm-charts"
     if [ ! -d "$VENVDIR" ]; then        
         python3 -m pip install virtualenv
         python3 -m virtualenv $VENVDIR
@@ -331,6 +362,8 @@ setup_initial_env() {\
     cp "$HOMEDIR"/inventory/vault.yml $KUBESPRAYDIR/config/vault.yml    
     cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/    
     echo "Additional files and directories copied to Kubespray directory."
+    gaudi2_values_file_path="$REMOTEDIR/vllm/gaudi-values.yaml"
+    gaudi3_values_file_path="$REMOTEDIR/vllm/gaudi3-values.yaml"
     ansible-galaxy collection install community.kubernetes        
 }
 
@@ -425,7 +458,15 @@ run_k8s_cluster_wait() {
 run_deploy_habana_ai_operator_playbook() {
     echo "Running the deploy-habana-ai-operator.yml playbook to deploy the habana-ai-operator..."
     ansible-galaxy collection install community.kubernetes
-    ansible-playbook -i "${INVENTORY_PATH}" --become --become-user=root deploy-habana-ai-operator.yml
+   
+    if [[ "$gaudi_platform" == "gaudi2" ]]; then
+        gaudi_operator="$gaudi2_operator"
+    elif [[ "$gaudi_platform" == "gaudi3" ]]; then
+        gaudi_operator="$gaudi3_operator"
+    else
+        gaudi_operator=""
+    fi    
+    ansible-playbook -i "${INVENTORY_PATH}" --become --become-user=root deploy-habana-ai-operator.yml --extra-vars "gaudi_operator=${gaudi_operator}" 
     if [ $? -eq 0 ]; then
         echo "The deploy-habana-ai-operator.yml playbook ran successfully."
     else
@@ -487,10 +528,12 @@ deploy_inference_llm_models_playbook() {
         gpu_playbook="false"
         gaudi_deployment="false"
         huggingface_model_deployment_name="${huggingface_model_deployment_name}-cpu"
-    else
+    fi
+    if [ "$cpu_or_gpu" == "g" ]; then
         cpu_playbook="false"
         gpu_playbook="true"
         gaudi_deployment="true"
+
     fi
     if [ "$deploy_apisix" == "no" ]; then        
         apisix_enabled="false"
@@ -507,7 +550,12 @@ deploy_inference_llm_models_playbook() {
     else
         vllm_metrics_enabled="false"        
     fi
-    
+
+    if [[ "$gaudi_platform" == "gaudi2" ]]; then
+        gaudi_values_file=$gaudi2_values_file_path
+    elif [[ "$gaudi_platform" == "gaudi3" ]]; then
+        gaudi_values_file=$gaudi3_values_file_path
+    fi        
     echo "Ingress based Deployment: $ingress_enabled"
     echo "APISIX Enabled: $apisix_enabled"
     echo "Keycloak Enabled: $deploy_keycloak"    
@@ -530,7 +578,7 @@ deploy_inference_llm_models_playbook() {
     tags=${tags%,}
         
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name} deploy_inference_llm_models_playbook=${deploy_inference_llm_models_playbook} huggingface_tensor_parellel_size=${huggingface_tensor_parellel_size} $deploy_genai_gateway=${deploy_genai_gateway} vllm_metrics_enabled=${vllm_metrics_enabled} " --tags "$tags" --vault-password-file "$vault_pass_file"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name} deploy_inference_llm_models_playbook=${deploy_inference_llm_models_playbook} huggingface_tensor_parellel_size=${huggingface_tensor_parellel_size} $deploy_genai_gateway=${deploy_genai_gateway} vllm_metrics_enabled=${vllm_metrics_enabled} gaudi_values_file=${gaudi_values_file}" --tags "$tags" --vault-password-file "$vault_pass_file"
 
 }
 
@@ -693,7 +741,7 @@ prompt_for_input() {
     fi
 
     model_selection "$@"
-
+ 
     echo "----- Input -----"
     if [ -z "$cluster_url" ]; then
         read -p "Enter the CLUSTER URL (FQDN): " cluster_url
