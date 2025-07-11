@@ -1,4 +1,0 @@
-[submodule "cloud-providers"]
-	path = cloud-providers
-	url = https://github.com/intel-innersource/applications.ai.erag.infra-automation-ida-cloud-providers
-	branch = main
