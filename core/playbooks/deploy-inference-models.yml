@@ -2,38 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 ---
 - name: Deploy Inference LLM Models
-  hosts: kube_control_plane
-  vars:
-    ansible_python_interpreter: /usr/bin/python3
-    helm_charts_base: "{{ lookup('env', 'PWD') }}/helm-charts"        
-    remote_home_dir: "{{ lookup('env', 'PWD') }}/scripts"
-    remote_helm_charts_base: "/tmp/helm-charts"
-    ingress_file: "all_models_apisix_ingres_nginx.yaml"
-    keycloak_url: "https://{{ secret_name }}"    
-    uninstall_true: 'false'
-    install_true: 'false'
-    list_model_true: 'false'
-    model_name_list: 'false'
-    gpu_playbook: 'false'
-    cpu_playbook: 'false'
-    apisix_enabled: 'false'
-    ingress_enabled: 'false'
-    deploy_keycloak: 'no'
-    tensor_parallel_size_vllm: 1
-    gaudi_deployment: 'true'
-    huggingface_model_id: 'false'
-    hugging_face_model_deployment: 'false'
-    huggingface_model_deployment_name: 'None'
-    hugging_face_model_remove_name: 'false'
-    gaudi_values_file: "{{ remote_helm_charts_base }}/vllm/gaudi-values.yaml"        
-    huggingface_tensor_parellel_size: 'false'
-    vllm_metrics_enabled: 'false'  
+  hosts: "{{ inference_delegate | default('kube_control_plane') }}"
   gather_facts: false
-  vars_files:
-    - "{{ lookup('env', 'PWD') }}/config/vault.yml"
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default(env_proxy | default({})) }}"
-  tasks:
+  vars_files:
+    - "{{ lookup('env', 'PWD') }}/config/vault.yml"
+    - "{{ lookup('env', 'PWD') }}/config/vars/inference_llm_models.yml"   
+    - "{{ lookup('env', 'PWD') }}/config/inference_env.yml" 
+  roles:
+    - role: inference-tools
+  tasks:  
     - name: Print active tags for this task
       debug:
         var: ansible_run_tags
@@ -41,27 +20,6 @@
       run_once: true
     - name: Setup Environment
       block:
-        - name: Ensure Python pip module is installed
-          ansible.builtin.package:
-            name: python3-pip
-            state: present
-          become: true
-          tags: always
-        - name: Install Kubernetes Python SDK
-          ansible.builtin.pip:
-            name: kubernetes
-            state: present
-            executable: /usr/bin/pip3
-          become: true
-          tags: always
-        - name: Install Deployment Client
-          ansible.builtin.shell: |
-            curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-          args:
-            executable: /bin/bash
-          become: true
-          tags: always    
-
         - name: Create/Update Kubernetes Secret for Hugging Face Token
           kubernetes.core.k8s:
             name: hugging-face-token
@@ -74,8 +32,7 @@
             state: present
           run_once: true
           when: hugging_face_token is defined    
-          tags: always
-        
+          tags: always        
         - name: Ensure Remote Directory Exists
           ansible.builtin.file:
             path: "{{ remote_helm_charts_base }}"
@@ -93,8 +50,7 @@
             mode: push
           loop:
             - { src: "{{ helm_charts_base }}", dest: "{{ remote_helm_charts_base }}/" }
-          tags: always
-                    
+          tags: always                    
         - name: Transfer Dependency keycloak-realmcreationfile
           ansible.builtin.copy:
             src: "{{ remote_home_dir }}/"
@@ -135,14 +91,11 @@
             msg: "The client key is: {{ client_secret }}"        
       run_once: true
       when: deploy_keycloak == 'yes'
-      tags: install-keycloak-apisix
-            
-                
+      tags: install-keycloak-apisix                            
     - name: env_proxy Contents
       debug:
         var: env_proxy
-      tags: always
-    
+      tags: always    
     - name: Set proxy args if proxy is defined
       set_fact:
         helm_proxy_args: >-
@@ -153,9 +106,7 @@
           {% else %}
           {{ '' }}
           {% endif %}
-      tags: always
-    
-    
+      tags: always        
     - name: Print model_name_list
       debug:
         var: model_name_list
@@ -296,8 +247,7 @@
       tags: "install-{{ huggingface_model_deployment_name }}"
       when:                        
         - hugging_face_model_deployment == 'true'
-        - install_true == 'true'
-                            
+        - install_true == 'true'                            
     - name: Check if "{{ hugging_face_model_remove_name }}" Model is deployed
       ansible.builtin.command:
         cmd: "helm list --filter {{ hugging_face_model_remove_name }} --short"
@@ -313,8 +263,7 @@
       when:        
         - uninstall_true == 'true'
         - hugging_face_model_remove_deployment == 'true'
-        - helm_release_installed.stdout != ""
-    
+        - helm_release_installed.stdout != ""    
     - name: Deploy Llama70b LLM Model
       block:
         - name: Delete Ingress resource Llama70b from default namespace

@@ -2,42 +2,16 @@
 # SPDX-License-Identifier: Apache-2.0
 ---
 - name: Create Keycloak TLS secret
-  hosts: kube_control_plane
-  vars:
-    ansible_python_interpreter: /usr/bin/python3
-    helm_charts_base: "{{ lookup('env', 'PWD') }}/helm-charts"
-    remote_home_dir: "{{ lookup('env', 'PWD') }}/scripts"
-    remote_helm_charts_base: "/tmp/helm-charts"
-    ingress_file: "all_models_apisix_ingres_nginx.yaml"
-    keycloak_url: "https://{{ secret_name }}"
-    deploy_keycloak: "no"
-    deploy_apisix: "no"
+  hosts: "{{ inference_delegate | default('kube_control_plane') }}"
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default(env_proxy | default({})) }}"
-  tasks:
-    - name: Ensure Python pip module is installed
-      ansible.builtin.package:
-        name: python3-pip
-        state: present
-      become: true
-    - name: Install Kubernetes Python SDK
-      ansible.builtin.pip:
-        name: kubernetes
-        state: present
-        executable: /usr/bin/pip3
-      become: true
-    - name: Install Deployment Client
-      ansible.builtin.shell: |
-        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-      args:
-        executable: /bin/bash
-      become: true            
-    - name: Ensure jq is Installed
-      ansible.builtin.package:
-        name: jq
-        state: present
-      become: true
+  vars_files:
+    - "{{ lookup('env', 'PWD') }}/config/vars/inference_common.yml"
+    - "{{ lookup('env', 'PWD') }}/config/vars/inference_keycloak_apisix.yml"
+  roles:
+    - role: inference-tools
+  tasks:    
     - name: Create Namespace for APISIX
       kubernetes.core.k8s:
         state: present

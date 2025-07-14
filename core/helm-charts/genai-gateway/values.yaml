@@ -1,7 +1,7 @@
 replicaCount: 1
 image:
   repository: ghcr.io/berriai/litellm-database
-  tag: main-stable
+  tag: litellm_stable_release_branch-v1.61.20-stable
   pullPolicy: Always
 service:
   type: LoadBalancer
@@ -20,7 +20,7 @@ env:
   PROXY_LOGOUT_URL: /sso/key/generate
   LANGFUSE_SECRET_KEY: "<REPLACE_WITH_LANGFUSE_SECRET_KEY>"
   LANGFUSE_PUBLIC_KEY: "<REPLACE_WITH_LANGFUSE_PUBLIC_KEY>"
-  LANGFUSE_HOST: http://langfuse-web:3000  
+  LANGFUSE_HOST: "http://genai-gateway-trace-langfuse-web:3000"
 config:
   proxy_config_yaml: |
     router_settings:

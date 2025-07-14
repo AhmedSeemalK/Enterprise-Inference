@@ -1,6 +1,6 @@
 # Copyright (C) 2024-2025 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
-{{- if .Values.pvc.enabled }}
+{{- if and .Values.pvc.enabled .Release.IsInstall }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
