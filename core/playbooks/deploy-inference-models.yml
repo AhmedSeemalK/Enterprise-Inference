@@ -131,7 +131,7 @@
         - name: Deploy LLM model Llama8b
           ansible.builtin.command: >-
             helm upgrade --install vllm-llama-8b "{{ remote_helm_charts_base }}/vllm"
-            --set LLM_MODEL_ID="meta-llama/Meta-Llama-3.1-8B-Instruct"
+            --set LLM_MODEL_ID="meta-llama/Llama-3.1-8B-Instruct"
             --set global.monitoring="{{ vllm_metrics_enabled }}"
             --set svcmonitor.enabled="{{ vllm_metrics_enabled }}"
             --set global.HUGGINGFACEHUB_API_TOKEN={{ hugging_face_token }}                        
@@ -159,8 +159,8 @@
         - name: Register Llama8b model
           include_tasks: register-model-genai-gateway.yml
           vars:
-            reg_model_name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
-            reg_litellm_model: "openai/meta-llama/Meta-Llama-3.1-8B-Instruct"
+            reg_model_name: "meta-llama/Llama-3.1-8B-Instruct"
+            reg_litellm_model: "openai/meta-llama/Llama-3.1-8B-Instruct"
             reg_custom_llm_provider: "openai"
             reg_api_base: "http://vllm-llama-8b-service/v1"
             reg_input_cost_per_token: 0.001
@@ -283,7 +283,7 @@
         - name: Deploy LLM model Llama70b
           ansible.builtin.command: >-
             helm upgrade --install vllm-llama-70b "{{ remote_helm_charts_base }}/vllm"
-            --set LLM_MODEL_ID="meta-llama/Meta-Llama-3.1-70B-Instruct"
+            --set LLM_MODEL_ID="meta-llama/Llama-3.1-70B-Instruct"
             --set global.monitoring="{{ vllm_metrics_enabled }}"
             --set svcmonitor.enabled="{{ vllm_metrics_enabled }}"
             --set global.HUGGINGFACEHUB_API_TOKEN={{ hugging_face_token }}            
@@ -310,8 +310,8 @@
         - name: Register Llama70b model
           include_tasks: register-model-genai-gateway.yml
           vars:
-            reg_model_name: "meta-llama/Meta-Llama-3.1-70B-Instruct"
-            reg_litellm_model: "openai/meta-llama/Meta-Llama-3.1-70B-Instruct"
+            reg_model_name: "meta-llama/Llama-3.1-70B-Instruct"
+            reg_litellm_model: "openai/meta-llama/Llama-3.1-70B-Instruct"
             reg_custom_llm_provider: "openai"
             reg_api_base: "http://vllm-llama-70b-service/v1"
             reg_input_cost_per_token: 0.001
@@ -1057,7 +1057,7 @@
         - name: Deploy CPU based LLM model  llama 8b Installation
           ansible.builtin.command: >-
             helm upgrade --install vllm-llama8b-cpu "{{ remote_helm_charts_base }}/vllm"
-            --set LLM_MODEL_ID="meta-llama/Meta-Llama-3.1-8B-Instruct"
+            --set LLM_MODEL_ID="meta-llama/Llama-3.1-8B-Instruct"
             --set global.monitoring="{{ vllm_metrics_enabled }}"
             --set svcmonitor.enabled="{{ vllm_metrics_enabled }}"
             --set global.HUGGINGFACEHUB_API_TOKEN={{ hugging_face_token }}                        
@@ -1080,8 +1080,8 @@
         - name: Register Xeon/CPU llama 8b model
           include_tasks: register-model-genai-gateway.yml
           vars:
-            reg_model_name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
-            reg_litellm_model: "openai/meta-llama/Meta-Llama-3.1-8B-Instruct"
+            reg_model_name: "meta-llama/Llama-3.1-8B-Instruct"
+            reg_litellm_model: "openai/meta-llama/Llama-3.1-8B-Instruct"
             reg_custom_llm_provider: "openai"
             reg_api_base: "http://vllm-llama8b-cpu-service/v1"
             reg_input_cost_per_token: 0.001
