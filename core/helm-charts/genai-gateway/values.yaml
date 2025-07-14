@@ -3,6 +3,7 @@ image:
   repository: ghcr.io/berriai/litellm-database
   tag: litellm_stable_release_branch-v1.61.20-stable
   pullPolicy: Always
+  imagePullSecrets: []
 service:
   type: LoadBalancer
   port: 4000
@@ -12,10 +13,8 @@ ingress:
 env:  
   LITELLM_MASTER_KEY: "<REPLACE_WITH_MASTER_KEY>"
   LITELLM_SALT_KEY: "<REPLACE_WITH_SALT_KEY>"
-  DATABASE_URL: "postgresql://<DB_USER>:<DB_PASS>@genai-gateway-postgresql:5432/litellm"
   REDIS_HOST: genai-gateway-redis-master
   REDIS_PORT: "6379"
-  REDIS_PASSWORD: "<REPLACE_WITH_REDIS_PASSWORD>"
   STORE_MODEL_IN_DB: "True"
   PROXY_LOGOUT_URL: /sso/key/generate
   LANGFUSE_SECRET_KEY: "<REPLACE_WITH_LANGFUSE_SECRET_KEY>"
@@ -63,15 +62,18 @@ redis:
       storageClass: ""
 backup:
   enabled: false
+  postgresBackupSchedule: "*/1 * * * *" # Every day at 2am
   s3:
+    enabled: false # Set to true to enable S3 backup
     bucket: s3-for-lite-llm-logs
     region: us-west-2    
     accessKeyId: "<REPLACE_WITH_AWS_ACCESS_KEY>"
-    secretAccessKey: "<REPLACE_WITH_AWS_SECRET_KEY>"     
-  uploadToS3: false
-  postgresBackupSchedule: "*/1 * * * *" # Every day at 2am
+    secretAccessKey: "<REPLACE_WITH_AWS_SECRET_KEY>"
+  pvc:
+    enabled: true # Set to true to enable PVC backup
+    claimName: postgres-backup-pvc # Update this with your PVC name if using PVC
 restoreJob:
   enabled: false # Set to true to enable the restore job
-  restoreFile: backup-file.sql  
+  restoreFile: backup-file.sql  #update the restore file name as per your backup naming convention
   source: s3 # options: pvc or s3
 namespace: genai-gateway

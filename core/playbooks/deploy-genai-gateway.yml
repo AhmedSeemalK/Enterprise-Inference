@@ -26,6 +26,7 @@
           kind: Namespace
           metadata:
             name: genai-gateway          
+      run_once: true
     - name: Create TLS secret for GenAI Gateway
       community.kubernetes.k8s:
         state: present
@@ -40,19 +41,22 @@
             tls.crt: "{{ lookup('file', cert_file) | b64encode }}"
             tls.key: "{{ lookup('file', key_file) | b64encode }}"
       register: kubectl_output
+      run_once: true
     - name: TLS Create 
       debug:
         msg: "Secret {{ secret_name }} created."            
+      run_once: true
     - name: Copy Dependency Files Message
       debug:
         msg: "Copying dependency files to the nodes please wait..."    
+      run_once: true
     - name: Ensure Remote Directory Exists
       ansible.builtin.file:
         path: "{{ remote_helm_charts_base }}"
         state: directory
         mode: '0755'
         owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"    
+        group: "{{ ansible_user }}"          
     - name: Sync dependency files to Deployment Nodes
       ansible.posix.synchronize:
         src: "{{ item.src }}/"
@@ -69,6 +73,7 @@
         kind: Ingress
         name: keycloak
         namespace: default    
+      run_once: true
     - name: Install GenAI Gateway System
       command: >
         helm upgrade --install genai-gateway {{ remote_helm_charts_base }}/genai-gateway
@@ -89,6 +94,7 @@
         --set ingress.host={{ secret_name }}
         --set ingress.secretname={{ secret_name }}  
         -f {{ remote_helm_charts_base }}/genai-gateway/values.yaml              
+      run_once: true
     - name:  Wait for GenAI Gateway Pods to be Ready
       shell: |
         kubectl get pods -n genai-gateway -l app=litellm -o json | jq -r '
@@ -100,6 +106,7 @@
       retries: 60
       delay: 10
       failed_when: pod_status.rc != 0 and pod_status.stdout != "0"        
+      run_once: true
     - name: Install GenAI Gateway Trace System
       command: >
         helm upgrade --install genai-gateway-trace {{ remote_helm_charts_base }}/genai-gateway-trace/charts/langfuse
@@ -126,6 +133,7 @@
         --set ingress.secretname="trace.{{ secret_name }}" \
         --set langfuse.nextauth.url="https://trace.{{ secret_name }}" \
         -f {{ remote_helm_charts_base }}/genai-gateway-trace/charts/langfuse/values.yaml    
+      run_once: true
     - name: Wait for All GenAI Gateway Trace Pods to be Ready
       shell: |
         kubectl get pods -n genai-gateway -l app.kubernetes.io/instance=genai-gateway-trace -o json | jq -r '
@@ -137,3 +145,4 @@
       retries: 60
       delay: 10
       failed_when: pod_status.rc != 0 and pod_status.stdout != "0"
+      run_once: true

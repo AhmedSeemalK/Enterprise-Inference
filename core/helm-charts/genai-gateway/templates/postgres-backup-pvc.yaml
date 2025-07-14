@@ -1,7 +1,9 @@
+{{- if .Values.backup.enabled }}
+{{- if .Values.backup.pvc.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: genai-gateway-postgres-backup-pvc  
+  name: {{ .Values.backup.pvc.claimName }}
   annotations:
     "helm.sh/resource-policy": keep
 spec:
@@ -10,3 +12,5 @@ spec:
   resources:
     requests:
       storage: 5Gi
+{{- end }}
+{{- end }}

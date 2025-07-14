@@ -168,7 +168,7 @@ gaudi_platform=""
 gaudi_operator=""
 gaudi2_values_file_path=""
 gaudi3_values_file_path=""
-
+purge_inference_cluster=""
 
 
 
@@ -286,12 +286,12 @@ read_config_file() {
         esac
         
         if [[ "$deploy_genai_gateway" == "yes" && "$deploy_keycloak_apisix" == "yes" ]]; then
-            echo "--------------------------------------------------------------------------"
-            echo "|  NOTICE:                                                                |"
-            echo "|  Both 'GenAI Gateway' and 'Keycloak & APISIX' cannot be enabled at      |"
-            echo "|  the same time.                                                         |"
-            echo "|  Please select either GenAI Gateway or Keycloak & APISIX                |"            
-            echo "--------------------------------------------------------------------------"
+            echo -e "${YELLOW}--------------------------------------------------------------------------${NC}"
+            echo -e "${YELLOW}|  NOTICE:                                                                |${NC}"
+            echo -e "${YELLOW}|  Both 'GenAI Gateway' and 'Keycloak & APISIX' cannot be enabled at      |${NC}"
+            echo -e "${YELLOW}|  the same time.                                                         |${NC}"
+            echo -e "${YELLOW}|  Please select either GenAI Gateway or Keycloak & APISIX                |${NC}"            
+            echo -e "${YELLOW}--------------------------------------------------------------------------${NC}"
             exit 1
         fi
 
@@ -369,8 +369,18 @@ setup_initial_env() {\
     cp "$HOMEDIR"/inventory/metadata/addons.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/k8s_cluster/addons.yml
     cp "$HOMEDIR"/inventory/metadata/all.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/all/all.yml
     cp -r "$HOMEDIR"/roles/* $KUBESPRAYDIR/roles/        
-    mkdir -p "$KUBESPRAYDIR/config"    
-    cp "$HOMEDIR"/inventory/metadata/vault.yml $KUBESPRAYDIR/config/vault.yml    
+    mkdir -p "$KUBESPRAYDIR/config"        
+    if [ "$purge_inference_cluster" != "purging" ]; then
+        if [ ! -s "$HOMEDIR/inventory/metadata/vault.yml" ]; then
+            echo -e "${YELLOW}----------------------------------------------------------------------------${NC}"
+            echo -e "${YELLOW}|  NOTICE: inventory/metadata/vault.yml is empty!                           |${NC}"
+            echo -e "${YELLOW}|  Please refer to docs/configuring-vault-values.md for instructions on     |${NC}"
+            echo -e "${YELLOW}|  updating vault.yml                                                       |${NC}"
+            echo -e "${YELLOW}----------------------------------------------------------------------------${NC}"
+            exit 1
+        fi        
+    fi
+    cp "$HOMEDIR"/inventory/metadata/vault.yml $KUBESPRAYDIR/config/vault.yml            
     mkdir -p "$KUBESPRAYDIR/config/vars" 
     cp -r "$HOMEDIR"/inventory/metadata/vars/* $KUBESPRAYDIR/config/vars/    
     cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/
@@ -431,7 +441,8 @@ reset_cluster() {
     read -p "Are you sure you want to proceed? (yes/no): " confirm_reset            
     if [[ "$confirm_reset" =~ ^(yes|y|Y)$ ]]; then
         echo "Resetting the existing Enterprise Inference cluster..."
-        setup_initial_env
+        purge_inference_cluster="purging"        
+        setup_initial_env "$@"
         run_reset_playbook
         # Check if the playbook execution was successful
         if [ $? -eq 0 ]; then

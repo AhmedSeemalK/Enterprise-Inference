@@ -39,11 +39,19 @@ spec:
               done
               echo "Restore job is created!"
 {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: litellm-container
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
+            - name: DATABASE_URL
+              value: postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@genai-gateway-postgresql:5432/{{ .Values.postgresql.auth.database }}
+            - name: REDIS_PASSWORD
+              value: {{ .Values.redis.auth.password }}
 {{- range $key, $value := .Values.env }}
             - name: {{ $key }}
               value: "{{ $value }}"

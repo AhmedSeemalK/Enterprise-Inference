@@ -41,6 +41,7 @@ cd ~
 git clone https://github.com/opea-project/Enterprise-Inference.git
 cd Enterprise-Inference
 cp -f docs/examples/single-node/inference-config.cfg core/inference-config.cfg
+cp -f docs/examples/single-node/vault.yml core/inventory/metadata/vault.yml
 ```
 
 ### Step 4: Update `hosts.yaml` File
