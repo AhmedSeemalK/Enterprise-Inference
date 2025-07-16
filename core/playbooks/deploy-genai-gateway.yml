@@ -17,7 +17,8 @@
   tasks:    
     - name: Output config
       debug:
-        var: cert_file, key_file, secret_name     
+        var: cert_file, key_file, secret_name
+      run_once: true
     - name: Create Namespace for GenAI Gateway
       kubernetes.core.k8s:
         state: present
@@ -48,7 +49,7 @@
       run_once: true
     - name: Copy Dependency Files Message
       debug:
-        msg: "Copying dependency files to the nodes please wait..."    
+        msg: "Copying dependency files to the nodes please wait..."
       run_once: true
     - name: Ensure Remote Directory Exists
       ansible.builtin.file:
@@ -56,7 +57,8 @@
         state: directory
         mode: '0755'
         owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"          
+        group: "{{ ansible_user }}"
+      run_once: true
     - name: Sync dependency files to Deployment Nodes
       ansible.posix.synchronize:
         src: "{{ item.src }}/"
@@ -66,7 +68,8 @@
         mode: push
       loop:
         - { src: "{{ helm_charts_base_genai }}", dest: "{{ remote_helm_charts_base }}/genai-gateway" }
-        - { src: "{{ helm_charts_base_genai_trace }}", dest: "{{ remote_helm_charts_base }}/genai-gateway-trace" }                                                
+        - { src: "{{ helm_charts_base_genai_trace }}", dest: "{{ remote_helm_charts_base }}/genai-gateway-trace" }
+      run_once: true
     - name: Delete Ingress Resource
       kubernetes.core.k8s:
         state: absent
