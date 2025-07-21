@@ -181,4 +181,3 @@ echo "Updated Driver Version     : ${NEW_DRIVER_VERSION:-Not Found}"
 echo "Updated NIC Version        : ${NEW_NIC_VERSION:-Not Found}"
 echo "Updated Firmware Version   : ${NEW_FW_VERSION:-Not Found}"
 echo "Updated Container Runtime   : ${NEW_RUNTIME_VERSION:-Not Found}"
-clear

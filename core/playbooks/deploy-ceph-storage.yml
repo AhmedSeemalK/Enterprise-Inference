@@ -51,7 +51,7 @@
         kubectl get deployment rook-ceph-operator -n rook-ceph -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0"
       register: operator_ready_replicas
       until: operator_ready_replicas.stdout | int > 0
-      retries: 20
+      retries: 100
       delay: 15
       changed_when: false
       run_once: true
@@ -71,8 +71,8 @@
       ansible.builtin.shell: kubectl get deployment rook-ceph-tools -n rook-ceph -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0"
       register: tools_ready
       until: tools_ready.stdout | int > 0
-      retries: 30
-      delay: 10
+      retries: 100
+      delay: 15
       changed_when: false
       run_once: true
 
@@ -80,7 +80,7 @@
       ansible.builtin.shell: |
         kubectl get pods -n rook-ceph -l app=rook-ceph-osd --no-headers 2>/dev/null | wc -l
       register: osd_pod_count
-      retries: 30
+      retries: 100
       delay: 15
       until: osd_pod_count.stdout | int > 0
       changed_when: false
@@ -90,7 +90,7 @@
       ansible.builtin.shell: |
         kubectl get pods -n rook-ceph -l app=rook-ceph-osd --no-headers 2>/dev/null | grep "Running" | wc -l
       register: running_osd_count
-      retries: 60
+      retries: 100
       delay: 30
       until: running_osd_count.stdout | int > 0
       changed_when: false
@@ -125,7 +125,7 @@
       ansible.builtin.shell: |
         kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status --format json-pretty 2>/dev/null || echo '{"health":{"status":"ERR"},"osdmap":{"num_osds":0,"num_up_osds":0,"num_in_osds":0}}'
       register: ceph_health_status
-      retries: 30
+      retries: 100
       delay: 30
       until: >
         ceph_health_status.rc == 0 and 
@@ -195,7 +195,7 @@
     - name: Wait for ceph-filesystem storageclass to be available
       ansible.builtin.shell: kubectl get storageclass ceph-filesystem
       register: ceph_fs_check
-      retries: 20
+      retries: 100
       delay: 15
       until: ceph_fs_check.rc == 0
       run_once: true
