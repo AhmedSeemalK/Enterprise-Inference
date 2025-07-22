@@ -8,7 +8,8 @@
   environment: "{{ proxy_disable_env | default(env_proxy | default({})) }}"
   vars_files:        
     - "{{ lookup('env', 'PWD') }}/config/vars/inference_common.yml"
-    - "{{ lookup('env', 'PWD') }}/config/vars/inference_observability.yml"      
+    - "{{ lookup('env', 'PWD') }}/config/vars/inference_observability.yml"
+    - "{{ lookup('env', 'PWD') }}/config/vault.yml"   
   roles:
     - role: inference-tools
   tasks:    
@@ -346,21 +347,45 @@
       ansible.builtin.command:
         cmd: helm dependency build logs-stack
       args:
-        chdir: "{{ helm_charts_base }}/observability"
+        chdir: "{{ remote_helm_charts_base }}/observability"
 
-    - name: Install Logs Stack
+    - name: Install/Upgrade logs-stack chart with AWS settings
+      when: aws_access_key | length > 0
+      run_once: true
       tags: deploy_observability
-      community.kubernetes.helm:
-        name: logs-stack
-        chart_ref: "{{ remote_helm_charts_base }}/observability/logs-stack"
-        release_namespace: observability
-        values_files:
-          - "{{ remote_helm_charts_base }}/observability/logs-stack/values.yaml"
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install logs-stack ./logs-stack
+          --namespace observability
+          -f {{ remote_helm_charts_base }}/observability/logs-stack/aws-s3-values.yaml
+          --set loki.loki.storage_config.aws.region={{ aws_region }}
+          --set loki.loki.storage_config.aws.bucketnames={{ aws_bucket }}
+          --set loki.loki.storage_config.aws.access_key_id={{ aws_access_key }}
+          --set loki.loki.storage_config.aws.secret_access_key={{ aws_secret_key }}
+          --set loki.loki.storage.bucketNames.chunks={{ aws_bucket }}
+          --set loki.loki.storage.bucketNames.admin={{ aws_bucket }}
+          --set loki.loki.storage.bucketNames.ruler={{ aws_bucket }}
+      args:
+        chdir: "{{ remote_helm_charts_base }}/observability"
       register: logs_install
       until: logs_install is successful
       retries: 5
       delay: 10
+
+    - name: Install/Upgrade logs-stack chart with Minio settings
+      when: aws_access_key | length == 0
       run_once: true
+      tags: deploy_observability
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install logs-stack ./logs-stack
+          --namespace observability
+      args:
+        chdir: "{{ remote_helm_charts_base }}/observability"
+      register: logs_install
+      until: logs_install is successful
+      retries: 5
+      delay: 10
 
     - name: Check if Gaudi Nodes are Available
       shell: "kubectl get nodes -l habana.ai/device.family=gaudi --no-headers | wc -l"
