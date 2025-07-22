@@ -2,12 +2,30 @@
 - name: Generate Ceph cluster-values.yaml from inventory storage nodes
   hosts: kube_control_plane
   gather_facts: false
+  vars_files:
+    - "{{ lookup('env', 'PWD') }}/config/vars/inference_common.yml"
   vars:
-    ceph_values_template: "{{ playbook_dir }}/../../helm-charts/ceph/cluster-values.yaml.j2"
-    ceph_values_template_single: "{{ playbook_dir }}/../../helm-charts/ceph/cluster-values-single-node.yaml.j2"
-    ceph_values_output: "{{ playbook_dir }}/../../helm-charts/ceph/cluster-values.yaml"
+    ceph_values_template: "{{ remote_helm_charts_base }}/ceph/cluster-values.yaml.j2"
+    ceph_values_template_single: "{{ remote_helm_charts_base }}/ceph/cluster-values-single-node.yaml.j2"
+    ceph_values_output: "{{ remote_helm_charts_base }}/ceph/cluster-values.yaml"
     release_namespace: rook-ceph
   tasks:
+    - name: Create remote helm charts directory for ceph
+      file:
+        path: "{{ remote_helm_charts_base }}/ceph"
+        state: directory
+        mode: '0755'
+      run_once: true
+
+    - name: Copy ceph template files to remote location
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: '0644'
+      loop:
+        - { src: "{{ playbook_dir }}/../helm-charts/ceph/cluster-values.yaml.j2", dest: "{{ remote_helm_charts_base }}/ceph/cluster-values.yaml.j2" }
+        - { src: "{{ playbook_dir }}/../helm-charts/ceph/cluster-values-single-node.yaml.j2", dest: "{{ remote_helm_charts_base }}/ceph/cluster-values-single-node.yaml.j2" }
+      run_once: true
     - name: Build storage_nodes list from inventory
       set_fact:
         storage_nodes: >-

@@ -2,6 +2,8 @@
 - name: Install and configure Istio in Ambient mode
   hosts: kube_control_plane
   gather_facts: false
+  vars_files:
+    - "{{ lookup('env', 'PWD') }}/config/vars/inference_common.yml"
   vars:
     test_ns: test-ns
     default_ns: default
@@ -10,11 +12,27 @@
     observability_ns: observability
     habana_ns: habana-ai-operator
     auth_apisix_ns: auth-apisix
-    peer_auth_path: "{{ playbook_dir }}/../../helm-charts/istio/peer-authentication.yaml"
-    peer_auth_ingress_path: "{{ playbook_dir }}/../../helm-charts/istio/peer-auth-ingress.yaml"
+    peer_auth_path: "{{ remote_helm_charts_base }}/istio/peer-authentication.yaml"
+    peer_auth_ingress_path: "{{ remote_helm_charts_base }}/istio/peer-auth-ingress.yaml"
     istio_chart_version: "1.26.2"
 
   tasks:
+    - name: Create remote helm charts directory for istio
+      file:
+        path: "{{ remote_helm_charts_base }}/istio"
+        state: directory
+        mode: '0755'
+      run_once: true
+
+    - name: Copy istio configuration files to remote location
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: '0644'
+      loop:
+        - { src: "{{ playbook_dir }}/../helm-charts/istio/peer-authentication.yaml", dest: "{{ remote_helm_charts_base }}/istio/peer-authentication.yaml" }
+        - { src: "{{ playbook_dir }}/../helm-charts/istio/peer-auth-ingress.yaml", dest: "{{ remote_helm_charts_base }}/istio/peer-auth-ingress.yaml" }
+      run_once: true
     - name: Check if genai-gateway namespace exists
       command: kubectl get namespace {{ genai_gw_ns }}
       register: genai_gw_ns_check
