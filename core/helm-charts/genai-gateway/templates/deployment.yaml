@@ -62,25 +62,44 @@ spec:
           volumeMounts:
             - name: config-volume
               mountPath: /litellm
-              readOnly: true            
+              readOnly: true
+          resources:
+{{- if .Values.resources }}
+            {{- toYaml .Values.resources | nindent 12 }}
+{{- end }}
+          startupProbe:
+            httpGet:
+              path: /health/readiness
+              port: {{ .Values.service.port }}
+{{- if .Values.probes.startup }}
+            initialDelaySeconds: {{ .Values.probes.startup.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            successThreshold: {{ .Values.probes.startup.successThreshold }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+            timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+{{- end }}
           livenessProbe:
             httpGet:
               path: /health/liveliness
               port: {{ .Values.service.port }}
-            initialDelaySeconds: 120
-            periodSeconds: 15
-            successThreshold: 1
-            failureThreshold: 3
-            timeoutSeconds: 10
+{{- if .Values.probes.liveness }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            successThreshold: {{ .Values.probes.liveness.successThreshold }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+{{- end }}
           readinessProbe:
             httpGet:
               path: /health/readiness
               port: {{ .Values.service.port }}
-            initialDelaySeconds: 120
-            periodSeconds: 15
-            successThreshold: 1
-            failureThreshold: 3
-            timeoutSeconds: 10
+{{- if .Values.probes.readiness }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            successThreshold: {{ .Values.probes.readiness.successThreshold }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+{{- end }}
       volumes:
         - name: config-volume
           configMap:
