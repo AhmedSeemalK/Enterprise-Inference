@@ -5,7 +5,9 @@ RED=$(tput setaf 1)
 GREEN=$(tput setaf 2)
 YELLOW=$(tput setaf 3)
 BLUE=$(tput setaf 4)
-NC=$(tput sgr0)  # Reset color
+CYAN=$(tput setaf 6)
+NC=$(tput sgr0)
+
 
 
 # Copyright (C) 2024-2025 Intel Corporation
@@ -21,24 +23,21 @@ NC=$(tput sgr0)  # Reset color
 # Usage Documentation
 #############################################################################
 
-# Inference as a Service Deployment Automation Script
+# Intel AI for Enterprise Inference Stack Deployment
 
-# This script automates the setup, reset, and update of a Kubernetes cluster with Inference as a Service using Ansible playbooks. 
+# This deployment automates the setup, reset, and update of a Kubernetes cluster with Enterprise Inference using Ansible playbooks. 
 # It includes functions for setting up a virtual environment, installing Kubernetes, deploying various components 
-# (e.g., Habana AI Operator, Ingress NGINX Controller, Keycloak), and managing models and worker nodes.
+# (e.g., Habana AI Operator, Ingress NGINX Controller, Keycloak, GenAI Gateway), and managing models and worker nodes.
 
 # Prerequisites
 
 
 # 1. Gaudi Driver update, Firmware update and Reboot
-# 2. ida/kray/inventory/mycluster/hosts.yaml file should be updated with the correct IP addresses of the nodes.
-# 3. This automation need to be invoked from a bastion host.
+# 2. core/inventory/hosts.yaml file should be updated with the correct IP addresses of the nodes.
 
 # Usage
 
-# Running the Script
-
-# To run the script, execute the following command in your terminal:
+# To run the deployment, execute the following command in your terminal:
 
 # ./inference-stack-deploy.sh [OPTIONS]
 
@@ -60,9 +59,9 @@ NC=$(tput sgr0)  # Reset color
 
 # When you run the script, you will be presented with a main menu with the following options:
 
-# 1. Setup k8s Cluster with Inference as Service: Perform a fresh installation of the Kubernetes cluster with Inference as a Service.
-# 2. K8sPurgeCluster: Reset the existing Kubernetes cluster.
-# 3. Update Existing Cluster: Update the existing Kubernetes cluster.
+# 1. Provision Enterprise Inference Cluster: Perform a fresh installation of the Kubernetes cluster with Enterprise Inference.
+# 2. Decommission Existing Cluster: Reset the existing Kubernetes cluster.
+# 3. Update Deployed Inference Cluster: Update the existing Kubernetes cluster.
 
 # Fresh Installation
 
@@ -71,7 +70,7 @@ NC=$(tput sgr0)  # Reset color
 # 1. Prompt for Input: Collects the required inputs from the user.
 # 2. Setup Initial Environment: Sets up the virtual environment and installs necessary dependencies.
 # 3. Install Kubernetes: Installs Kubernetes and sets up the kubeconfig for the user.
-# 4. Deploy Components: Deploys the selected components (Habana AI Operator, Ingress NGINX Controller, Keycloak, and models).
+# 4. Deploy Components: Deploys the selected components (Habana AI Operator, Ingress NGINX Controller, Keycloak, APISIX or GenAI Gateway and Models).
 
 # Reset Cluster
 
@@ -100,13 +99,13 @@ function usage() {
     cat <<EOF
 ##############################################################################
 
---------------------------------------------
-Inference as a Service Deployment Automation
---------------------------------------------
+--------------------------------------------------
+Intel AI for Enterprise Inference Stack Deployment
+--------------------------------------------------
 
 Usage: ./inference-stack-deploy.sh [OPTIONS]
 
-Automates Kubernetes cluster setup and management for Inference as a Service.
+Automates the deployment and lifecycle management of Intel AI for Enterprise Inference Stack.
 
 Options:
   --cluster-url <URL>            Cluster URL (FQDN).
@@ -129,7 +128,6 @@ EOF
 
 HOMEDIR="$(pwd)"
 KUBESPRAYDIR="$(dirname "$(realpath "$0")")/kubespray"
-# Set the virtual environment directory to the script location
 VENVDIR="$(dirname "$(realpath "$0")")/kubespray225-venv"
 INVENTORY_PATH="${KUBESPRAYDIR}/inventory/mycluster/hosts.yaml"
 # Set the default values for the parameters
@@ -168,6 +166,7 @@ gaudi_platform=""
 gaudi_operator=""
 gaudi2_values_file_path=""
 gaudi3_values_file_path=""
+python3_interpreter=""
 purge_inference_cluster=""
 
 
@@ -305,8 +304,262 @@ read_config_file() {
 
 }
 
-setup_initial_env() {\
-    echo "Setting up the Initial Environment..."    
+run_system_prerequisites_check() {
+    echo "Running system prerequisites check..."
+    echo "This will verify minimum system dependencies required for deployment."
+    
+    local missing_deps=()
+    local warnings=()        
+    echo "Checking essential system commands..."
+    
+    # Check for git
+    if ! command -v git &> /dev/null; then
+        missing_deps+=("git")
+    else
+        echo -e "${GREEN}✓ git found${NC}"
+    fi
+    
+    # Check for python3 (version 3.10 or above) using configured interpreter
+    if [ -z "$python3_interpreter" ]; then
+        echo -e "${RED}✗ python3_interpreter not configured${NC}"
+        missing_deps+=("python3 (interpreter not configured)")
+    elif ! command -v "$python3_interpreter" &> /dev/null; then
+        echo -e "${RED}✗ configured python interpreter not found: $python3_interpreter${NC}"
+        missing_deps+=("python3")
+    else
+        # Check Python version using the configured interpreter
+        python_version=$($python3_interpreter -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+        if $python3_interpreter -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
+            echo -e "${GREEN}✓ python3 found (version $python_version) at $python3_interpreter${NC}"
+        else
+            echo -e "${RED}✗ python3 version $python_version found at $python3_interpreter, but version 3.10+ required${NC}"
+            missing_deps+=("python3 (version 3.10+)")
+        fi
+    fi
+    
+    # Check for curl (needed for pip installation)
+    if ! command -v curl &> /dev/null; then
+        missing_deps+=("curl")
+    else
+        echo -e "${GREEN}✓ curl found${NC}"
+    fi
+    
+    # Check internet connectivity (essential for Docker images, packages, repositories)
+    echo "Checking internet connectivity..."
+    if command -v curl &> /dev/null; then
+        # Test multiple reliable endpoints to ensure connectivity
+        if curl -s --connect-timeout 10 --max-time 15 https://google.com > /dev/null 2>&1 || \
+           curl -s --connect-timeout 10 --max-time 15 https://github.com > /dev/null 2>&1 || \
+           curl -s --connect-timeout 10 --max-time 15 https://registry-1.docker.io > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ Internet connectivity confirmed${NC}"
+        else
+            echo -e "${RED}✗ No internet connectivity detected${NC}"
+            missing_deps+=("internet-connectivity")
+        fi
+    else
+        # If curl is not available, we'll check this later after curl is installed
+        warnings+=("Internet connectivity check skipped - curl not available")
+    fi
+    
+    # Check if pip is available for the configured Python interpreter
+    if [ -n "$python3_interpreter" ]; then
+        if ! $python3_interpreter -m pip --version &> /dev/null; then
+            missing_deps+=("pip")
+        else
+            pip_version=$($python3_interpreter -m pip --version 2>/dev/null | cut -d' ' -f2)
+            echo -e "${GREEN}✓ pip found for $python3_interpreter (version $pip_version)${NC}"
+        fi
+    else
+        warnings+=("python3_interpreter not configured - pip check skipped")
+    fi
+    
+    # Check for virtualenv capability (can be installed via pip)
+    if [ -n "$python3_interpreter" ] && ! $python3_interpreter -c "import venv" &> /dev/null && ! $python3_interpreter -c "import virtualenv" &> /dev/null; then
+        warnings+=("virtualenv not available - will be installed during setup")
+    else
+        echo -e "${GREEN}✓ virtualenv capability found${NC}"
+    fi
+    
+    # Display warnings
+    if [ ${#warnings[@]} -gt 0 ]; then
+        echo -e "${YELLOW}Warnings:${NC}"
+        for warning in "${warnings[@]}"; do
+            echo -e "${YELLOW}  ! $warning${NC}"
+        done
+    fi
+    
+    # Check if any critical dependencies are missing and handle appropriately
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        echo -e "${RED}Missing critical system dependencies:${NC}"
+        for dep in "${missing_deps[@]}"; do
+            echo -e "${RED}  - $dep${NC}"
+        done
+        echo ""
+        
+        # Separate Python/pip issues, internet connectivity, and installable dependencies
+        local python_issues=()
+        local connectivity_issues=()
+        local installable_deps=()
+        
+        for dep in "${missing_deps[@]}"; do
+            if [[ "$dep" == "python3"* ]]; then
+                python_issues+=("$dep")
+            elif [[ "$dep" == "internet-connectivity" ]]; then
+                connectivity_issues+=("$dep")
+            else
+                installable_deps+=("$dep")
+            fi
+        done
+        
+        # Handle internet connectivity issues first - EXIT IMMEDIATELY (cannot be auto-fixed)
+        if [ ${#connectivity_issues[@]} -gt 0 ]; then
+            echo -e "${RED}Critical connectivity requirements not met:${NC}"
+            echo -e "${RED}  - Internet connectivity is required for:${NC}"
+            echo -e "${RED}    * Pulling Docker images${NC}"
+            echo -e "${RED}    * Downloading packages and dependencies${NC}"
+            echo -e "${RED}    * Accessing container registries${NC}"
+            echo -e "${RED}    * Cloning Git repositories${NC}"
+            echo ""
+            echo -e "${YELLOW}Please ensure internet connectivity and try again.${NC}"
+            echo -e "${YELLOW}Common solutions:${NC}"
+            echo -e "${YELLOW}  - Check network configuration${NC}"
+            echo -e "${YELLOW}  - Verify firewall/proxy settings${NC}"
+            echo -e "${YELLOW}  - Test: curl -I https://google.com${NC}"
+            exit 1
+        fi
+        
+        # Handle Python issues first - EXIT IMMEDIATELY (no user acknowledgment)
+        if [ ${#python_issues[@]} -gt 0 ]; then
+            echo -e "${RED}Critical Python requirements not met:${NC}"
+            for issue in "${python_issues[@]}"; do
+                echo -e "${RED}  - $issue${NC}"
+            done
+            echo ""
+            echo -e "${YELLOW}Python 3.10+ is required for Enterprise Inference deployment.${NC}"
+            echo -e "${YELLOW}Please install/configure Python 3.10+ and set python3_interpreter, then try again.${NC}"
+            echo -e "${YELLOW}RHEL/CentOS: dnf install python3 python3-pip${NC}"
+            echo -e "${YELLOW}Ubuntu/Debian: apt update && apt install python3 python3-pip${NC}"
+            exit 1
+        fi
+        
+        # Handle installable dependencies (git, curl) with user acknowledgment
+        if [ ${#installable_deps[@]} -gt 0 ]; then
+            echo -e "${YELLOW}The following dependencies can be installed automatically:${NC}"
+            for dep in "${installable_deps[@]}"; do
+                echo -e "${YELLOW}  - $dep${NC}"
+            done
+            echo ""
+            read -p "Do you want to install these dependencies now? (yes/no): " install_deps
+            
+            if [[ "$install_deps" =~ ^(yes|y|Y)$ ]]; then
+                # Separate pip from other dependencies
+                local pip_needed=false
+                local other_deps=()
+                
+                for dep in "${installable_deps[@]}"; do
+                    if [[ "$dep" == "pip" ]]; then
+                        pip_needed=true
+                    else
+                        other_deps+=("$dep")
+                    fi
+                done
+                
+                # Install regular dependencies first (git, curl)
+                if [ ${#other_deps[@]} -gt 0 ]; then
+                    if command -v dnf &> /dev/null; then
+                        echo "Installing dependencies using dnf (RHEL/CentOS)..."
+                        sudo dnf install -y "${other_deps[@]}"
+                    elif command -v apt &> /dev/null; then
+                        echo "Installing dependencies using apt (Ubuntu/Debian)..."
+                        sudo apt update && sudo apt install -y "${other_deps[@]}"
+                    else
+                        echo -e "${RED}Unsupported package manager. This script supports RHEL/CentOS (dnf) and Ubuntu/Debian (apt) only.${NC}"
+                        echo -e "${YELLOW}Please install manually:${NC}"
+                        echo -e "${YELLOW}  RHEL/CentOS: dnf install ${other_deps[*]}${NC}"
+                        echo -e "${YELLOW}  Ubuntu/Debian: apt install ${other_deps[*]}${NC}"
+                        exit 1
+                    fi
+                fi
+                
+                # Install pip using bootstrap script if needed
+                if [ "$pip_needed" = true ]; then
+                    echo "Installing pip using bootstrap script..."
+                    if ! curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py; then
+                        echo -e "${RED}Failed to download pip installer${NC}"
+                        exit 1
+                    fi
+                    if ! $python3_interpreter get-pip.py --user; then
+                        echo -e "${RED}Failed to install pip${NC}"
+                        rm get-pip.py
+                        exit 1
+                    fi
+                    rm get-pip.py
+                    echo -e "${GREEN}pip installed successfully!${NC}"
+                fi
+                
+                # Verify installation
+                local install_failed=()
+                for dep in "${installable_deps[@]}"; do
+                    if [[ "$dep" == "pip" ]]; then
+                        if ! $python3_interpreter -m pip --version &> /dev/null; then
+                            install_failed+=("$dep")
+                        fi
+                    else
+                        if ! command -v "$dep" &> /dev/null; then
+                            install_failed+=("$dep")
+                        fi
+                    fi
+                done
+                
+                if [ ${#install_failed[@]} -gt 0 ]; then
+                    echo -e "${RED}Failed to install: ${install_failed[*]}${NC}"
+                    echo -e "${YELLOW}Please install them manually and try again.${NC}"
+                    exit 1
+                else
+                    echo -e "${GREEN}All dependencies installed successfully!${NC}"
+                fi
+            else
+                echo -e "${YELLOW}Installation cancelled. Please install the dependencies manually:${NC}"
+                echo -e "${YELLOW}  RHEL/CentOS: sudo dnf install ${installable_deps[*]}${NC}"
+                echo -e "${YELLOW}  Ubuntu/Debian: sudo apt install ${installable_deps[*]}${NC}"
+                exit 1
+            fi
+        fi
+    fi
+    
+    echo -e "${GREEN}System prerequisites check completed successfully.${NC}"    
+    return 0
+}
+
+run_infrastructure_readiness_check() {
+    echo "Running infrastructure readiness check..."
+    echo "This will verify system compatibility and infrastructure requirements."
+        
+    if [ ! -f "$HOMEDIR/inventory/hosts.yaml" ]; then
+        echo -e "${RED}Error: Inventory file not found at $HOMEDIR/inventory/hosts.yaml${NC}"
+        echo -e "${YELLOW}Please ensure the inventory file exists and contains the correct host information.${NC}"
+        return 1
+    fi
+    
+    if ansible-playbook -i "$HOMEDIR/inventory/hosts.yaml" "$HOMEDIR/playbooks/inference-precheck.yml" --become; then
+        echo -e "${GREEN}Infrastructure readiness check completed successfully.${NC}"
+        return 0
+    else
+        echo -e "${RED}Infrastructure readiness check failed. Please resolve the issues before proceeding.${NC}"
+        return 1
+    fi
+}
+
+setup_initial_env() {
+    echo "Setting up the Initial Environment..."
+        
+    echo "Performing initial system prerequisites check..."
+    if ! run_system_prerequisites_check; then
+        echo "System prerequisites check failed. Please install missing dependencies and try again."
+        exit 1
+    fi
+    echo "System prerequisites check completed successfully."
+        
     if [[ -n "$https_proxy" ]]; then
         git config --global http.proxy "$https_proxy"
         git config --global https.proxy "$https_proxy"
@@ -328,7 +581,7 @@ setup_initial_env() {\
     if ! command -v pip &> /dev/null && ! command -v pip3 &> /dev/null; then
         echo "pip not found, attempting to install..."
         curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-        python3 get-pip.py --user
+        $python3_interpreter get-pip.py --user
         rm get-pip.py
     elif command -v pip3 &> /dev/null; then
         echo "pip3 is already installed."        
@@ -340,8 +593,8 @@ setup_initial_env() {\
     VENVDIR="$KUBESPRAYDIR/venv"
     REMOTEDIR="/tmp/helm-charts"
     if [ ! -d "$VENVDIR" ]; then        
-        python3 -m pip install virtualenv
-        python3 -m virtualenv $VENVDIR
+        $python3_interpreter -m pip install virtualenv
+        $python3_interpreter -m virtualenv $VENVDIR
         echo "Virtual environment created within Kubespray directory."
     else
         echo "Virtual environment already exists within Kubespray directory, skipping creation."
@@ -357,8 +610,8 @@ setup_initial_env() {\
     fi
     export PIP_BREAK_SYSTEM_PACKAGES=1
     # Install Kubespray requirements    
-    python3 -m pip install --upgrade pip
-    python3 -m pip install -U -r requirements.txt    
+    $python3_interpreter -m pip install --upgrade pip
+    $python3_interpreter -m pip install -U -r requirements.txt    
     echo "Kubespray requirements installed."    
     # Move deploy files to Kubespray directory
     cp -r "$HOMEDIR"/deploy-* $KUBESPRAYDIR/
@@ -370,21 +623,31 @@ setup_initial_env() {\
     cp "$HOMEDIR"/inventory/metadata/all.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/all/all.yml
     cp -r "$HOMEDIR"/roles/* $KUBESPRAYDIR/roles/        
     mkdir -p "$KUBESPRAYDIR/config"        
-    if [ "$purge_inference_cluster" != "purging" ]; then
-        if [ ! -s "$HOMEDIR/inventory/metadata/vault.yml" ]; then
-            echo -e "${YELLOW}----------------------------------------------------------------------------${NC}"
-            echo -e "${YELLOW}|  NOTICE: inventory/metadata/vault.yml is empty!                           |${NC}"
-            echo -e "${YELLOW}|  Please refer to docs/configuring-vault-values.md for instructions on     |${NC}"
-            echo -e "${YELLOW}|  updating vault.yml                                                       |${NC}"
-            echo -e "${YELLOW}----------------------------------------------------------------------------${NC}"
-            exit 1
-        fi        
-    fi
+    if [ "$purge_inference_cluster" != "purging" ]; then        
+        if [[ "$deploy_llm_models" == "yes" || "$deploy_keycloak_apisix" == "yes" || "$deploy_genai_gateway" == "yes" || "$deploy_observability" == "yes" || "$deploy_logging" == "yes" || "$deploy_ceph" == "yes" || "$deploy_istio" == "yes" ]]; then
+            if [ ! -s "$HOMEDIR/inventory/metadata/vault.yml" ]; then                
+                echo -e "${YELLOW}----------------------------------------------------------------------------${NC}"
+                echo -e "${YELLOW}|  NOTICE: inventory/metadata/vault.yml is empty!                           |${NC}"
+                echo -e "${YELLOW}|  Please refer to docs/configuring-vault-values.md for instructions on     |${NC}"
+                echo -e "${YELLOW}|  updating vault.yml                                                       |${NC}"
+                echo -e "${YELLOW}----------------------------------------------------------------------------${NC}"
+                exit 1
+            fi      
+        fi          
+    fi    
     cp "$HOMEDIR"/inventory/metadata/vault.yml $KUBESPRAYDIR/config/vault.yml            
     mkdir -p "$KUBESPRAYDIR/config/vars" 
     cp -r "$HOMEDIR"/inventory/metadata/vars/* $KUBESPRAYDIR/config/vars/    
     cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/
     echo "Additional files and directories copied to Kubespray directory."
+    
+    # Second: Infrastructure readiness check (after deployment environment is ready)
+    echo "Performing infrastructure readiness check..."
+    if ! run_infrastructure_readiness_check; then
+        echo "Infrastructure readiness check failed. Please resolve the issues and try again."
+        exit 1
+    fi
+    echo "Infrastructure readiness check completed successfully."    
     gaudi2_values_file_path="$REMOTEDIR/vllm/gaudi-values.yaml"
     gaudi3_values_file_path="$REMOTEDIR/vllm/gaudi3-values.yaml"
     ansible-galaxy collection install community.kubernetes        
@@ -393,12 +656,12 @@ setup_initial_env() {\
 
 invoke_prereq_workflows() {
     if [ $prereq_executed -eq 0 ]; then
-        read_config_file
+        read_config_file "$@"
         if [ -z "$cluster_url" ] || [ -z "$cert_file" ] || [ -z "$key_file" ] || [ -z "$keycloak_client_id" ] || [ -z "$keycloak_admin_user" ] || [ -z "$keycloak_admin_password" ]; then
             echo "Some required arguments are missing. Prompting for input..."
             prompt_for_input
         fi
-        setup_initial_env
+        setup_initial_env "$@"
         # Set the flag to 1 (executed)
         prereq_executed=1
     else
@@ -436,13 +699,13 @@ reset_cluster() {
     echo "-----------------------------------------------------------"
     echo "|     Purge Cluster! Intel AI for Enterprise!             |"
     echo "-----------------------------------------------------------"
-    echo "${YELLOW}NOTICE: You are initiating a reset of the existing Inference Service Cluster."
+    echo "${YELLOW}NOTICE: You are initiating a reset of the existing Enterprise Inference Cluster."
     echo "This action will erase all current configurations, services and resources. Potentially causing service interruptions and data loss. This operation cannot be undone. ${NC}"
     read -p "Are you sure you want to proceed? (yes/no): " confirm_reset            
     if [[ "$confirm_reset" =~ ^(yes|y|Y)$ ]]; then
         echo "Resetting the existing Enterprise Inference cluster..."
         purge_inference_cluster="purging"        
-        setup_initial_env "$@"
+        invoke_prereq_workflows "$@"
         run_reset_playbook
         # Check if the playbook execution was successful
         if [ $? -eq 0 ]; then
@@ -598,6 +861,9 @@ deploy_inference_llm_models_playbook() {
     if [ "$deploy_keycloak" == "yes" ]; then
         tags+="install-keycloak-apisix,"
     fi
+    if [ "$deploy_genai_gateway" == "yes" ]; then
+        tags+="install-genai-gateway,"
+    fi    
     
     tags=${tags%,}
         
@@ -663,7 +929,7 @@ remove_inference_llm_models_playbook() {
     tags=${tags%,}        
     uninstall_true="true"               
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} model_name_list='${model_name_list//\ /,}' hugging_face_model_remove_deployment=${hugging_face_model_remove_deployment} hugging_face_model_remove_name=${hugging_face_model_remove_name}" --tags "$tags"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} model_name_list='${model_name_list//\ /,}' hugging_face_model_remove_deployment=${hugging_face_model_remove_deployment} hugging_face_model_remove_name=${hugging_face_model_remove_name}" --tags "$tags" --vault-password-file "$vault_pass_file"
 }
 
 add_inference_nodes_playbook() {    
@@ -677,7 +943,7 @@ add_inference_nodes_playbook() {
         echo "Error: Invalid characters in worker node names. Only alphanumeric characters, commas, and hyphens are allowed."
         return 1
     fi
-    invoke_prereq_workflows     
+    invoke_prereq_workflows "$@"     
 
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/cluster.yml --become --become-user=root
     
@@ -696,7 +962,7 @@ remove_inference_nodes_playbook() {
         echo "Error: Invalid characters in worker node names. Only alphanumeric characters, commas, and hyphens are allowed."
         return 1
     fi
-    invoke_prereq_workflows
+    invoke_prereq_workflows "$@"
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/remove_node.yml --become --become-user=root -e node="$worker_nodes_to_remove" -e allow_ungraceful_removal=true
 }
 
@@ -764,8 +1030,7 @@ prompt_for_input() {
         echo "Proceeding with the setup of Istio: $deploy_istio"
     fi
 
-    model_selection "$@"
- 
+    model_selection "$@"    
     echo "----- Input -----"
     if [ -z "$cluster_url" ]; then
         read -p "Enter the CLUSTER URL (FQDN): " cluster_url
@@ -921,7 +1186,7 @@ parse_arguments() {
 
 get_model_names() {
     local model_names=()
-    IFS=','
+    IFS=','    
     read -ra model_array <<< "$models"
     for model in "${model_array[@]}"; do
         case "$model" in
@@ -1072,8 +1337,8 @@ fresh_installation() {
         read -p "${YELLOW}ATTENTION: Ensure that the nodes do not contain existing workloads. If necessary, please purge any previous cluster configurations before initiating a fresh installation to avoid an inappropriate cluster state. Proceeding without this precaution could lead to service disruptions or data loss. Do you wish to continue with the setup? (yes/no) ${NC}" -r proceed_with_installation        
         
         if [[ "$proceed_with_installation" =~ ^([yY][eE][sS]|[yY])+$ ]]; then      
-            echo "Starting fresh installation of Inference as a Service Cluster..."    
-            setup_initial_env        
+            echo "Starting fresh installation of Intel AI for Enterprise Inference Cluster..."    
+            setup_initial_env                
             if [[ "$deploy_kubernetes_fresh" == "yes" ]]; then
                 install_kubernetes "$@"
             else
@@ -1106,7 +1371,7 @@ fresh_installation() {
             else
                 echo "Skipping Keycloak deployment..."
             fi
-
+            
             if [[ "$deploy_genai_gateway" == "yes" ]]; then
                 echo "successfully deploying genai gateway"
                 execute_and_check "Deploying GenAI Gateway..." run_genai_gateway_playbook \
@@ -1142,8 +1407,8 @@ fresh_installation() {
                 echo "Skipping Istio deployment..."
             fi
             
-            if [[ "$deploy_llm_models" == "yes" ]]; then
-                model_name_list=$(get_model_names)                
+            if [[ "$deploy_llm_models" == "yes" ]]; then                                
+                model_name_list=$(get_model_names)                      
                 if [ -z "$model_name_list" ]; then
                     echo "No models provided. Exiting..."
                     exit 1
@@ -1377,7 +1642,7 @@ list_models() {
         echo "Some required arguments are missing. Prompting for input..."
         prompt_for_input
     fi                
-    setup_initial_env       
+    invoke_prereq_workflows       
     execute_and_check "Listing Inference LLM Models..." list_inference_llm_models_playbook "$@" \
         "Inference LLM Model listed successfully." \
         "Failed to list Inference LLM Model Exiting!."    
@@ -1403,7 +1668,7 @@ remove_model_deployed_via_huggingface(){
     fi        
     read -p "Enter the deployment name of the model you wish to deprovision: " hugging_face_model_remove_name
     if [ -n "$hugging_face_model_remove_name" ]; then
-        setup_initial_env                
+        invoke_prereq_workflows "$@"                
         execute_and_check "Removing Inference LLM Models..." remove_inference_llm_models_playbook "$@" \
             "Inference LLM Model is removed successfully." \
             "Failed to remove Inference LLM Model Exiting!."
@@ -1447,7 +1712,7 @@ deploy_from_huggingface() {
             echo "Deployment process has been cancelled. Exiting!!"
             exit 1
         fi
-        setup_initial_env                
+        invoke_prereq_workflows "$@"                
         execute_and_check "Deploying Inference LLM Models..." deploy_inference_llm_models_playbook "$@" \
             "Inference LLM Model is deployed successfully." \
             "Failed to deploy Inference LLM Model Exiting!." 
@@ -1489,7 +1754,7 @@ add_model() {
             echo "Deployment process has been cancelled. Exiting!!"
             exit 1
         fi        
-        setup_initial_env                
+        invoke_prereq_workflows "$@"                
         execute_and_check "Deploying Inference LLM Models..." deploy_inference_llm_models_playbook "$@" \
             "Inference LLM Model is deployed successfully." \
             "Failed to deploy Inference LLM Model Exiting!." 
@@ -1529,7 +1794,7 @@ remove_model() {
             echo "Aborting LLM Model removal process. Exiting!!"
             exit 1
         fi
-        setup_initial_env       
+        invoke_prereq_workflows "$@"       
         execute_and_check "Removing Inference LLM Models..." remove_inference_llm_models_playbook "$@" \
             "Inference LLM Model is removed successfully." \
             "Failed to remove Inference LLM Model Exiting!."
@@ -1583,15 +1848,15 @@ remove_worker_node() {
 
 main_menu() {
     parse_arguments "$@"
-    echo "----------------------------------------------------------"
+    echo "${BLUE}----------------------------------------------------------${NC}"
     echo "${BLUE}|  Intel AI for Enterprise Inference                      |${NC}"
-    echo "|---------------------------------------------------------|"
-    echo "| 1) Provision Enterprise Inference Cluster               |"
-    echo "| 2) Decommission Existing Cluster                        |"
-    echo "| 3) Update Deployed Inference Cluster                    |"    
-    echo "|---------------------------------------------------------|"
-    echo "Please choose an option (1, 2, or 3):"
-    read -p "> " user_choice
+    echo "${BLUE}|---------------------------------------------------------|${NC}"
+    echo "| ${CYAN}1)${NC} Provision Enterprise Inference Cluster               |"
+    echo "| ${CYAN}2)${NC} Decommission Existing Cluster                        |"
+    echo "| ${CYAN}3)${NC} Update Deployed Inference Cluster                    |"    
+    echo "${BLUE}|---------------------------------------------------------|${NC}"
+    echo "Please choose an option (${CYAN}1${NC}, ${CYAN}2${NC}, or ${CYAN}3${NC}):"
+    read -p "${CYAN}> ${NC}" user_choice
     case $user_choice in
         1)
             fresh_installation "$@"
