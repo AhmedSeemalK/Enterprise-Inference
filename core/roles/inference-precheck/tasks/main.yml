@@ -17,8 +17,8 @@
       set_fact:
         os_supported: >-
           {{
-            (ansible_distribution == "Ubuntu" and ansible_distribution_version in ["20.04", "22.04", "24.04"]) or
-            (ansible_distribution in ["CentOS", "RedHat"] and ansible_distribution_major_version in ["8", "9"])
+            (ansible_distribution == "Ubuntu" and ansible_distribution_version == "22.04") or
+            (ansible_distribution == "RedHat" and ansible_distribution_major_version == "9")
           }}
     
     - name: Display OS support status
@@ -30,8 +30,8 @@
           Unsupported OS detected: {{ ansible_distribution }} {{ ansible_distribution_version }}
           
           Officially supported operating systems:
-          - Ubuntu 20.04, 22.04, 24.04
-          - CentOS/RHEL 8, 9
+          - Ubuntu 22.04
+          - RHEL 9
           
           Current system: {{ ansible_distribution }} {{ ansible_distribution_version }}
           {% endif %}
@@ -51,8 +51,8 @@
           - Unexpected behavior
           
           Officially supported platforms:
-          - Ubuntu 20.04, 22.04, 24.04
-          - CentOS/RHEL 8, 9
+          - Ubuntu 22.04
+          - RHEL 9
           
           Do you want to proceed anyway at your own risk? (yes/no)
       register: user_ack_unsupported

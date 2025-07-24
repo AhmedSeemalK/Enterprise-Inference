@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Colors
 RED=$(tput setaf 1)
 GREEN=$(tput setaf 2)
@@ -167,6 +166,7 @@ gaudi_operator=""
 gaudi2_values_file_path=""
 gaudi3_values_file_path=""
 python3_interpreter=""
+skip_check=""
 purge_inference_cluster=""
 
 
@@ -307,7 +307,7 @@ read_config_file() {
 run_system_prerequisites_check() {
     echo "Running system prerequisites check..."
     echo "This will verify minimum system dependencies required for deployment."
-    
+
     local missing_deps=()
     local warnings=()        
     echo "Checking essential system commands..."
@@ -388,6 +388,27 @@ run_system_prerequisites_check() {
         done
     fi
     
+
+    echo "Updating system package lists..."
+    if command -v apt &> /dev/null; then
+        echo "Updating package lists using apt Ubuntu..."
+        if sudo apt update; then
+            echo -e "${GREEN}Package lists updated successfully${NC}"
+        else
+            echo -e "${YELLOW}Package list update failed, continuing anyway${NC}"
+        fi
+    elif command -v dnf &> /dev/null; then
+        echo "Updating package lists using dnf (RHEL/CentOS)..."
+        if sudo dnf check-update || [ $? -eq 100 ]; then
+            echo -e "${GREEN} Package lists updated successfully${NC}"
+        else
+            echo -e "${YELLOW} Package list update failed, continuing anyway${NC}"
+        fi
+    else
+        echo -e "${YELLOW}Unknown package manager, skipping package list update${NC}"
+    fi
+    echo ""
+
     # Check if any critical dependencies are missing and handle appropriately
     if [ ${#missing_deps[@]} -gt 0 ]; then
         echo -e "${RED}Missing critical system dependencies:${NC}"
@@ -437,8 +458,8 @@ run_system_prerequisites_check() {
             echo ""
             echo -e "${YELLOW}Python 3.10+ is required for Enterprise Inference deployment.${NC}"
             echo -e "${YELLOW}Please install/configure Python 3.10+ and set python3_interpreter, then try again.${NC}"
-            echo -e "${YELLOW}RHEL/CentOS: dnf install python3 python3-pip${NC}"
-            echo -e "${YELLOW}Ubuntu/Debian: apt update && apt install python3 python3-pip${NC}"
+            echo -e "${YELLOW}RHEL: dnf install python3 python3-pip${NC}"
+            echo -e "${YELLOW}Ubuntu: apt update && apt install python3 python3-pip${NC}"
             exit 1
         fi
         
@@ -449,7 +470,7 @@ run_system_prerequisites_check() {
                 echo -e "${YELLOW}  - $dep${NC}"
             done
             echo ""
-            read -p "Do you want to install these dependencies now? (yes/no): " install_deps
+            install_deps="yes"
             
             if [[ "$install_deps" =~ ^(yes|y|Y)$ ]]; then
                 # Separate pip from other dependencies
@@ -467,34 +488,54 @@ run_system_prerequisites_check() {
                 # Install regular dependencies first (git, curl)
                 if [ ${#other_deps[@]} -gt 0 ]; then
                     if command -v dnf &> /dev/null; then
-                        echo "Installing dependencies using dnf (RHEL/CentOS)..."
+                        echo "Installing dependencies using dnf RHEL..."
                         sudo dnf install -y "${other_deps[@]}"
                     elif command -v apt &> /dev/null; then
-                        echo "Installing dependencies using apt (Ubuntu/Debian)..."
+                        echo "Installing dependencies using apt Ubuntu..."
                         sudo apt update && sudo apt install -y "${other_deps[@]}"
                     else
-                        echo -e "${RED}Unsupported package manager. This script supports RHEL/CentOS (dnf) and Ubuntu/Debian (apt) only.${NC}"
+                        echo -e "${RED}Unsupported package manager. This script supports RHEL (dnf) and Ubuntu (apt) only.${NC}"
                         echo -e "${YELLOW}Please install manually:${NC}"
-                        echo -e "${YELLOW}  RHEL/CentOS: dnf install ${other_deps[*]}${NC}"
-                        echo -e "${YELLOW}  Ubuntu/Debian: apt install ${other_deps[*]}${NC}"
+                        echo -e "${YELLOW}  RHEL: dnf install ${other_deps[*]}${NC}"
+                        echo -e "${YELLOW}  Ubuntu: apt install ${other_deps[*]}${NC}"
                         exit 1
                     fi
                 fi
                 
-                # Install pip using bootstrap script if needed
+                # Install pip using system package manager if needed
                 if [ "$pip_needed" = true ]; then
-                    echo "Installing pip using bootstrap script..."
-                    if ! curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py; then
-                        echo -e "${RED}Failed to download pip installer${NC}"
+                    echo "Installing pip using system package manager..."
+                    if command -v dnf &> /dev/null; then
+                        python_version=$($python3_interpreter -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+                        if [[ "$python_version" == "3.11" ]]; then
+                            echo "Installing python3.11-pip using dnf (RHEL 9)..."
+                            if ! sudo dnf install -y python3.11-pip; then
+                                echo -e "${RED}Failed to install python3.11-pip using dnf${NC}"
+                                exit 1
+                            fi
+                        elif [[ "$python_version" == "3.12" ]]; then
+                            echo "Installing python3.12-pip using dnf (RHEL 9)..."
+                            if ! sudo dnf install -y python3.12-pip; then
+                                echo -e "${RED}Failed to install python3.12-pip using dnf${NC}"
+                                exit 1
+                            fi
+                        else
+                            echo "Installing python3-pip using dnf (RHEL 9)..."
+                            if ! sudo dnf install -y python3-pip; then
+                                echo -e "${RED}Failed to install python3-pip using dnf${NC}"
+                                exit 1
+                            fi
+                        fi
+                    elif command -v apt &> /dev/null; then
+                        echo "Installing python3-pip using apt (Ubuntu 22/24)..."
+                        if ! sudo apt install -y python3-pip; then
+                            echo -e "${RED}Failed to install python3-pip using apt${NC}"
+                            exit 1
+                        fi
+                    else
+                        echo -e "${RED}Unsupported system. This deployment only supports Ubuntu 22/24 and RHEL 9.4${NC}"
                         exit 1
                     fi
-                    if ! $python3_interpreter get-pip.py --user; then
-                        echo -e "${RED}Failed to install pip${NC}"
-                        rm get-pip.py
-                        exit 1
-                    fi
-                    rm get-pip.py
-                    echo -e "${GREEN}pip installed successfully!${NC}"
                 fi
                 
                 # Verify installation
@@ -520,8 +561,8 @@ run_system_prerequisites_check() {
                 fi
             else
                 echo -e "${YELLOW}Installation cancelled. Please install the dependencies manually:${NC}"
-                echo -e "${YELLOW}  RHEL/CentOS: sudo dnf install ${installable_deps[*]}${NC}"
-                echo -e "${YELLOW}  Ubuntu/Debian: sudo apt install ${installable_deps[*]}${NC}"
+                echo -e "${YELLOW}  RHEL: sudo dnf install ${installable_deps[*]}${NC}"
+                echo -e "${YELLOW}  Ubuntu: sudo apt install ${installable_deps[*]}${NC}"
                 exit 1
             fi
         fi
@@ -539,9 +580,8 @@ run_infrastructure_readiness_check() {
         echo -e "${RED}Error: Inventory file not found at $HOMEDIR/inventory/hosts.yaml${NC}"
         echo -e "${YELLOW}Please ensure the inventory file exists and contains the correct host information.${NC}"
         return 1
-    fi
-    
-    if ansible-playbook -i "$HOMEDIR/inventory/hosts.yaml" "$HOMEDIR/playbooks/inference-precheck.yml" --become; then
+    fi    
+    if ansible-playbook -i "${INVENTORY_PATH}" --become --become-user=root playbooks/inference-precheck.yml; then
         echo -e "${GREEN}Infrastructure readiness check completed successfully.${NC}"
         return 0
     else
@@ -552,13 +592,17 @@ run_infrastructure_readiness_check() {
 
 setup_initial_env() {
     echo "Setting up the Initial Environment..."
-        
-    echo "Performing initial system prerequisites check..."
-    if ! run_system_prerequisites_check; then
-        echo "System prerequisites check failed. Please install missing dependencies and try again."
-        exit 1
+    
+    if [[ "$skip_check" != "true" ]]; then
+        echo "Performing initial system prerequisites check..."
+        if ! run_system_prerequisites_check; then
+            echo "System prerequisites check failed. Please install missing dependencies and try again."
+            exit 1
+        fi
+        echo "System prerequisites check completed successfully."
+    else
+        echo "Skipping system prerequisites check due to --skip-check argument."
     fi
-    echo "System prerequisites check completed successfully."
         
     if [[ -n "$https_proxy" ]]; then
         git config --global http.proxy "$https_proxy"
@@ -576,47 +620,46 @@ setup_initial_env() {
         git config --global --unset http.proxy
         git config --global --unset https.proxy
     fi
-
-     # Install pip if not present
-    if ! command -v pip &> /dev/null && ! command -v pip3 &> /dev/null; then
-        echo "pip not found, attempting to install..."
-        curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-        $python3_interpreter get-pip.py --user
-        rm get-pip.py
-    elif command -v pip3 &> /dev/null; then
-        echo "pip3 is already installed."        
-    else
-        echo "pip is already installed."
-        
-    fi
-    # Create and activate virtual environment within Kubespray directory
+    
     VENVDIR="$KUBESPRAYDIR/venv"
-    REMOTEDIR="/tmp/helm-charts"
-    if [ ! -d "$VENVDIR" ]; then        
-        $python3_interpreter -m pip install virtualenv
-        $python3_interpreter -m virtualenv $VENVDIR
-        echo "Virtual environment created within Kubespray directory."
+    REMOTEDIR="/tmp/helm-charts"    
+    if [ ! -d "$VENVDIR" ]; then                
+        echo "Installing python3-venv package..."
+        if command -v apt &> /dev/null; then            
+            python_version=$($python3_interpreter -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")            
+            sudo apt install -y python${python_version}-venv || sudo apt install -y python3-venv        
+        fi                
+        if $python3_interpreter -m venv $VENVDIR; then
+            echo "Virtual environment created within Kubespray directory."
+        else
+            echo -e "${RED}Failed to create virtual environment.${NC}"
+            exit 1
+        fi
     else
         echo "Virtual environment already exists within Kubespray directory, skipping creation."
     fi
     source $VENVDIR/bin/activate
-    echo "Attempting to activate the virtual environment..."
-    # Check if the virtual environment is activated
+    echo "Attempting to activate the virtual environment..."    
     if [ -z "$VIRTUAL_ENV" ]; then
         echo "Failed to activate the virtual environment."
-        return 1
+        exit 1
     else
         echo "Virtual environment activated successfully. Path: $VIRTUAL_ENV"
-    fi
+    fi                 
+           
     export PIP_BREAK_SYSTEM_PACKAGES=1
-    # Install Kubespray requirements    
-    $python3_interpreter -m pip install --upgrade pip
-    $python3_interpreter -m pip install -U -r requirements.txt    
-    echo "Kubespray requirements installed."    
-    # Move deploy files to Kubespray directory
-    cp -r "$HOMEDIR"/deploy-* $KUBESPRAYDIR/
-    cp -r "$HOMEDIR"/helm-charts $KUBESPRAYDIR/       
-    cp -r "$HOMEDIR"/scripts $KUBESPRAYDIR/       
+    $VENVDIR/bin/python3 -m pip install --upgrade pip
+    $VENVDIR/bin/python3 -m pip install -U -r requirements.txt    
+    
+    echo "Verifying Ansible Installation..."
+    if $VENVDIR/bin/python3 -c "import ansible" &> /dev/null; then
+        echo -e "${GREEN} Ansible installed successfully${NC}"
+    else
+        echo -e "${RED} Ansible installation failed${NC}"
+        exit 1
+    fi    
+    echo -e "${GREEN} Enterprise Inference requirements installed.${NC}"
+    cp -r "$HOMEDIR"/deploy-* "$HOMEDIR"/helm-charts "$HOMEDIR"/scripts "$KUBESPRAYDIR"/
     cp -r "$KUBESPRAYDIR"/inventory/sample/ "$KUBESPRAYDIR"/inventory/mycluster
     cp  "$HOMEDIR"/inventory/hosts.yaml $KUBESPRAYDIR/inventory/mycluster/
     cp "$HOMEDIR"/inventory/metadata/addons.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/k8s_cluster/addons.yml
@@ -640,12 +683,15 @@ setup_initial_env() {
     cp -r "$HOMEDIR"/inventory/metadata/vars/* $KUBESPRAYDIR/config/vars/    
     cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/
     echo "Additional files and directories copied to Kubespray directory."
-    
-    # Second: Infrastructure readiness check (after deployment environment is ready)
-    echo "Performing infrastructure readiness check..."
-    if ! run_infrastructure_readiness_check; then
-        echo "Infrastructure readiness check failed. Please resolve the issues and try again."
-        exit 1
+        
+    if [[ "$skip_check" != "true" ]]; then
+        echo "Performing infrastructure readiness check..."
+        if ! run_infrastructure_readiness_check; then
+            echo "Infrastructure readiness check failed. Please resolve the issues and try again."
+            exit 1
+        fi
+    else
+        echo "Skipping infrastructure readiness check due to --skip-check argument."
     fi
     echo "Infrastructure readiness check completed successfully."    
     gaudi2_values_file_path="$REMOTEDIR/vllm/gaudi-values.yaml"
@@ -685,7 +731,7 @@ run_reset_playbook() {
     echo "Running the Ansible playbook to reset the cluster..."  
     delete_pv_on_purge="yes"      
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-keycloak-controller.yml --extra-vars "delete_pv_on_purge=${delete_pv_on_purge}"
-    ansible-playbook -i "${INVENTORY_PATH}" --become --become-user=root reset.yml -e "confirm_reset=yes reset_nodes=false"  
+    ansible-playbook -i "${INVENTORY_PATH}" --become --become-user=root reset.yml -e "confirm_reset=yes reset_nodes=false"
     # Check the exit status of the Ansible playbook command
     if [ $? -eq 0 ]; then
         echo "Cluster reset playbook execution completed successfully."
@@ -753,7 +799,7 @@ run_deploy_habana_ai_operator_playbook() {
     else
         gaudi_operator=""
     fi    
-    ansible-playbook -i "${INVENTORY_PATH}" --become --become-user=root deploy-habana-ai-operator.yml --extra-vars "gaudi_operator=${gaudi_operator}" 
+    ansible-playbook -i "${INVENTORY_PATH}" --become --become-user=root deploy-habana-ai-operator.yml --extra-vars "gaudi_operator=${gaudi_operator}"
     if [ $? -eq 0 ]; then
         echo "The deploy-habana-ai-operator.yml playbook ran successfully."
     else
@@ -764,7 +810,7 @@ run_deploy_habana_ai_operator_playbook() {
 
 run_ingress_nginx_playbook() {
     echo "Deploying the Ingress NGINX Controller..."
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-ingress-controller.yml --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file}" 
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-ingress-controller.yml --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file}"  
 }
 
 install_ansible_collection() {
@@ -804,7 +850,7 @@ create_keycloak_tls_secret_playbook() {
 run_genai_gateway_playbook() {
     echo "Deploying GenAI Gateway Service..."
     echo "************************************"        
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-genai-gateway.yml --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} deploy_genai_gateway=${deploy_genai_gateway} model_name_list='${model_name_list//\ /,}' " --vault-password-file "$vault_pass_file" 
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-genai-gateway.yml --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} deploy_genai_gateway=${deploy_genai_gateway} model_name_list='${model_name_list//\ /,}' " --vault-password-file "$vault_pass_file"
 }
 
 deploy_inference_llm_models_playbook() {
@@ -876,9 +922,9 @@ deploy_ceph_cluster() {
 
     echo "Deploying Ceph Cluster..."
 
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/generate-ceph-values.yaml
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/generate-ceph-values.yaml 
 
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-ceph-storage.yml
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-ceph-storage.yml 
         
 }
 
@@ -898,7 +944,7 @@ deploy_observability_playbook() {
 deploy_istio_playbook() {
     echo "Deploying Istio playbook..."    
     if [ "$deploy_istio" = "yes" ]; then
-        ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-istio.yml 
+        ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-istio.yml
     else
         echo "Skipping Istio deployment as deploy_istio is set to 'no'."
     fi
@@ -912,7 +958,7 @@ deploy_cluster_config_playbook() {
         tags=""        
     fi
     
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-cluster-config.yml --become --become-user=root --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file}" --tags "$tags"
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-cluster-config.yml --become --become-user=root --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file}" --tags "$tags" 
 }
 
 
@@ -929,7 +975,7 @@ remove_inference_llm_models_playbook() {
     tags=${tags%,}        
     uninstall_true="true"               
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} model_name_list='${model_name_list//\ /,}' hugging_face_model_remove_deployment=${hugging_face_model_remove_deployment} hugging_face_model_remove_name=${hugging_face_model_remove_name}" --tags "$tags" --vault-password-file "$vault_pass_file"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} model_name_list='${model_name_list//\ /,}' hugging_face_model_remove_deployment=${hugging_face_model_remove_deployment} hugging_face_model_remove_name=${hugging_face_model_remove_name}" --tags "$tags" --vault-password-file "$vault_pass_file" 
 }
 
 add_inference_nodes_playbook() {    
@@ -945,7 +991,7 @@ add_inference_nodes_playbook() {
     fi
     invoke_prereq_workflows "$@"     
 
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/cluster.yml --become --become-user=root
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/cluster.yml --become --become-user=root 
     
 }
 
@@ -1175,6 +1221,7 @@ parse_arguments() {
             --hugging-face-token) hugging_face_token="$2"; shift ;;
             --models) models="$2"; shift ;;
             --cpu-or-gpu) cpu_or_gpu="$2"; shift ;;
+            --skip-check) skip_check="true" ;;
             -h|--help) usage; exit 0 ;;
             *) echo "Unknown parameter passed: $1"; exit 1 ;;
         esac
@@ -1508,7 +1555,7 @@ update_firmware() {
     invoke_prereq_workflows
     echo "${YELLOW}Updating firmware...${NC}"
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-gaudi-firmware-driver.yml \
-        --extra-vars "update_type=firmware"  
+        --extra-vars "update_type=firmware"
     echo "${GREEN}Firmware updated successfully!${NC}"
 }
 
@@ -1654,7 +1701,8 @@ remove_model_deployed_via_huggingface(){
     echo "|------------------------------------------------|"
     hugging_face_model_remove_deployment="true"
     read_config_file "$@"       
-    prompt_for_input "$@"    
+    prompt_for_input "$@"
+    skip_check="true"    
     if [ -z "$cluster_url" ] || [ -z "$cert_file" ] || [ -z "$key_file" ] || [ -z "$keycloak_client_id" ] || [ -z "$keycloak_admin_user" ] || [ -z "$keycloak_admin_password" ] || [ -z "$hugging_face_token" ] || [ -z "$models" ]; then
         echo "Some required arguments are missing. Prompting for input..."
         prompt_for_input "$@"
@@ -1688,6 +1736,7 @@ deploy_from_huggingface() {
     hugging_face_model_deployment="true"
     read_config_file "$@"        
     prompt_for_input "$@"    
+    skip_check="true"
     if [ -z "$cluster_url" ] || [ -z "$cert_file" ] || [ -z "$key_file" ] || [ -z "$keycloak_client_id" ] || [ -z "$keycloak_admin_user" ] || [ -z "$keycloak_admin_password" ] || [ -z "$hugging_face_token" ] || [ -z "$models" ]; then
         echo "Some required arguments are missing. Prompting for input..."
         prompt_for_input
@@ -1735,7 +1784,8 @@ deploy_from_huggingface() {
 
 add_model() {
     read_config_file "$@"        
-    prompt_for_input "$@"    
+    prompt_for_input "$@"  
+    skip_check="true"  
     if [ -z "$cluster_url" ] || [ -z "$cert_file" ] || [ -z "$key_file" ] || [ -z "$keycloak_client_id" ] || [ -z "$keycloak_admin_user" ] || [ -z "$keycloak_admin_password" ] || [ -z "$hugging_face_token" ] || [ -z "$models" ]; then
         echo "Some required arguments are missing. Prompting for input..."
         prompt_for_input "$@"
@@ -1775,7 +1825,8 @@ add_model() {
 
 remove_model() {
     read_config_file "$@"        
-    prompt_for_input "$@"    
+    prompt_for_input "$@"
+    skip_check="true"    
     if [ -z "$cluster_url" ] || [ -z "$cert_file" ] || [ -z "$key_file" ] || [ -z "$keycloak_client_id" ] || [ -z "$keycloak_admin_user" ] || [ -z "$keycloak_admin_password" ] || [ -z "$hugging_face_token" ] || [ -z "$models" ]; then
         echo "Some required arguments are missing. Prompting for input..."
         prompt_for_input
@@ -1809,12 +1860,13 @@ remove_model() {
 add_worker_node() {
     echo "Adding a new worker node to the Intel AI for Enterprise Inference cluster..."
     read -p "${YELLOW}WARNING: Adding a node that is already managed by another Kubernetes cluster or has been manually configured using kubeadm, kubelet, or other tools can cause severe disruptions to your existing cluster. This may lead to issues such as pod restarts, service interruptions, and potential data loss. Do you want to proceed? (y/n) ${NC}" -r user_response
-    echo ""
+    echo ""    
     user_response=$(echo "$user_response" | tr '[:upper:]' '[:lower:]')        
     if [[ ! $user_response =~ ^(yes|y|Y|YES)$ ]]; then            
         echo "Aborting node addition process. Exiting!!"
         exit 1
     fi
+    skip_check="true"
     execute_and_check "Adding new worker nodes..." add_inference_nodes_playbook "$@" \
             "Adding a new worker node to the cluster" \
             "Failed to add worker node Exiting!."
@@ -1837,6 +1889,7 @@ remove_worker_node() {
         exit 1
     fi
     echo "Draining resources and detaching the worker node. This may take some time..."
+    skip_check="true"
     execute_and_check "Removing worker nodes..." remove_inference_nodes_playbook "$@" \
             "Removing  worker node is successful." \
             "Failed to remove worker node Exiting!."
@@ -1875,4 +1928,3 @@ main_menu() {
 }
 
 main_menu "$@"
-

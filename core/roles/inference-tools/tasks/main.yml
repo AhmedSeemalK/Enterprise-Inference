@@ -1,17 +1,10 @@
 # Copyright (C) 2024-2025 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 ---
-- name: Ensure Python pip module is installed
-  ansible.builtin.package:
-    name: python3-pip
-    state: present
-  become: true
-  tags: always
 - name: Install Kubernetes Python SDK
   ansible.builtin.pip:
     name: kubernetes
     state: present
-    executable: /usr/bin/pip3
   become: true
   tags: always
 - name: Install Deployment Client
