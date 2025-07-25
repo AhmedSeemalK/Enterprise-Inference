@@ -750,6 +750,7 @@ reset_cluster() {
     read -p "Are you sure you want to proceed? (yes/no): " confirm_reset            
     if [[ "$confirm_reset" =~ ^(yes|y|Y)$ ]]; then
         echo "Resetting the existing Enterprise Inference cluster..."
+        skip_check="true" 
         purge_inference_cluster="purging"        
         invoke_prereq_workflows "$@"
         run_reset_playbook
@@ -922,9 +923,9 @@ deploy_ceph_cluster() {
 
     echo "Deploying Ceph Cluster..."
 
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/generate-ceph-values.yaml 
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/generate-ceph-values.yml
 
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-ceph-storage.yml 
+    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-ceph-storage.yml
         
 }
 
@@ -1400,6 +1401,15 @@ fresh_installation() {
             else
                 echo "Skipping Habana AI Operator installation..."
             fi
+
+            if [[ "$deploy_ceph" == "yes" ]]; then
+                execute_and_check "Deploying CEPH storage..." deploy_ceph_cluster "$@" \
+                    "CEPH is deployed successfully." \
+                    "Failed to deploy CEPH. Exiting!."
+            else
+                echo "Skipping CEPH storage deployment..."
+            fi
+
             if [[ "$deploy_ingress_controller" == "yes" ]]; then
                 execute_and_check "Deploying Ingress NGINX Controller..." run_ingress_nginx_playbook \
                     "Ingress NGINX Controller is deployed successfully." \
@@ -1435,14 +1445,6 @@ fresh_installation() {
                     "Failed to deploy Observability. Exiting!."
             else
                 echo "Skipping Observability deployment..."
-            fi
-            
-            if [[ "$deploy_ceph" == "yes" ]]; then
-                execute_and_check "Deploying CEPH storage..." deploy_ceph_cluster "$@" \
-                    "CEPH is deployed successfully." \
-                    "Failed to deploy CEPH. Exiting!."
-            else
-                echo "Skipping CEPH storage deployment..."
             fi
             
             if [[ "$deploy_istio" == "yes" ]]; then

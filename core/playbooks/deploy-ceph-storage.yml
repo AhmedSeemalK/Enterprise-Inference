@@ -12,7 +12,7 @@
   tasks:
     - name: Copy operator-values.yaml to remote location
       copy:
-        src: "{{ playbook_dir }}/../helm-charts/ceph/operator-values.yaml"
+        src: "{{ helm_charts_base }}/ceph/operator-values.yaml"
         dest: "{{ remote_helm_charts_base }}/ceph/operator-values.yaml"
         mode: '0644'
       run_once: true
@@ -172,6 +172,7 @@
         replace: '\1- ReadWriteMany'
       register: pvc_template_patch
       run_once: true
+      delegate_to: localhost
 
     - name: Display PVC template patching result
       debug:

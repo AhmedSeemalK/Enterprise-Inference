@@ -348,6 +348,7 @@
         cmd: helm dependency build logs-stack
       args:
         chdir: "{{ remote_helm_charts_base }}/observability"
+      become: false
 
     - name: Install/Upgrade logs-stack chart with AWS settings
       when: aws_access_key | length > 0

@@ -137,9 +137,9 @@ export TOKEN=$(curl -k -X POST $BASE_URL/token  -H 'Content-Type: application/x-
 ### Example API Call (CPU)
 
 ```sh
-curl -k ${BASE_URL}/Meta-Llama-3.1-8B-Instruct-vllmcpu/v1/completions \
+curl -k ${BASE_URL}/Llama-3.1-8B-Instruct-vllmcpu/v1/completions \
   -X POST \
-  -d '{"model": "meta-llama/Meta-Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 25, "temperature":0}' \
+  -d '{"model": "meta-llama/Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 25, "temperature":0}' \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json"
 ```
@@ -147,9 +147,9 @@ curl -k ${BASE_URL}/Meta-Llama-3.1-8B-Instruct-vllmcpu/v1/completions \
 ### Example API Call (GPU)
 
 ```sh
-curl -k ${BASE_URL}/Meta-Llama-3.1-8B-Instruct/v1/completions \
+curl -k ${BASE_URL}/Llama-3.1-8B-Instruct/v1/completions \
   -X POST \
-  -d '{"model": "meta-llama/Meta-Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 25, "temperature":0}' \
+  -d '{"model": "meta-llama/Llama-3.1-8B-Instruct", "prompt": "What is Deep Learning?", "max_tokens": 25, "temperature":0}' \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json"
 ```

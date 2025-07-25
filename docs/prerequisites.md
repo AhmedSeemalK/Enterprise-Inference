@@ -182,3 +182,30 @@ all:
 
 ## Next Steps
 After completing the prerequisites, proceed to the [Deployment Configuration](./README.md#customizing-components-for-inference-deployment-with-inference-configcfg) section of the guide to set up Enterprise Inference.
+
+
+## Troubleshooting
+
+  ### Ceph Storage Cluster Setup
+
+  If Ceph OSDs skip devices due to GPT headers or existing filesystems, clean the device before use. Replace `<device>` with your actual device name (e.g., `/dev/vdb`):
+
+  ```bash
+  sudo sgdisk --zap-all <device>
+  sudo wipefs -a <device>
+  ```
+
+  Repeat for each device as needed. **Always verify the device name to avoid data loss.**
+
+  ### Istio CNI Error: File Descriptor Limit
+
+  Increase file descriptor and inotify limits with the following commands:
+
+  ```bash
+  ulimit -n 262144
+  sudo sysctl -w fs.inotify.max_user_watches=1048576
+  sudo sysctl -w fs.inotify.max_user_instances=8192
+  sudo sysctl -w fs.inotify.max_queued_events=32768
+  ```
+
+  **Note:** Adjust these values based on your system requirements.
