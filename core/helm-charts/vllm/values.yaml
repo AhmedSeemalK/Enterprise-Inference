@@ -187,7 +187,6 @@ modelConfigs:
     configMapValues: {}
   extraCmdArgs: []
 
-
 defaultModelConfigs:
   configMapValues:    
     OMPI_MCA_btl_vader_single_copy_mechanism: none

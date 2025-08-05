@@ -191,9 +191,7 @@ read_config_file() {
         
         # Load the environment variables from the temporary file
         source temp_env_vars        
-        rm temp_env_vars        
-        
-        
+        rm temp_env_vars    
         local metadata_config_file="$HOMEDIR/inventory/metadata/inference-metadata.cfg"
         if [ -f "$metadata_config_file" ]; then
             echo "Metadata configuration file found, setting vars!"
@@ -209,7 +207,6 @@ read_config_file() {
             echo "Enterprise Inference Metadata configuration file not found"
             exit 1        
         fi
-        
         if [[ -n "$vault_pass_code" ]]; then
             echo "Vault password is set."            
             echo -n "$vault_pass_code" > .vault-passfile
@@ -662,6 +659,10 @@ setup_initial_env() {
     cp -r "$HOMEDIR"/deploy-* "$HOMEDIR"/helm-charts "$HOMEDIR"/scripts "$KUBESPRAYDIR"/
     cp -r "$KUBESPRAYDIR"/inventory/sample/ "$KUBESPRAYDIR"/inventory/mycluster
     cp  "$HOMEDIR"/inventory/hosts.yaml $KUBESPRAYDIR/inventory/mycluster/
+    cp "$HOMEDIR"/inventory/addons.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/k8s_cluster/addons.yml    
+    cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/    
+    gaudi2_values_file_path="$REMOTEDIR/vllm/gaudi-values.yaml"
+    gaudi3_values_file_path="$REMOTEDIR/vllm/gaudi3-values.yaml"
     cp "$HOMEDIR"/inventory/metadata/addons.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/k8s_cluster/addons.yml
     cp "$HOMEDIR"/inventory/metadata/all.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/all/all.yml
     cp -r "$HOMEDIR"/roles/* $KUBESPRAYDIR/roles/        
@@ -792,7 +793,6 @@ run_k8s_cluster_wait() {
 run_deploy_habana_ai_operator_playbook() {
     echo "Running the deploy-habana-ai-operator.yml playbook to deploy the habana-ai-operator..."
     ansible-galaxy collection install community.kubernetes
-   
     if [[ "$gaudi_platform" == "gaudi2" ]]; then
         gaudi_operator="$gaudi2_operator"
     elif [[ "$gaudi_platform" == "gaudi3" ]]; then
@@ -890,6 +890,7 @@ deploy_inference_llm_models_playbook() {
     elif [[ "$gaudi_platform" == "gaudi3" ]]; then
         gaudi_values_file=$gaudi3_values_file_path
     fi        
+
     echo "Ingress based Deployment: $ingress_enabled"
     echo "APISIX Enabled: $apisix_enabled"
     echo "Keycloak Enabled: $deploy_keycloak"    
@@ -990,9 +991,11 @@ add_inference_nodes_playbook() {
         echo "Error: Invalid characters in worker node names. Only alphanumeric characters, commas, and hyphens are allowed."
         return 1
     fi
+
     invoke_prereq_workflows "$@"     
 
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/cluster.yml --become --become-user=root 
+
     
 }
 
@@ -1171,6 +1174,7 @@ model_selection(){
                             echo "9. deepseek-r1-distill-qwen-32b"
                             echo "10. deepseek-r1-distill-llama8b"
                             echo "11. llama3-405b"
+                            echo "12. llama-3-3-70b"
                             read -p "Enter the numbers of the GPU models you want to deploy/remove (comma-separated, e.g., 1,3,5): " models
                         else
                             # Prompt for CPU models
@@ -1315,6 +1319,13 @@ get_model_names() {
                 fi
                 model_names+=("llama3-405b")
                 ;;
+            12)
+                if [ "$cpu_or_gpu" = "c" ]; then
+                    echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
+                    exit 1
+                fi
+                model_names+=("llama-3-3-70b")
+                ;;
             21)
                 if [ "$cpu_or_gpu" = "g" ]; then
                     echo "Error: CPU model identifier provided for GPU deployment/removal." >&2
@@ -1336,7 +1347,7 @@ get_model_names() {
                 fi
                 model_names+=("cpu-deepseek-r1-distill-llama8b")
                 ;;
-            "llama-8b"|"llama-70b"|"codellama-34b"|"mixtral-8x-7b"|"mistral-7b"|"tei"|"tei-rerank"|"falcon3-7b"|"deepseek-r1-distill-qwen-32b"|"deepseek-r1-distill-llama8b"|"llama3-405b")
+            "llama-8b"|"llama-70b"|"codellama-34b"|"mixtral-8x-7b"|"mistral-7b"|"tei"|"tei-rerank"|"falcon3-7b"|"deepseek-r1-distill-qwen-32b"|"deepseek-r1-distill-llama8b"|"llama3-405b"|"llama-3-3-70b")
                 if [ "$cpu_or_gpu" = "c" ]; then
                     echo "Error: GPU model identifier provided for CPU deployment/removal." >&2
                     exit 1
