@@ -1,4 +1,6 @@
 ---
+# Copyright (C) 2024-2025 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 # Kubernetes dashboard
 # RBAC required. see docs/getting-started.md for access details.
 dashboard_enabled: true

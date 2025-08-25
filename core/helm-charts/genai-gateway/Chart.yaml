@@ -1,3 +1,5 @@
+# Copyright (C) 2024-2025 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 apiVersion: v2
 name: genaigateway
 version: 0.1.0

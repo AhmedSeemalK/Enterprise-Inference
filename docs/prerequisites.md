@@ -181,6 +181,31 @@ all:
       hosts: {}
 ```
 
+### Uninstall Ceph Cluster
+
+⚠️ **Warning**: Uninstalling the Ceph cluster will permanently erase all Ceph data. Any workloads using Ceph storage will be disrupted and may require redeployment after removal.
+
+To uninstall the Ceph storage cluster:
+
+1. Set `uninstall_ceph=on` in the `inference-config.cfg` file to uninstall the Ceph storage cluster setup.
+
+2. This option will permanently delete all Ceph data by:
+   - Removing all Ceph storage pools and filesystems
+   - Deleting all persistent volume claims
+   - Uninstalling Rook-Ceph operator and cluster
+   - Removing all Ceph-related CRDs
+   - Deleting local storage data (`/var/lib/rook`)
+
+3. **Format storage devices if required:**
+   ```bash
+   # Replace <device> with your actual storage device (e.g., /dev/vdb)
+   sudo wipefs -a /dev/<device>
+   sudo sgdisk --zap-all /dev/<device>
+   sudo dd if=/dev/zero of=/dev/<device> bs=1M count=100 status=progress
+   ```
+
+   **Important**: Always verify the device name before running these commands to avoid data loss.
+
 ## Next Steps
 After completing the prerequisites, proceed to the [Deployment Configuration](./README.md#customizing-components-for-inference-deployment-with-inference-configcfg) section of the guide to set up Enterprise Inference.
 

@@ -1,3 +1,5 @@
+# Copyright (C) 2024-2025 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 replicaCount: 1
 image:
   repository: ghcr.io/berriai/litellm-database
@@ -7,6 +9,14 @@ image:
 service:
   type: LoadBalancer
   port: 4000
+
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+
+tolerations:
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: "Exists"
+    effect: "NoSchedule"
 
 resources:
   requests:
@@ -36,10 +46,10 @@ probes:
     failureThreshold: 3
     timeoutSeconds: 10
 
-ingress:  
-  host: ""  
+ingress:
+  host: ""
   secretname: ""
-env:  
+env:
   LITELLM_MASTER_KEY: "<REPLACE_WITH_MASTER_KEY>"
   LITELLM_SALT_KEY: "<REPLACE_WITH_SALT_KEY>"
   REDIS_HOST: genai-gateway-redis-master
@@ -64,7 +74,7 @@ config:
       redact_user_api_key_info: false
     general_settings:
       disable_spend_logs: True
-      disable_error_logs: True      
+      disable_error_logs: True
 postgresql:
   enabled: true
   architecture: standalone
@@ -77,7 +87,13 @@ postgresql:
     persistence:
       enabled: true
       size: 8Gi
-      storageClass: ""    
+      storageClass: ""
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+    tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
 redis:
   enabled: true
   architecture: standalone
@@ -89,13 +105,19 @@ redis:
       enabled: true
       size: 2Gi
       storageClass: ""
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+    tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
 backup:
   enabled: false
-  postgresBackupSchedule: "*/1 * * * *" # Every day at 2am
+  postgresBackupSchedule: "0 2 * * *" # Every day at 2am
   s3:
     enabled: false # Set to true to enable S3 backup
     bucket: s3-for-lite-llm-logs
-    region: us-west-2    
+    region: us-west-2
     accessKeyId: "<REPLACE_WITH_AWS_ACCESS_KEY>"
     secretAccessKey: "<REPLACE_WITH_AWS_SECRET_KEY>"
   pvc:
@@ -103,6 +125,6 @@ backup:
     claimName: postgres-backup-pvc # Update this with your PVC name if using PVC
 restoreJob:
   enabled: false # Set to true to enable the restore job
-  restoreFile: backup-file.sql  #update the restore file name as per your backup naming convention
+  restoreFile: backup-file.sql #update the restore file name as per your backup naming convention
   source: s3 # options: pvc or s3
 namespace: genai-gateway

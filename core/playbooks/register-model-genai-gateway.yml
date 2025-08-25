@@ -1,4 +1,6 @@
---- 
+# Copyright (C) 2024-2025 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+---
 - name: Check if model deployed with Litellm exists
   uri:
     url: "https://{{ secret_name }}/models?return_wildcard_routes=false"
@@ -43,7 +45,8 @@
         api_base: "{{ reg_api_base }}"
         input_cost_per_token: "{{ reg_input_cost_per_token }}"
         output_cost_per_token: "{{ reg_output_cost_per_token }}"
-        model_info: {}
+        model_info:
+          mode: "{{ reg_model_mode | default('chat') }}"
     status_code: 200
   register: api_register_result
   when: not model_exists

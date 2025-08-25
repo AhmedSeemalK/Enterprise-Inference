@@ -8,10 +8,10 @@
   environment: "{{ proxy_disable_env | default(env_proxy | default({})) }}"
   vars_files:
     - "{{ lookup('env', 'PWD') }}/config/vars/inference_common.yml"
-    - "{{ lookup('env', 'PWD') }}/config/vars/inference_keycloak_apisix.yml"  
+    - "{{ lookup('env', 'PWD') }}/config/vars/inference_keycloak_apisix.yml"
   roles:
     - role: inference-tools
-  tasks:   
+  tasks:
     - name: Add Ingress-Nginx repository
       community.kubernetes.helm_repository:
         name: ingress-nginx
@@ -20,12 +20,12 @@
       when: delete_pv_on_purge == "no"
     - name: Verify repository availability
       ansible.builtin.command: helm repo list
-      register: helm_repo_list    
+      register: helm_repo_list
       failed_when: false
-      changed_when: false  
+      changed_when: false
     - name: Synchronize repositories
-      ansible.builtin.shell: helm repo update      
-      when: helm_repo_list.stdout != "" and delete_pv_on_purge == "no"                              
+      ansible.builtin.shell: helm repo update
+      when: helm_repo_list.stdout != "" and delete_pv_on_purge == "no"
     - name: Remove existing Keycloak PersistentVolume data directory
       ansible.builtin.file:
         path: /mnt/local-path-provisioner/
@@ -37,8 +37,6 @@
       ansible.builtin.file:
         path: /mnt/local-path-provisioner/
         state: directory
-        mode: '0777'
+        mode: "0777"
       become: true
-      when: delete_pv_on_purge == "no" 
-    
-    
+      when: delete_pv_on_purge == "no"

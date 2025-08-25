@@ -6,11 +6,11 @@
   gather_facts: false
   any_errors_fatal: "{{ any_errors_fatal | default(true) }}"
   environment: "{{ proxy_disable_env | default(env_proxy | default({})) }}"
-  vars_files:        
-    - "{{ lookup('env', 'PWD') }}/config/vars/inference_common.yml"  
+  vars_files:
+    - "{{ lookup('env', 'PWD') }}/config/vars/inference_common.yml"
   roles:
     - role: inference-tools
-  tasks:    
+  tasks:
     - name: Add ingress-nginx repository using Helm module
       community.kubernetes.helm_repository:
         name: ingress-nginx
@@ -18,9 +18,9 @@
         state: present
     - name: Add Ingress-Nginx repository
       ansible.builtin.command: helm repo list
-      register: helm_repo_list    
+      register: helm_repo_list
       failed_when: false
-      changed_when: false  
+      changed_when: false
     - name: Synchronize repositories
-      ansible.builtin.shell: helm repo update      
+      ansible.builtin.shell: helm repo update
       when: helm_repo_list.stdout != ""

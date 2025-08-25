@@ -1,19 +1,17 @@
 name: Linter
 
 on:
+  workflow_dispatch:
+    inputs:
+      PR_number:
+        description: 'Pull request number'
+        required: true
   pull_request:
-    branches: [ main ]
-
-  push:
-    branches: [ main ]
-
+    types: [opened, synchronize, reopened, ready_for_review]
 jobs:
   lint:
     runs-on: [innersource.prod.amr.dind]
     container: cache-registry.caas.intel.com/cache/library/python:3.11
-    if: |
-      (github.event_name == 'pull_request_review' && github.event.review.state != 'commented') ||
-      (github.event_name == 'pull_request') || (github.event_name == 'push')
     permissions:
       contents: read
       statuses: write
@@ -33,7 +31,7 @@ jobs:
           VALIDATE_ALL_CODEBASE: false
           VALIDATE_BASH: true
           BASH_SEVERITY: error
-          FILTER_REGEX_EXCLUDE: ".*/templates/.*\\.yaml|.*/config/manifests/.*\\.yaml|.*/gmc-router\\.yaml|\\.github/.*|helm-charts/.*|playbooks/.*|roles/.*"
+          FILTER_REGEX_EXCLUDE: ".*/templates/.*\\.yaml|.*/config/manifests/.*\\.yaml|.*/gmc-router\\.yaml|\\.github/.*"
           VALIDATE_YAML: true
           VALIDATE_PYTHON_RUFF: true
           HADOLINT_CONFIG_FILE: .github/linters/.hadolint.yaml

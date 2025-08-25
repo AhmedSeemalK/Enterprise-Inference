@@ -1,3 +1,5 @@
+# Copyright (C) 2024-2025 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 ---
 - name: Install and configure Istio in Ambient mode
   hosts: kube_control_plane
@@ -23,17 +25,23 @@
       file:
         path: "{{ remote_helm_charts_base }}/istio"
         state: directory
-        mode: '0755'
+        mode: "0755"
       run_once: true
 
     - name: Copy istio configuration files to remote location
       copy:
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
-        mode: '0644'
+        mode: "0644"
       loop:
-        - { src: "{{ peer_auth_path_base }}", dest: "{{ remote_helm_charts_base }}/istio/peer-authentication.yaml" }
-        - { src: "{{ peer_auth_ingress_path_base }}", dest: "{{ remote_helm_charts_base }}/istio/peer-auth-ingress.yaml" }
+        - {
+            src: "{{ peer_auth_path_base }}",
+            dest: "{{ remote_helm_charts_base }}/istio/peer-authentication.yaml",
+          }
+        - {
+            src: "{{ peer_auth_ingress_path_base }}",
+            dest: "{{ remote_helm_charts_base }}/istio/peer-auth-ingress.yaml",
+          }
       run_once: true
     - name: Check if genai-gateway namespace exists
       command: kubectl get namespace {{ genai_gw_ns }}

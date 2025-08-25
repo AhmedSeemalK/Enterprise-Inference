@@ -1,3 +1,5 @@
+# Copyright (C) 2024-2025 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 ---
 - name: Generate Ceph cluster-values.yaml from inventory storage nodes
   hosts: kube_control_plane
@@ -14,7 +16,7 @@
       file:
         path: "{{ remote_helm_charts_base }}/ceph"
         state: directory
-        mode: '0755'
+        mode: "0755"
       run_once: true
       delegate_to: "{{ groups['kube_control_plane'][0] }}"
 
@@ -22,10 +24,16 @@
       copy:
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
-        mode: '0644'
+        mode: "0644"
       loop:
-        - { src: "{{ ceph_values_template }}", dest: "{{ remote_helm_charts_base }}/ceph/cluster-values.yaml.j2" }
-        - { src: "{{ ceph_values_template_single }}", dest: "{{ remote_helm_charts_base }}/ceph/cluster-values-single-node.yaml.j2" }
+        - {
+            src: "{{ ceph_values_template }}",
+            dest: "{{ remote_helm_charts_base }}/ceph/cluster-values.yaml.j2",
+          }
+        - {
+            src: "{{ ceph_values_template_single }}",
+            dest: "{{ remote_helm_charts_base }}/ceph/cluster-values-single-node.yaml.j2",
+          }
       run_once: true
       delegate_to: "{{ groups['kube_control_plane'][0] }}"
     - name: Build storage_nodes list from inventory
@@ -88,11 +96,25 @@
       ansible.builtin.command:
         cmd: kubectl label node {{ item.name }} type=storage-node --overwrite
       loop: "{{ storage_nodes | from_yaml }}"
-      when: 
+      when:
         - storage_nodes | from_yaml | length > 0
         - kubectl_check.rc == 0
         - cluster_ready_check is defined and cluster_ready_check.rc == 0
       ignore_errors: true
       run_once: true
       delegate_to: "{{ groups['kube_control_plane'][0] }}"
+    - name: Inform user about manual device cleanup steps
+      debug:
+        msg: |
+          DISCLAIMER: The following steps are NOT executed by this playbook. You must run them manually and with caution, as they will irreversibly erase all data on the specified device.
 
+          To clean up a device, run the following commands (replace <device> with your actual device name, e.g., sdb):
+
+          1. sudo sgdisk --zap-all <device>
+            - Removes all partition table data from the device, erasing any existing partitions.
+          2. sudo wipefs -a <device>
+            - Erases all filesystem signatures from the device, making it appear as a blank disk to the system.
+          3. sudo dd if=/dev/zero of=/dev/<device> bs=1M status=progress
+            - Overwrites the entire device with zeros, ensuring all data is unrecoverable.
+
+          WARNING: These commands will destroy all data and partitions on the device. Ensure you have selected the correct device before proceeding.

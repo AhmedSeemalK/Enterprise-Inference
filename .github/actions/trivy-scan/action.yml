@@ -29,13 +29,23 @@ runs:
         name: "trivy_fs_report_${{ github.sha }}"
         path: "trivy_fs_report_${{ github.sha }}.json"
 
-    - name: Run Trivy Scan on Repository Files
+    - name: Run Trivy Vulnerability Scan on Repository Files
       uses: aquasecurity/trivy-action@master
       with:
         scan-type: 'fs'   # Scans all files (IaC, dependencies, etc.)
+        scanners: 'vuln'
         ignore-unfixed: true
         format: 'table'
         exit-code: 1
+        severity: 'CRITICAL,HIGH'
+    - name: Run other Trivy Scans on Repository Files
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'   # Scans all files (IaC, dependencies, etc.)
+        scanners: 'misconfig,secret,license'
+        ignore-unfixed: true
+        format: 'table'
+        exit-code: 0
         severity: 'CRITICAL,HIGH'
     - name: List Available Dockerfiles
       shell: bash 

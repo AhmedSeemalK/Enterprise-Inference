@@ -11,6 +11,7 @@ NC=$(tput sgr0)
 
 # Copyright (C) 2024-2025 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
+
 # Permission is granted for recipient to internally use and modify this software for purposes of benchmarking and testing on Intel architectures. 
 # This software is provided "AS IS" possibly with faults, bugs or errors; it is not intended for production use, and recipient uses this design at their own risk with no liability to Intel.
 # Intel disclaims all warranties, express or implied, including warranties of merchantability, fitness for a particular purpose, and non-infringement. 
@@ -146,6 +147,7 @@ deploy_ingress_controller=""
 deploy_genai_gateway=""
 deploy_llm_models=""
 deploy_istio=""
+deploy_nri_balloon_policy=""
 list_model_menu=""
 apisix_enabled=""
 ingress_enabled=""
@@ -168,6 +170,7 @@ gaudi3_values_file_path=""
 python3_interpreter=""
 skip_check=""
 purge_inference_cluster=""
+uninstall_ceph=""
 
 
 
@@ -731,6 +734,11 @@ check_cluster_state() {
 run_reset_playbook() {
     echo "Running the Ansible playbook to reset the cluster..."  
     delete_pv_on_purge="yes"      
+    
+    # Uninstall Ceph storage as part of cluster reset
+    echo "Running Ceph uninstall as part of cluster reset..."
+    uninstall_ceph_cluster
+    
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-keycloak-controller.yml --extra-vars "delete_pv_on_purge=${delete_pv_on_purge}"
     ansible-playbook -i "${INVENTORY_PATH}" --become --become-user=root reset.yml -e "confirm_reset=yes reset_nodes=false"
     # Check the exit status of the Ansible playbook command
@@ -856,18 +864,22 @@ run_genai_gateway_playbook() {
 
 deploy_inference_llm_models_playbook() {
     echo "Deploying Inference LLM Models playbook..."    
-    install_true="true"        
+    install_true="true"
+    enable_cpu_balloons="false"
+    
     if [ "$cpu_or_gpu" == "c" ]; then
         cpu_playbook="true"
         gpu_playbook="false"
         gaudi_deployment="false"
+        enable_cpu_balloons="true"  # Enable NRI balloons for CPU deployments
         huggingface_model_deployment_name="${huggingface_model_deployment_name}-cpu"
+        echo "${GREEN}CPU deployment detected - using generic NRI balloon policy${NC}"
     fi
     if [ "$cpu_or_gpu" == "g" ]; then
         cpu_playbook="false"
         gpu_playbook="true"
         gaudi_deployment="true"
-
+        enable_cpu_balloons="false"
     fi
     if [ "$deploy_apisix" == "no" ]; then        
         apisix_enabled="false"
@@ -896,6 +908,7 @@ deploy_inference_llm_models_playbook() {
     echo "Keycloak Enabled: $deploy_keycloak"    
     echo "Gaudi based: $gaudi_deployment"
     echo "Model Metrics Enabled: $vllm_metrics_enabled"
+    echo "CPU NRI Balloons: $enable_cpu_balloons"
     
     tags=""    
     for model in $model_name_list; do
@@ -916,7 +929,7 @@ deploy_inference_llm_models_playbook() {
     tags=${tags%,}
         
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name} deploy_inference_llm_models_playbook=${deploy_inference_llm_models_playbook} huggingface_tensor_parellel_size=${huggingface_tensor_parellel_size} $deploy_genai_gateway=${deploy_genai_gateway} vllm_metrics_enabled=${vllm_metrics_enabled} gaudi_values_file=${gaudi_values_file}" --tags "$tags" --vault-password-file "$vault_pass_file"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} install_true=${install_true} model_name_list='${model_name_list//\ /,}' cpu_playbook=${cpu_playbook} gpu_playbook=${gpu_playbook} hugging_face_token_falcon3=${hugging_face_token_falcon3} deploy_keycloak=${deploy_keycloak} apisix_enabled=${apisix_enabled} ingress_enabled=${ingress_enabled} gaudi_deployment=${gaudi_deployment} huggingface_model_id=${huggingface_model_id} hugging_face_model_deployment=${hugging_face_model_deployment} huggingface_model_deployment_name=${huggingface_model_deployment_name} deploy_inference_llm_models_playbook=${deploy_inference_llm_models_playbook} huggingface_tensor_parellel_size=${huggingface_tensor_parellel_size} deploy_genai_gateway=${deploy_genai_gateway} vllm_metrics_enabled=${vllm_metrics_enabled} gaudi_values_file=${gaudi_values_file} deploy_ceph=${deploy_ceph} enable_cpu_balloons=${enable_cpu_balloons}" --tags "$tags" --vault-password-file "$vault_pass_file"
 
 }
 
@@ -924,9 +937,78 @@ deploy_ceph_cluster() {
 
     echo "Deploying Ceph Cluster..."
 
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/generate-ceph-values.yml
+    echo "Generating Ceph configuration values..."
+    if ! ansible-playbook -i "${INVENTORY_PATH}" playbooks/generate-ceph-values.yml; then
+        echo -e "${RED}Failed to generate Ceph configuration values.${NC}"
+        echo -e "${YELLOW}Please check the inventory configuration and try again.${NC}"
+        return 1
+    fi
 
-    ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-ceph-storage.yml
+    echo "Deploying Ceph storage cluster..."
+    if ! ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-ceph-storage.yml; then
+        echo -e "${RED} Ceph Cluster deployment FAILED!${NC}"
+        echo ""
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${YELLOW}│                        CEPH DEPLOYMENT FAILURE                           │${NC}"
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${YELLOW}│                                                                          │${NC}"
+        echo -e "${YELLOW}│  Common causes and solutions:                                            │${NC}"
+        echo -e "${YELLOW}│                                                                          │${NC}"
+        echo -e "${YELLOW}│  1. Previous Ceph installation exists:                                   │${NC}"
+        echo -e "${YELLOW}│     • Run this script with 'uninstall_ceph=on' in config                 │${NC}"
+        echo -e "${YELLOW}│                                                                          │${NC}"
+        echo -e "${YELLOW}│  2. Storage devices need formatting:                                     │${NC}"
+        echo -e "${YELLOW}│     • Check available devices                                            │${NC}"
+        echo -e "${YELLOW}│     • Format devices if needed                                           │${NC}"
+        echo -e "${YELLOW}│     • Remove any existing partitions                                     │${NC}"
+        echo -e "${YELLOW}│                                                                          │${NC}"
+        echo -e "${YELLOW}│  3. Insufficient resources:                                              │${NC}"
+        echo -e "${YELLOW}│     • Ensure nodes have enough CPU, memory, and storage                  │${NC}"
+        echo -e "${YELLOW}│     • Check node readiness: kubectl get nodes                            │${NC}"
+        echo -e "${YELLOW}│                                                                          │${NC}"
+        echo -e "${YELLOW}│  4. Network/connectivity issues:                                         │${NC}"
+        echo -e "${YELLOW}│     • Verify all nodes can communicate                                   │${NC}"
+        echo -e "${YELLOW}│     • Check firewall rules and port accessibility                        │${NC}"
+        echo -e "${YELLOW}│                                                                          │${NC}"
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${YELLOW}│                                                                                 │${NC}"
+        echo -e "${YELLOW}│  RECOMMENDED ACTIONS:                                                           │${NC}"
+        echo -e "${YELLOW}│                                                                                 │${NC}"
+        echo -e "${YELLOW}│  1. Clean up any previous Ceph installation:                                    │${NC}"
+        echo -e "${YELLOW}│     • Set 'uninstall_ceph=on' in inference-config.cfg                           │${NC}"
+        echo -e "${YELLOW}│     • Run the deployment script again                                           │${NC}"
+        echo -e "${YELLOW}│                                                                                 │${NC}"
+        echo -e "${YELLOW}│  2. Format storage devices if required:                                         │${NC}"
+        echo -e "${YELLOW}│     • sudo wipefs -a /dev/<device> (replace <device> with your storage device)  │${NC}"
+        echo -e "${YELLOW}│     • sudo sgdisk --zap-all /dev/<device>                                       │${NC}"
+        echo -e "${YELLOW}│     • sudo dd if=/dev/<device> of=/dev/<device> bs=1M status=progress           │${NC}"
+        echo -e "${YELLOW}│                                                                                 │${NC}"
+        echo -e "${YELLOW}│  3. Verify system requirements and try again                                    │${NC}"
+        echo -e "${YELLOW}│                                                                                 │${NC}"
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+        echo -e "${RED}Ceph deployment failed. Please address the issues above and retry.${NC}"
+        return 1
+    fi
+
+    echo -e "${GREEN} Ceph Cluster deployed successfully!${NC}"
+    return 0
+        
+}
+
+uninstall_ceph_cluster() {
+
+    echo "Uninstalling Ceph Cluster..."
+    echo "⚠️  WARNING: This will PERMANENTLY DELETE ALL CEPH DATA!"
+    
+    # Always attempt to run the uninstall playbook, but handle failures gracefully
+    echo "Attempting Ceph cluster uninstall (if installed)..."
+    if ansible-playbook -i "${INVENTORY_PATH}" playbooks/uninstall-ceph-storage.yml; then
+        echo "Ceph cluster uninstall completed successfully."
+    else
+        echo "⚠️  Warning: Ceph cluster uninstall encountered issues or Ceph may not be installed."
+        echo "This is expected if no Ceph cluster was deployed."
+    fi
         
 }
 
@@ -952,6 +1034,30 @@ deploy_istio_playbook() {
     fi
 }
 
+deploy_nri_balloons_playbook() {
+    echo "Deploying CPU Optimization (NRI Balloons & Topology Detection)..."
+    
+    # Strict CPU deployment check
+    if [[ "$cpu_or_gpu" != "c" ]]; then
+        echo "${RED}Error: CPU optimization can only be deployed for CPU deployments${NC}"
+        echo "${RED}Current cpu_or_gpu setting: '$cpu_or_gpu'${NC}"
+        echo "${RED}CPU optimization is specifically designed for CPU resource management${NC}"
+        exit 1
+    fi
+    
+    if [ "$deploy_nri_balloon_policy" == "yes" ] || [ "$cpu_or_gpu" == "c" ]; then
+        echo "${GREEN}Deploying CPU optimization with topology detection and NRI balloon policy${NC}"
+        ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-cpu-optimization.yml --extra-vars "cpu_playbook=true"
+        if [ $? -eq 0 ]; then
+            echo "${GREEN}CPU optimization deployed successfully${NC}"
+        else
+            echo "${RED}CPU optimization deployment failed${NC}"
+            exit 1
+        fi
+    else
+        echo "${YELLOW}Skipping CPU optimization - not a CPU deployment${NC}"
+    fi
+}
 
 deploy_cluster_config_playbook() {       
     if [ "${deploy_observability}" = "yes" ]; then
@@ -977,7 +1083,7 @@ remove_inference_llm_models_playbook() {
     tags=${tags%,}        
     uninstall_true="true"               
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} model_name_list='${model_name_list//\ /,}' hugging_face_model_remove_deployment=${hugging_face_model_remove_deployment} hugging_face_model_remove_name=${hugging_face_model_remove_name}" --tags "$tags" --vault-password-file "$vault_pass_file" 
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} model_name_list='${model_name_list//\ /,}' hugging_face_model_remove_deployment=${hugging_face_model_remove_deployment} hugging_face_model_remove_name=${hugging_face_model_remove_name} deploy_ceph=${deploy_ceph}" --tags "$tags" --vault-password-file "$vault_pass_file" 
 }
 
 add_inference_nodes_playbook() {    
@@ -1024,7 +1130,7 @@ list_inference_llm_models_playbook() {
     echo "Listing the models..."
     list_model_true="true"       
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-inference-models.yml \
-        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} list_model_true='${list_model_true//\ /,}'"
+        --extra-vars "secret_name=${cluster_url} cert_file=${cert_file} key_file=${key_file} keycloak_admin_user=${keycloak_admin_user} keycloak_admin_password=${keycloak_admin_password} keycloak_client_id=${keycloak_client_id} hugging_face_token=${hugging_face_token} uninstall_true=${uninstall_true} list_model_true='${list_model_true//\ /,}'" --vault-password-file "$vault_pass_file"
 }
 
 prompt_for_input() {   
@@ -1073,11 +1179,30 @@ prompt_for_input() {
     else
         echo "Proceeding with the setup of Ceph cluster: $deploy_ceph"
     fi
+
+    if [ -z "$uninstall_ceph" ]; then
+        read -p "Do you want to proceed with uninstalling Ceph cluster? (yes/no): " uninstall_ceph
+    else
+        echo "Proceeding with Ceph cluster uninstallation: $uninstall_ceph"
+    fi
    
     if [ -z "$deploy_istio" ]; then
         read -p "Do you want to proceed with deploying Istio? (yes/no): " deploy_istio
     else
         echo "Proceeding with the setup of Istio: $deploy_istio"
+    fi
+
+    if [ -z "$deploy_nri_balloon_policy" ]; then
+        # Automatically enable NRI balloon policy for CPU deployments
+        if [ "$cpu_or_gpu" == "c" ]; then
+            deploy_nri_balloon_policy="yes"
+            echo "NRI CPU Balloon Policy automatically enabled for CPU deployment"
+        else
+            deploy_nri_balloon_policy="no"
+            echo "NRI CPU Balloon Policy disabled for GPU deployment"
+        fi
+    else
+        echo "Proceeding with the setup of NRI CPU Balloon Policy: $deploy_nri_balloon_policy"
     fi
 
     model_selection "$@"    
@@ -1226,6 +1351,7 @@ parse_arguments() {
             --hugging-face-token) hugging_face_token="$2"; shift ;;
             --models) models="$2"; shift ;;
             --cpu-or-gpu) cpu_or_gpu="$2"; shift ;;
+            --deploy-nri-balloon-policy) deploy_nri_balloon_policy="$2"; shift ;;
             --skip-check) skip_check="true" ;;
             -h|--help) usage; exit 0 ;;
             *) echo "Unknown parameter passed: $1"; exit 1 ;;
@@ -1386,7 +1512,9 @@ install_kubernetes() {
 
 fresh_installation() {    
     read_config_file        
-    if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak" == "no" && "$deploy_apisix" == "no" && "$deploy_llm_models" == "no" && "$deploy_observability" == "no" && "$deploy_genai_gateway" == "no" && "$deploy_istio" == "no" && "$deploy_ceph" == "no" ]]; then
+    if [[ "$deploy_kubernetes_fresh" == "no" && "$deploy_habana_ai_operator" == "no" && "$deploy_ingress_controller" == "no" && "$deploy_keycloak" == "no" && "$deploy_apisix" == "no" && "$deploy_llm_models" == "no" && "$deploy_observability" == "no" && "$deploy_genai_gateway" == "no" && "$deploy_istio" == "no" && "$deploy_ceph" == "no" && "$uninstall_ceph" == "no"  && "$deploy_nri_balloon_policy" == "no" ]]; then
+    
+    # Check if all deployment steps are set to "no" after getting user input  
         echo "No installation or deployment steps selected. Skipping setup_initial_env..."
         echo "--------------------------------------------------------------------"
         echo "|     Deployment Skipped for Intel AI for Enterprise Inference!    |"
@@ -1406,6 +1534,23 @@ fresh_installation() {
             execute_and_check "Deploying Cluster Configuration Playbook..." deploy_cluster_config_playbook \
                   "Cluster Configuration Playbook is deployed successfully." \
                   "Failed to deploy Cluster Configuration Playbook. Exiting."
+
+            # Deploy NRI CPU Balloons for CPU deployments (after all infrastructure, before models)
+            if [[ "$deploy_nri_balloon_policy" == "yes" ]]; then
+                # Ensure this is a CPU deployment
+                if [[ "$cpu_or_gpu" != "c" ]]; then
+                    echo "${RED}Error: NRI Balloon Policy can only be deployed for CPU deployments (cpu_or_gpu='c')${NC}"
+                    echo "${RED}Current cpu_or_gpu setting: '$cpu_or_gpu'${NC}"
+                    echo "${RED}Please set cpu_or_gpu to 'c' or disable NRI balloon policy deployment. Exiting!${NC}"
+                    exit 1
+                fi
+                execute_and_check "Deploying CPU Optimization (NRI Balloons & Topology Detection)..." deploy_nri_balloons_playbook "$@" \
+                    "CPU optimization deployed successfully." \
+                    "Failed to deploy CPU optimization. Exiting!."
+            else
+                echo "Skipping CPU optimization deployment..."
+            fi
+            
             if [[ "$deploy_habana_ai_operator" == "yes" ]]; then
                 execute_and_check "Deploying habana-ai-operator..." run_deploy_habana_ai_operator_playbook "Habana AI Operator is deployed." \
                     "Failed to deploy Habana AI Operator. Exiting."
@@ -1413,10 +1558,18 @@ fresh_installation() {
                 echo "Skipping Habana AI Operator installation..."
             fi
 
+            if [[ "$uninstall_ceph" == "yes" ]]; then
+                execute_and_check "Uninstalling CEPH storage..." uninstall_ceph_cluster "$@" \
+                    "CEPH is uninstalled successfully." \
+                    "Failed to uninstall CEPH. Exiting!."
+            else
+                echo "Skipping CEPH storage uninstallation..."
+            fi
+
             if [[ "$deploy_ceph" == "yes" ]]; then
                 execute_and_check "Deploying CEPH storage..." deploy_ceph_cluster "$@" \
                     "CEPH is deployed successfully." \
-                    "Failed to deploy CEPH. Exiting!."
+                    "Failed to deploy CEPH. Please use uninstall_ceph option to clean previous installation and format devices if needed."
             else
                 echo "Skipping CEPH storage deployment..."
             fi
@@ -1466,6 +1619,7 @@ fresh_installation() {
             else
                 echo "Skipping Istio deployment..."
             fi
+            
             
             if [[ "$deploy_llm_models" == "yes" ]]; then                                
                 model_name_list=$(get_model_names)                      
@@ -1559,7 +1713,7 @@ update_drivers() {
     invoke_prereq_workflows
     echo "${YELLOW}Updating drivers...${NC}"
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-gaudi-firmware-driver.yml \
-        --extra-vars "update_type=drivers"    
+        --extra-vars "update_type=drivers"
     echo "${GREEN}Drivers updated successfully!${NC}"
 }
 
@@ -1889,7 +2043,20 @@ add_worker_node() {
     echo -e "${GREEN}|  This process depends on network and available system resources.          |${NC}"
     echo -e "${GREEN}|  Please stand by while the node is being added...                         |${NC}"
     echo -e "${BLUE}------------------------------------------------------------------------------${NC}"    
-                
+
+
+    #Rerun baloon policy if its cpu deployment
+    if [[ "$cpu_or_gpu" == "c" ]]; then
+        echo "Reapplying NRI CPU Balloons for CPU deployments..."
+        execute_and_check "Reapplying NRI CPU Balloons..." deploy_nri_balloons_playbook "$@" \
+            "NRI CPU Balloons re-applied successfully." \
+            "Failed to reapply NRI CPU Balloons. Exiting!."
+        echo -e "${BLUE}------------------------------------------------------------------------------${NC}"
+        echo -e "${GREEN}|  NRI CPU Balloons re-applied successfully!                                |${NC}"
+        echo -e "${GREEN}|  This process may take some time depending on system resources.     |${NC}"
+        echo -e "${GREEN}|  Please stand by while the NRI CPU Balloons are being re-applied... |${NC}"
+        echo -e "${BLUE}------------------------------------------------------------------------------${NC}"
+    fi           
 }
 
 

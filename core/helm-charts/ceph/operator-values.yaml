@@ -1,3 +1,5 @@
+# Copyright (C) 2024-2025 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 image:
   repository: docker.io/rook/ceph
   tag: v1.16.5
