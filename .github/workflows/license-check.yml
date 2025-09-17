@@ -49,6 +49,7 @@ jobs:
           grep -v "./core/scripts/keycloak-fetch-client-secret.sh" | 
           grep -v "./core/scripts/keycloak-realmcreation.sh" | 
           grep -v "./core/scripts/firmware-update.sh" | 
+          grep -v "./core/scripts/generate-vault-secrets.sh" | 
           grep -v "./third_party/IBM/.bluemix/toolchain.yml" |
           grep -v "./docs/api-spec.yaml" |
           grep -v "./docs/examples/multi-node/hosts.yaml" |

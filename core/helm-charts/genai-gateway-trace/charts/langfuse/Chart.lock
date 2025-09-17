@@ -4,12 +4,15 @@ dependencies:
   version: 16.4.9
 - name: clickhouse
   repository: oci://registry-1.docker.io/bitnamicharts
-  version: 7.2.0
+  version: 8.0.5
 - name: valkey
   repository: oci://registry-1.docker.io/bitnamicharts
   version: 2.2.4
 - name: minio
   repository: oci://registry-1.docker.io/bitnamicharts
   version: 14.10.5
-digest: sha256:0f752b84ee1ebbf93241322b4385965f6d7426e5803e51fd48a0eb45821387c2
-generated: "2025-06-05T05:10:38.392057087Z"
+- name: common
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 2.30.0
+digest: sha256:b9335f44c90d1dce695490c0729e62b84c0377e71f421b4cb02407d3c413de12
+generated: "2025-09-03T03:18:23.754553935Z"

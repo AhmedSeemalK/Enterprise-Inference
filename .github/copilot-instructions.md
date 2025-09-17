@@ -1,97 +1,76 @@
 # Copilot Instructions for `intel-innersource/applications.ai.erag.infra-automation`
 
-This guide is specifically designed for effective Copilot usage in the Intel AI for Enterprise Inference Repository.
+This guide enables AI coding agents to be productive in the Intel AI for Enterprise Inference automation codebase.
 
 ---
 
-## Project Structure
+## Architecture & Major Components
 
-- **core/**: Main logic for automation scripts and modules.
-- **third_party/**: External dependencies, integrations, or scripts.
-- **docs/**: Documentation resources.
-- **.github/**: GitHub workflows or issue templates.
-- **.reuse/**: Licensing or code reuse configurations.
-
----
-
-## Languages & Best Practices
-
-### Shell (Bash/sh)
-- Use POSIX-compliant syntax for portability.
-- Prefer long-form flags and descriptive variable names.
-- Always check exit codes and fail gracefully.
-- For automation: modularize scripts, use functions, and document usage with `set -euo pipefail` for safety.
-- Example prompt:  
-  _"Write a shell script to automate deployment with error checks."_
-
-### Jinja
-- Use clear template variable names.
-- Document intended logic with comments in templates.
-- Example prompt:  
-  _"Generate a Jinja template for Kubernetes configuration supporting dynamic model inputs."_
-
-### Smarty
-- Use for configuration or templated automation.
-- Keep template logic minimal and readable.
+- **Kubernetes-centric**: codebase targets deploying and managing AI inference clusters on Kubernetes, supporting both Intel Xeon and Gaudi hardware.
+- **Key Components:**
+  - `core/`: Main automation logic, including Ansible playbooks, Helm charts, and shell scripts.
+  - `core/helm-charts/`: Helm charts for deploying APISIX, Keycloak, GenAI Gateway (LiteLLM + Langfuse), Observability, and more.
+  - `core/scripts/`: Automation scripts for firmware, drivers, and cluster setup (see `firmware-update.sh` for robust, version-aware upgrades).
+  - `docs/`: Deployment, configuration, and usage documentation.
+  - `third_party/`: Vendor-specific integrations (e.g., IBM).
+- **GenAI Gateway**: Combines LiteLLM and Langfuse for prompt routing, observability, and analytics. See `core/helm-charts/genai-gateway-trace` and Langfuse chart for configuration patterns.
 
 ---
 
-## Automation Patterns
+## Developer Workflows
 
-- Modular, reusable scripts for AI inference infrastructure.
-- Parameterize scripts for different cloud providers and hardware configurations.
-- Use configuration files (`ibm_catalog.json`, etc.) for environment-specific details.
-- Store secrets and sensitive data outside of code (environment variables or secured vaults).
-
----
-
-## Documentation
-
-- Refer to `README.md` for setup, architecture, and usage.
-- Update documentation (`docs/`) when introducing new automation flows or dependencies.
-- Add inline comments and script headers explaining purpose, inputs, outputs, and dependencies.
-
----
-
-## Security
-
-- Review `SECURITY.md` for reporting vulnerabilities and best practices.
-- Do not commit secrets, passwords, or API keys.
-- Validate all inputs in scripts and templates.
+- **Cluster Deployment:**
+  - Edit `inventory/hosts.yaml` and `core/inference-config.cfg` for your environment.
+  - Deploy with:
+    ```bash
+    bash core/inference-stack-deploy.sh
+    ```
+- **Firmware/Driver Management:**
+  - Use `core/scripts/firmware-update.sh <version>` for Gaudi nodes. Handles version checks, safe module reloads, and error resilience.
+- **Playbooks:**
+  - Ansible playbooks in `core/playbooks/` automate component deployment.
+  - Example: `deploy-genai-gateway.yml` for GenAI Gateway.
+- **Helm Charts:**
+  - Each major service has a chart in `core/helm-charts/`.
+  - Values files and chart README docs provide configuration options.
 
 ---
 
-## Testing & Validation
+## Project Conventions
 
-- Add verification steps in shell scripts (e.g., check required binaries, configuration files).
-- For templates, include sample data and expected outputs.
-- Use separate branches for experimental automation; merge after thorough review.
-
----
-
-## Branching & Contribution
-
-- Use descriptive branch names for features (e.g., `firmware-update-automation`, `code-promotion`).
-- Prefer PRs with clear descriptions and linked documentation.
-- Follow any templates in `.github/` for issues and PRs.
+- **Shell Scripts:**
+  - Use `set -euo pipefail` for safety.
+  - Modularize with functions, check all exit codes, and document usage.
+- **Configuration:**
+  - All environment-specific data in config files, not hardcoded.
+  - Secrets must be injected via environment variables or vaults.
+- **Branching:**
+  - Use descriptive feature branch names (e.g., `firmware-update-automation`).
+  - PRs should link to relevant docs and describe automation flows.
 
 ---
 
-## Copilot Prompt Examples
+## Integration & Patterns
 
-- "Write a shell script that deploys inference services and checks for required environment variables."
-- "Create a Jinja template for parameterizing model deployment."
-- "Suggest error handling improvements for this bash script."
-- "Document the usage for a cloud provider integration script."
-
----
-
-## Additional Tips
-
-- Ensure scripts are idempotent and safe to re-run.
-- Avoid duplicating logic—reuse existing modules in `core/` or `third_party/`.
-- Update the `VERSION` file when making breaking changes.
+- **External Integrations:**
+  - IBM catalog support via `ibm_catalog.json`.
+  - Keycloak for auth, APISIX for API gateway, Langfuse for LLM observability.
+- **Cross-Component Communication:**
+  - Services communicate via Kubernetes networking and API gateways.
+  - Observability is enabled cluster-wide via Helm-deployed monitoring stacks.
 
 ---
 
-For full repo details, see the [README](https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/README.md), [SECURITY.md](https://github.com/intel-innersource/applications.ai.erag.infra-automation/blob/main/SECURITY.md), and explore the [branches](https://github.com/intel-innersource/applications.ai.erag.infra-automation/branches) for workflow examples.
+## Examples
+
+- Add a new model:
+  - Update `core/inference-config.cfg` and redeploy with the stack script.
+- Upgrade Gaudi firmware:
+  - `sudo bash core/scripts/firmware-update.sh 1.21.1`
+- Deploy GenAI Gateway:
+  - `ansible-playbook core/playbooks/deploy-genai-gateway.yml`
+
+---
+
+For more, see `README.md`, `docs/`, and chart READMEs.
+If any section is unclear or incomplete, please specify what needs improvement or more detail!

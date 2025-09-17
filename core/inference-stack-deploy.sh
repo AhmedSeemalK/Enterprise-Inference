@@ -243,7 +243,7 @@ read_config_file() {
             deploy_habana_ai_operator="no"
             ;;
             "g" | "gpu" | "gaudi2" | "gaudi3")
-            if [[ "$cpu_or_gpu" == "gaudi2" || "$cpu_or_gpu" == "gpu" ]]; then
+            if [[ "$cpu_or_gpu" == "gaudi2" || "$cpu_or_gpu" == "gpu" || "$cpu_or_gpu" == "g" ]]; then
                 gaudi_platform="gaudi2"
                 
             elif [[ "$cpu_or_gpu" == "gaudi3" ]]; then
@@ -312,6 +312,34 @@ run_system_prerequisites_check() {
     local warnings=()        
     echo "Checking essential system commands..."
     
+    # Wait for dpkg lock to be released if present
+    dpkg_lock_file="/var/lib/dpkg/lock"
+    dpkg_lock_frontend="/var/lib/dpkg/lock-frontend"
+    dpkg_lock_files=("$dpkg_lock_file" "$dpkg_lock_frontend")
+    timeout=300
+    for lock in "${dpkg_lock_files[@]}"; do
+        waited=0
+        if command -v lsof &>/dev/null; then
+            while lsof "$lock" &>/dev/null && [ $waited -lt $timeout ]; do
+                echo -e "${YELLOW}dpkg/apt process is using $lock (checked via lsof). Waiting for it to finish...${NC}"
+                sleep 2
+                waited=$((waited + 2))
+            done
+        elif command -v fuser &>/dev/null; then
+            while fuser "$lock" &>/dev/null && [ $waited -lt $timeout ]; do
+                echo -e "${YELLOW}dpkg/apt process is using $lock (checked via fuser). Waiting for it to finish...${NC}"
+                sleep 2
+                waited=$((waited + 2))
+            done
+        fi
+        if [ $waited -ge $timeout ]; then
+            if (command -v lsof &>/dev/null && lsof "$lock" &>/dev/null) || \
+            (command -v fuser &>/dev/null && fuser "$lock" &>/dev/null); then
+                echo -e "${RED}Timeout waiting for dpkg/apt lock file $lock to be released. Proceeding anyway.${NC}"
+            fi
+        fi
+    done
+
     # Check for git
     if ! command -v git &> /dev/null; then
         missing_deps+=("git")
@@ -319,6 +347,9 @@ run_system_prerequisites_check() {
         echo -e "${GREEN}✓ git found${NC}"
     fi
     
+    
+
+
     # Check for python3 (version 3.10 or above) using configured interpreter
     if [ -z "$python3_interpreter" ]; then
         echo -e "${RED}✗ python3_interpreter not configured${NC}"
@@ -610,6 +641,14 @@ setup_initial_env() {
     fi
     if [ ! -d "$KUBESPRAYDIR" ]; then
         git clone https://github.com/kubernetes-sigs/kubespray.git $KUBESPRAYDIR
+        if [ $? -ne 0 ] || [ ! -d "$KUBESPRAYDIR/.git" ]; then
+            echo -e "${RED}----------------------------------------------------------------------------${NC}"
+            echo -e "${RED}|  NOTICE: Failed to clone Kubespray Repository.                           |${NC}"        
+            echo -e "${RED}|  Unable to proceed with Inference Stack Deployment                        |${NC}"        
+            echo -e "${RED}|  due to missing dependency                                                |${NC}"        
+            echo -e "${RED}----------------------------------------------------------------------------${NC}"            
+            exit 1
+        fi
         cd $KUBESPRAYDIR
         git checkout v2.27.0
     else
@@ -640,8 +679,13 @@ setup_initial_env() {
     fi
     source $VENVDIR/bin/activate
     echo "Attempting to activate the virtual environment..."    
-    if [ -z "$VIRTUAL_ENV" ]; then
-        echo "Failed to activate the virtual environment."
+    if [ -z "$VIRTUAL_ENV" ]; then        
+        rm -rf "$KUBESPRAYDIR"
+        echo -e "${RED}----------------------------------------------------------------------------${NC}"
+        echo -e "${RED}|  NOTICE: Failed to activate the virtual environment.                      |${NC}"
+        echo -e "${RED}|  Please retrigger the Inference Stack Deployment                          |${NC}"
+        echo -e "${RED}|                                                                           |${NC}"
+        echo -e "${RED}----------------------------------------------------------------------------${NC}"
         exit 1
     else
         echo "Virtual environment activated successfully. Path: $VIRTUAL_ENV"
@@ -655,21 +699,54 @@ setup_initial_env() {
     if $VENVDIR/bin/python3 -c "import ansible" &> /dev/null; then
         echo -e "${GREEN} Ansible installed successfully${NC}"
     else
-        echo -e "${RED} Ansible installation failed${NC}"
+        echo -e "${RED}----------------------------------------------------------------------------${NC}"
+        echo -e "${RED}|  NOTICE: Ansible Installation Failed.                                     |${NC}"        
+        echo -e "${RED}|  Unable to proceed with Inference Stack Deployment                        |${NC}"        
+        echo -e "${RED}|  due to missing dependency                                                |${NC}"        
+        echo -e "${RED}----------------------------------------------------------------------------${NC}"        
         exit 1
     fi    
+
     echo -e "${GREEN} Enterprise Inference requirements installed.${NC}"
     cp -r "$HOMEDIR"/deploy-* "$HOMEDIR"/helm-charts "$HOMEDIR"/scripts "$KUBESPRAYDIR"/
     cp -r "$KUBESPRAYDIR"/inventory/sample/ "$KUBESPRAYDIR"/inventory/mycluster
     cp  "$HOMEDIR"/inventory/hosts.yaml $KUBESPRAYDIR/inventory/mycluster/
-    cp "$HOMEDIR"/inventory/addons.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/k8s_cluster/addons.yml    
+    cp "$HOMEDIR"/inventory/metadata/addons.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/k8s_cluster/addons.yml    
     cp "$HOMEDIR"/playbooks/* "$KUBESPRAYDIR"/playbooks/    
     gaudi2_values_file_path="$REMOTEDIR/vllm/gaudi-values.yaml"
     gaudi3_values_file_path="$REMOTEDIR/vllm/gaudi3-values.yaml"
     cp "$HOMEDIR"/inventory/metadata/addons.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/k8s_cluster/addons.yml
     cp "$HOMEDIR"/inventory/metadata/all.yml $KUBESPRAYDIR/inventory/mycluster/group_vars/all/all.yml
     cp -r "$HOMEDIR"/roles/* $KUBESPRAYDIR/roles/        
+
     mkdir -p "$KUBESPRAYDIR/config"        
+    chmod +x $HOMEDIR/scripts/generate-vault-secrets.sh
+
+    # Only generate vault secrets if vault.yml doesn't exist or is incomplete
+    vault_file="$HOMEDIR/inventory/metadata/vault.yml"
+    mandatory_keys=("litellm_master_key" "litellm_salt_key" "redis_password" "langfuse_secret_key" "langfuse_public_key" "postgresql_username" "postgresql_password" "clickhouse_username" "clickhouse_password" "langfuse_login" "langfuse_user" "langfuse_password" "minio_secret" "minio_user" "postgres_user" "postgres_password")
+
+    if [ ! -f "$vault_file" ]; then
+        echo "vault.yml not found at $vault_file, generating vault secrets..."
+        bash $HOMEDIR/scripts/generate-vault-secrets.sh
+    else
+        echo "Checking vault.yml for mandatory keys..."
+        missing_keys=()
+        for key in "${mandatory_keys[@]}"; do
+            if ! grep -q "^${key}:" "$vault_file"; then
+                missing_keys+=("$key")
+            fi
+        done
+
+        if [ ${#missing_keys[@]} -gt 0 ]; then
+            echo -e "${YELLOW}vault.yml exists but is missing mandatory keys: ${missing_keys[*]}${NC}"
+            echo "Regenerating vault.yml with all mandatory keys..."
+            bash $HOMEDIR/scripts/generate-vault-secrets.sh
+        else
+            echo -e "${GREEN}vault.yml exists and contains all mandatory keys. Skipping generation...${NC}"
+        fi
+    fi
+
     if [ "$purge_inference_cluster" != "purging" ]; then        
         if [[ "$deploy_llm_models" == "yes" || "$deploy_keycloak_apisix" == "yes" || "$deploy_genai_gateway" == "yes" || "$deploy_observability" == "yes" || "$deploy_logging" == "yes" || "$deploy_ceph" == "yes" || "$deploy_istio" == "yes" ]]; then
             if [ ! -s "$HOMEDIR/inventory/metadata/vault.yml" ]; then                
@@ -733,12 +810,13 @@ check_cluster_state() {
 
 run_reset_playbook() {
     echo "Running the Ansible playbook to reset the cluster..."  
-    delete_pv_on_purge="yes"      
-    
-    # Uninstall Ceph storage as part of cluster reset
-    echo "Running Ceph uninstall as part of cluster reset..."
-    uninstall_ceph_cluster
-    
+    delete_pv_on_purge="yes"          
+    if [ "$uninstall_ceph" == "yes" ]; then
+        # Uninstall Ceph storage as part of cluster reset
+        echo "Running Ceph uninstall as part of cluster reset..."
+        uninstall_ceph_cluster
+    fi
+        
     ansible-playbook -i "${INVENTORY_PATH}" playbooks/deploy-keycloak-controller.yml --extra-vars "delete_pv_on_purge=${delete_pv_on_purge}"
     ansible-playbook -i "${INVENTORY_PATH}" --become --become-user=root reset.yml -e "confirm_reset=yes reset_nodes=false"
     # Check the exit status of the Ansible playbook command
@@ -999,14 +1077,14 @@ deploy_ceph_cluster() {
 uninstall_ceph_cluster() {
 
     echo "Uninstalling Ceph Cluster..."
-    echo "⚠️  WARNING: This will PERMANENTLY DELETE ALL CEPH DATA!"
+    echo "WARNING: This will PERMANENTLY DELETE ALL CEPH DATA!"
     
     # Always attempt to run the uninstall playbook, but handle failures gracefully
     echo "Attempting Ceph cluster uninstall (if installed)..."
     if ansible-playbook -i "${INVENTORY_PATH}" playbooks/uninstall-ceph-storage.yml; then
         echo "Ceph cluster uninstall completed successfully."
     else
-        echo "⚠️  Warning: Ceph cluster uninstall encountered issues or Ceph may not be installed."
+        echo "Warning: Ceph cluster uninstall encountered issues or Ceph may not be installed."
         echo "This is expected if no Ceph cluster was deployed."
     fi
         
@@ -1179,13 +1257,15 @@ prompt_for_input() {
     else
         echo "Proceeding with the setup of Ceph cluster: $deploy_ceph"
     fi
-
-    if [ -z "$uninstall_ceph" ]; then
-        read -p "Do you want to proceed with uninstalling Ceph cluster? (yes/no): " uninstall_ceph
-    else
-        echo "Proceeding with Ceph cluster uninstallation: $uninstall_ceph"
+    
+    if [ "$deploy_kubernetes_fresh" == "no" ]; then
+        if [ -z "$uninstall_ceph" ]; then
+            read -p "Do you want to proceed with uninstalling Ceph cluster? (yes/no): " uninstall_ceph
+        else
+            echo "Proceeding with Ceph cluster uninstallation: $uninstall_ceph"
+        fi
     fi
-   
+           
     if [ -z "$deploy_istio" ]; then
         read -p "Do you want to proceed with deploying Istio? (yes/no): " deploy_istio
     else
@@ -1881,7 +1961,11 @@ remove_model_deployed_via_huggingface(){
         echo "Aborting LLM Model removal process. Exiting!!"
         exit 1
     fi        
-    read -p "Enter the deployment name of the model you wish to deprovision: " hugging_face_model_remove_name
+    
+    read -p "Enter the deployment name of the model you wish to deprovision: " hugging_face_model_remove_name    
+    if [ "$cpu_or_gpu" == "c" ]; then
+        hugging_face_model_remove_name="${hugging_face_model_remove_name}-cpu"
+    fi
     if [ -n "$hugging_face_model_remove_name" ]; then
         invoke_prereq_workflows "$@"                
         execute_and_check "Removing Inference LLM Models..." remove_inference_llm_models_playbook "$@" \

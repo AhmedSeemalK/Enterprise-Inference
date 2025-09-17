@@ -30,7 +30,6 @@ Copy the multi-node example config into place:
 ```sh
 cp -f docs/examples/multi-node/inference-config.cfg core/inference-config.cfg
 cp -f docs/examples/multi-node/hosts.yaml core/inventory/hosts.yaml
-cp -f docs/examples/multi-node/vault.yml core/inventory/metadata/vault.yml
 ```
 
 Edit `core/inventory/hosts.yaml` to list all node hostnames/IPs under the correct groups. Example:

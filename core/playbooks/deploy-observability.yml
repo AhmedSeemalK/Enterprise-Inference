@@ -350,7 +350,7 @@
       become: false
 
     - name: Install/Upgrade logs-stack chart with AWS settings
-      when: aws_access_key | length > 0
+      when: aws_access_key is defined and aws_access_key | length > 0
       run_once: true
       tags: deploy_observability
       ansible.builtin.command:
@@ -373,7 +373,7 @@
       delay: 10
 
     - name: Install/Upgrade logs-stack chart with Minio settings
-      when: aws_access_key | length == 0
+      when: aws_access_key is not defined or aws_access_key | length == 0
       run_once: true
       tags: deploy_observability
       ansible.builtin.command:

@@ -12,25 +12,7 @@ inventory/metadata/vault.yml
 
 ## Getting Started
 
-### 1. Choose Your Deployment Type
-
-
-
-> **Note:** The example vault files provided are for demonstration purposes only. For enterprise or production deployments, you must update all passwords and secrets with your own secure values. Never use example credentials in a live environment.
-
-Before configuring your vault, refer to the appropriate example based on your deployment:
-
-**For Single Node Deployment:**
-```
-docs/examples/single-node/vault.yml
-```
-
-**For Multi Node Deployment:**
-```
-docs/examples/multi-node/vault.yml
-```
-
-### 2. Decrypt the Vault File
+### 1. Decrypt the Vault File
 
 To edit the vault file, you first need to decrypt it:
 
@@ -40,7 +22,7 @@ ansible-vault decrypt inventory/metadata/vault.yml
 
 **Default Password:** `place-holder-123`
 
-### 3. Update Your Values
+### 2. Update Your Values
 
 Once decrypted, edit the `vault.yml` file with your actual values:
 
@@ -53,7 +35,7 @@ postgresql_password: "your-db-password"
 # ... add other secrets as needed
 ```
 
-### 4. Encrypt the Vault File
+### 3. Encrypt the Vault File
 
 After making your changes, encrypt the file again:
 
@@ -102,3 +84,4 @@ nano inventory/metadata/vault.yml
 
 # 3. Encrypt the file
 ansible-vault encrypt inventory/metadata/vault.yml
+```

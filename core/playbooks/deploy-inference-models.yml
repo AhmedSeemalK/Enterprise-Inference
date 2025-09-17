@@ -91,7 +91,6 @@
             tasks_from: get_optimized_cpu_topology
           vars:
             target_model: "llama-8b" # Default model for topology calculation
-
         - name: Calculate CPU allocation for model deployment
           ansible.builtin.set_fact:
             calculated_topology:
@@ -191,7 +190,6 @@
               - "Reserved CPUs Percentage: {{ optimal_balloon_config.reserved_cpus_percentage }}%"
               - "Reserved CPUs Count: {{ optimal_balloon_config.reserved_cpus }} ({{ ((optimal_balloon_config.reserved_cpus | int / optimal_balloon_config.cpus_per_socket | int) * 100) | round(1) }}% actual)"
               - "Workload CPUs (for values.yaml): {{ optimal_balloon_config.workload_cpus }}"
-              - "Calculated Memory: {{ optimal_memory_gb | default('8') }}Gi ({{ optimal_balloon_config.workload_cpus | default(8) | int * 1 }}GB based on 1GB per CPU)"
               - "Balloon CPUs: {{ optimal_balloon_config.balloon_cpus }}"
               - "Tensor Parallel Size: {{ optimal_balloon_config.tensor_parallel_size | default(1) }}"
               - "Pipeline Parallel Size: {{ optimal_balloon_config.pipeline_parallel_size | default(1) }}"
@@ -221,21 +219,34 @@
               - "==================================================================="
           when: not vllm_charts_dir.stat.exists
 
-        - name: Calculate memory allocation based on CPU count
+        - name: Extract sockets memory
           ansible.builtin.set_fact:
-            optimal_memory_gb: >-
-              {%- set workload_cpus = optimal_balloon_config.workload_cpus | int -%}
-              {%- set memory_per_cpu_gb = 1 -%}
-              {%- set calculated_memory = workload_cpus * memory_per_cpu_gb -%}
-              {%- set min_memory = 8 -%}
-              {%- set max_memory = 256 -%}
-              {%- if calculated_memory < min_memory -%}
-              {{ min_memory }}
-              {%- elif calculated_memory > max_memory -%}
-              {{ max_memory }}
-              {%- else -%}
-              {{ calculated_memory }}
-              {%- endif -%}
+            usable_mem_var: "{{ cpu_topology_config.usable_memory_per_socket }}"
+            socket0_memory_gb: 0
+
+        - name: Extract socket0 memory
+          ansible.builtin.set_fact:
+            socket0_memory_gb: "{{ usable_mem_var[0] | int }}"
+          when: usable_mem_var is mapping and socket0_memory_gb | int == 0 and 0 in usable_mem_var
+          ignore_errors: true
+
+        - name: Fallback to parsing from string if dictionary access failed
+          ansible.builtin.set_fact:
+            socket0_memory_gb: "{{ usable_mem_var | string | regex_search('0: (\\d+)') | default(['0', '0']) | last | int }}"
+          when: usable_mem_var is string and socket0_memory_gb | int == 0
+          ignore_errors: true
+
+        - name: Set optimal memory with minimum 8GB and maximum 256GB
+          ansible.builtin.set_fact:
+            optimal_memory_gb: "{% if socket0_memory_gb | int < 8 %}8{% elif socket0_memory_gb | int > 256 %}256{% else %}{{ socket0_memory_gb | int }}{% endif %}"
+
+        - name: Final memory calculation
+          ansible.builtin.debug:
+            msg: |
+              === Memory Calculation Summary ===
+              Socket 0 memory available: {{ socket0_memory_gb }} GB
+              Final memory for deployment: {{ optimal_memory_gb }} GB
+              Min threshold: 8 GB, Max threshold: 256 GB
 
         - name: Update vLLM Helm chart values with optimized CPU and memory settings
           ansible.builtin.replace:
@@ -314,7 +325,7 @@
               - "CPU Optimization Helm Charts Update Complete"
               - "==================================================================="
               - "✓ CPU topology detected and analyzed"
-              - "✓ Memory calculated ({{ optimal_memory_gb | default('8') }}Gi for {{ optimal_balloon_config.workload_cpus | default(8) }} CPUs)"
+              - "✓ Memory calculated ({{ optimal_memory_gb | default('8') }}Gi based on available socket memory)"
               - "✓ vLLM Helm chart updated with optimal root-level values"
               - "✓ CPU: {{ optimal_balloon_config.workload_cpus | default(8) }} cores"
               - "✓ Memory: {{ optimal_memory_gb | default('8') }}Gi"
@@ -525,7 +536,7 @@
             reg_model_name: "{{ huggingface_model_id }}"
             reg_litellm_model: "openai/{{ huggingface_model_id }}"
             reg_custom_llm_provider: "openai"
-            reg_api_base: "http://{{huggingface_model_deployment_name}}-service/v1"
+            reg_api_base: "http://{{huggingface_model_deployment_name}}-vllm-service/v1"
             reg_input_cost_per_token: 0.001
             reg_output_cost_per_token: 0.002
           tags:
@@ -717,7 +728,7 @@
       run_once: true
       tags: uninstall-llama-3-3-70b
       when:
-        - "'llama-3.3-70b' in (model_name_list | regex_replace(',', ' ') | split())"
+        - "'llama-3-3-70b' in (model_name_list | regex_replace(',', ' ') | split())"
         - uninstall_true == 'true'
         - helm_release_installed.stdout != ""
 

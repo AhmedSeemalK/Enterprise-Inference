@@ -338,6 +338,68 @@
   tags:
     - install
 
+- name: Gather NUMA node meminfo from target node
+  kubernetes.core.k8s_exec:
+    pod: "{{ optimizer_pod_name }}"
+    container: ubuntu
+    namespace: kube-system
+    command: bash -c "for n in /sys/devices/system/node/node*/meminfo; do node=$(basename $(dirname $n)); size_kb=$(grep MemTotal $n | awk '{print $4}'); free_kb=$(grep MemFree $n | awk '{print $4}'); echo \"$node $size_kb $free_kb\"; done"
+  register: numa_info
+  tags:
+    - install
+
+- name: Parse sysfs NUMA memory info
+  set_fact:
+    numa_memory: "{{ numa_memory_parsed | from_yaml }}"
+  vars:
+    numa_memory_parsed: |
+      {%- set result = {} -%}
+      {%- for line in numa_info.stdout_lines -%}
+        {%- set parts = line.split() -%}
+        {%- set node = parts[0].replace("node","") | int -%}
+        {%- set size_kb = parts[1] | int -%}
+        {%- set free_kb = parts[2] | int -%}
+        {%- set _ = result.update({node: {'size_kb': size_kb, 'free_kb': free_kb}}) -%}
+      {%- endfor -%}
+      {{ result }}
+  tags:
+    - install
+
+- name: Aggregate memory per socket dynamically
+  set_fact:
+    socket_memory_totals: "{{ socket_memory_parsed | from_yaml }}"
+  vars:
+    socket_memory_parsed: |
+      {%- set result = {} -%}
+      {%- for node, mem in numa_memory.items() -%}
+        {%- set socket = (node | int) // (numa_nodes_per_socket | int) -%}
+        {%- set totals = result.get(socket, {'size_kb': 0, 'free_kb': 0}) -%}
+        {%- set totals = {
+              'size_kb': totals.size_kb + mem.size_kb,
+              'free_kb': totals.free_kb + mem.free_kb
+            } -%}
+        {%- set _ = result.update({socket: totals}) -%}
+      {%- endfor -%}
+      {{ result }}
+  tags:
+    - install
+
+
+- name: Calculate usable memory per socket (leave 18% free)
+  set_fact:
+    usable_memory_per_socket: "{{ usable_memory_parsed | to_json | from_json }}"
+  vars:
+    usable_memory_parsed: |
+      {%- set result = {} -%}
+      {%- for socket_id, mem in socket_memory_totals.items() -%}
+        {%- set free_gb = (mem.free_kb / 1048576) -%}   # KB → GB
+        {%- set usable_gb = (free_gb * 0.82) | round(0, 'floor') -%}
+        {%- set _ = result.update({ socket_id: usable_gb | int }) -%}
+      {%- endfor -%}
+      {{ result }}
+  tags:
+    - install
+
 - name: Calculate optimal balloon configuration for socket-based allocation
   ansible.builtin.set_fact:
     optimal_balloon_config:
@@ -351,10 +413,54 @@
       recommended_balloons: "{{ total_sockets.stdout | int }}" # One balloon per socket
       numa_cpu_distribution: "{{ numa_cpu_counts }}"
       socket_cpu_distribution: "{{ socket_cpu_totals }}"
+      socket_memory_distribution: "{{ socket_memory_totals }}"
+      usable_memory_per_socket: "{{ usable_memory_per_socket }}"
   when:
     - target_worker_node is defined and target_worker_node != ''
     - total_sockets.stdout is defined and total_sockets.stdout != ''
     - total_numa_nodes.stdout is defined and total_numa_nodes.stdout != ''
+  tags:
+    - install
+
+- name: Show NUMA memory information
+  debug:
+    msg: |
+      === NUMA Memory Information from Target Node: {{ target_worker_node }} ===
+      {% for node, mem in numa_memory.items() %}
+      NUMA Node {{ node }}:
+        Total Memory: {{ (mem.size_kb / 1048576) | round(2) }} GB
+        Free Memory: {{ (mem.free_kb / 1048576) | round(2) }} GB
+        Used Memory: {{ ((mem.size_kb - mem.free_kb) / 1048576) | round(2) }} GB
+        Free Percentage: {{ ((mem.free_kb / mem.size_kb) * 100) | round(2) }}%
+      {% endfor %}
+  tags:
+    - install
+
+- name: Show socket memory information
+  debug:
+    msg: |
+      === Socket Memory Aggregation ===
+      {% for socket_id, mem in socket_memory_totals.items() %}
+      Socket {{ socket_id }}:
+        Total Memory: {{ (mem.size_kb / 1048576) | round(2) }} GB
+        Free Memory: {{ (mem.free_kb / 1048576) | round(2) }} GB
+        Used Memory: {{ ((mem.size_kb - mem.free_kb) / 1048576) | round(2) }} GB
+        Free Percentage: {{ ((mem.free_kb / mem.size_kb) * 100) | round(2) }}%
+      {% endfor %}
+  tags:
+    - install
+
+- name: Show usable memory per socket
+  debug:
+    msg: |
+      === Usable Memory Per Socket ({{ 18 }}% reserved for system use) ===
+      {% set usable_mem = optimal_balloon_config.usable_memory_per_socket if optimal_balloon_config.usable_memory_per_socket is mapping else {} %}
+      {% for socket_id, mem in usable_mem.items() %}
+      Socket {{ socket_id }}: {{ mem }} GB usable for model deployment
+      {% endfor %}
+      {% if usable_mem.keys() | length == 0 %}
+      Warning: No usable memory data available. Please check memory detection.
+      {% endif %}
   tags:
     - install
 

@@ -58,7 +58,7 @@ securityContext:
       - ALL
     add:
       - SYS_NICE
-  readOnlyRootFilesystem: false
+  readOnlyRootFilesystem: true
   runAsNonRoot: true
   runAsUser: 1001
   seccompProfile:
