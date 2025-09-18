@@ -78,6 +78,8 @@ config:
 postgresql:
   enabled: true
   architecture: standalone
+  image:
+    repository: bitnamilegacy/postgresql
   auth:
     username: "<DB_USER>"
     password: "<DB_PASS>"
@@ -97,6 +99,8 @@ postgresql:
 redis:
   enabled: true
   architecture: standalone
+  image:
+    repository: "bitnamilegacy/redis"
   auth:
     enabled: true
     password: "<REPLACE_WITH_REDIS_PASSWORD>"
