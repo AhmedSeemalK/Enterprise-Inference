@@ -32,6 +32,9 @@ MINIO_USER="minio"
 MINIO_SECRET=$(generate_password 20)
 POSTGRES_USER="postgres"
 POSTGRES_PASSWORD=$(generate_password 20)
+GRAFANA_ADMIN_PASSWORD=$(generate_password 20)
+AGENTICAI_POSTGRES_PASSWORD=$(generate_password 20)
+AGENTICAI_REDIS_PASSWORD=$(generate_password 20)
 
 # Generate connection strings
 DATABASE_URL="postgresql://admin:${POSTGRESQL_PASSWORD}@genai-gateway-postgresql:5432/litellm"
@@ -65,6 +68,9 @@ minio_secret: "$MINIO_SECRET"
 minio_user: "$MINIO_USER"
 postgres_user: "$POSTGRES_USER"
 postgres_password: "$POSTGRES_PASSWORD"
+grafana_admin_password: "$GRAFANA_ADMIN_PASSWORD"
+agenticai_postgres_password: "$AGENTICAI_POSTGRES_PASSWORD"
+agenticai_redis_password: "$AGENTICAI_REDIS_PASSWORD"
 EOF
 
 # Set appropriate permissions

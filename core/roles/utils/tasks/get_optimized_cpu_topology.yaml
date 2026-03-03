@@ -1,4 +1,4 @@
-# Copyright (C) 2024-2025 Intel Corporation
+# Copyright (C) 2025-2026 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
 ---
@@ -25,30 +25,35 @@
             # For multi-node clusters, prefer worker nodes
             affinity:
               nodeAffinity:
-                preferredDuringSchedulingIgnoredDuringExecution:
-                  - weight: 100
-                    preference:
-                      matchExpressions:
-                        - key: node-role.kubernetes.io/worker
-                          operator: Exists
-                  - weight: 50
-                    preference:
-                      matchExpressions:
-                        - key: node-role.kubernetes.io/control-plane
-                          operator: DoesNotExist
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                  - matchExpressions:
+                    - key: ei-inference-eligible
+                      operator: In
+                      values: ["true"]
             tolerations:
               - operator: Exists # Allow scheduling on any node including master
             securityContext:
               fsGroup: 2000
               runAsGroup: 3000
-              runAsNonRoot: true
-              runAsUser: 1000
+              runAsNonRoot: false
+              runAsUser: 0
               seccompProfile:
                 type: RuntimeDefault
             containers:
               - name: ubuntu
-                image: ubuntu
-                command: ["sleep", "infinity"]
+                image: ubuntu:22.04
+                command: ["/bin/sh", "-c"]
+                args:
+                  - |
+                    mkdir -p /var/lib/apt/lists/partial && \
+                    apt-get update -qq && \
+                    apt-get install -y -qq util-linux coreutils procps > /dev/null 2>&1 && \
+                    sleep infinity
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  runAsUser: 0
+                  readOnlyRootFilesystem: false
             restartPolicy: Always
   tags:
     - install
@@ -61,8 +66,14 @@
       - app=node-topology-optimizer
   register: optimizer_pods_info
   until: optimizer_pods_info.resources | length > 0 and (optimizer_pods_info.resources | selectattr('status.phase', 'equalto', 'Running') | list | length > 0)
-  retries: 10
-  delay: 5
+  retries: 30
+  delay: 10
+  tags:
+    - install
+
+- name: Wait additional time for packages to install in container
+  ansible.builtin.pause:
+    seconds: 45
   tags:
     - install
 
@@ -206,6 +217,17 @@
   tags:
     - install
 
+- name: Refresh node-topology-optimizer pod name (avoid stale pod references)
+  ansible.builtin.command: >
+    kubectl -n kube-system get pods -l app=node-topology-optimizer
+    -o jsonpath='{.items[0].metadata.name}'
+  register: optimizer_pod_name_refresh
+  changed_when: false
+
+- name: Set refreshed optimizer_pod_name
+  ansible.builtin.set_fact:
+    optimizer_pod_name: "{{ optimizer_pod_name_refresh.stdout | trim }}"
+
 - name: Get detailed CPU information
   kubernetes.core.k8s_exec:
     pod: "{{ optimizer_pod_name }}"
@@ -292,6 +314,43 @@
   register: accurate_cpu_counts
   tags:
     - install
+
+- name: Read CPU reservation script content
+  ansible.builtin.set_fact:
+    cpu_script_content: "{{ lookup('file', role_path + '/files/compute_reserved_cpus.sh') }}"
+  tags:
+    - install
+
+- name: Execute CPU reservation computation directly from script file
+  ansible.builtin.shell:
+    cmd: echo {{ cpu_script_content | quote }} | kubectl exec -n kube-system {{ optimizer_pod_name | quote }} -c ubuntu -i -- bash -s {{ nri_total_reserved_cpus | default(8) | int }}
+  register: computed_reserved_cpu_list
+  changed_when: false
+  tags:
+    - install
+
+- name: Set nri_reserved_cpu_list fact
+  ansible.builtin.set_fact:
+    nri_reserved_cpu_list: >-
+      {{
+        (computed_reserved_cpu_list.stdout | default('') | trim)
+        | regex_replace('^.*NRI_RESERVED_CPU_LIST=', '')
+        | regex_replace('\\s.*$', '')
+        | regex_replace(',+$', '')
+      }}
+
+- name: Assert nri_reserved_cpu_list computed
+  ansible.builtin.assert:
+    that:
+      - nri_reserved_cpu_list | length > 0
+    fail_msg: >-
+      Failed to compute nri_reserved_cpu_list.
+      stdout={{ computed_reserved_cpu_list.stdout | default('') }}
+      stderr={{ computed_reserved_cpu_list.stderr | default('') }}
+
+- name: Debug final nri_reserved_cpu_list
+  ansible.builtin.debug:
+    msg: "nri_reserved_cpu_list={{ nri_reserved_cpu_list }}"
 
 - name: Parse accurate CPU topology results
   ansible.builtin.set_fact:
@@ -486,24 +545,15 @@
     parallelism_config:
       strategy: >-
         {%- set numa_per_socket = numa_nodes_per_socket | default(optimal_balloon_config.numa_nodes_per_socket) | default(1) | int -%}
-        {%- if numa_per_socket in [2, 4] -%}
         tensor_parallel
-        {%- elif numa_per_socket in [3, 6] -%}
-        pipeline_parallel
-        {%- else -%}
-        tensor_parallel
-        {%- endif -%}
       tensor_parallel_size: >-
         {%- set numa_per_socket = numa_nodes_per_socket | default(optimal_balloon_config.numa_nodes_per_socket) | default(1) | int -%}
         {%- if numa_per_socket in [2, 4] -%}
         {{ numa_per_socket }}
-        {%- else -%}
-        1
-        {%- endif -%}
-      pipeline_parallel_size: >-
-        {%- set numa_per_socket = numa_nodes_per_socket | default(optimal_balloon_config.numa_nodes_per_socket) | default(1) | int -%}
-        {%- if numa_per_socket in [3, 6] -%}
-        {{ numa_per_socket }}
+        {%- elif numa_per_socket in [3] -%}
+        2
+        {%- elif numa_per_socket in [6] -%}
+        4
         {%- else -%}
         1
         {%- endif -%}
@@ -513,6 +563,22 @@
 - name: Update balloon configuration with parallelism strategy
   ansible.builtin.set_fact:
     optimal_balloon_config: "{{ optimal_balloon_config | combine(parallelism_config) }}"
+  tags:
+    - install
+
+- name: Calculate workload CPUs
+  ansible.builtin.set_fact:
+    workload_cpus: >-
+      {%- set total_cpus = (cpus_per_socket | int) * (total_sockets.stdout | int) -%}
+      {%- set reserved_cpu_count = nri_reserved_cpu_list.split(',') | length -%}
+      {%- if reserved_cpu_count >= total_cpus -%}{%- set reserved_cpu_count = total_cpus -%}{%- endif -%}
+      {{ total_cpus - reserved_cpu_count }}
+  tags:
+    - install
+
+- name: Add workload_cpus to balloon configuration
+  ansible.builtin.set_fact:
+    optimal_balloon_config: "{{ optimal_balloon_config | combine({'workload_cpus': workload_cpus | int}) }}"
   tags:
     - install
 
@@ -563,13 +629,12 @@
       {% endfor %}
 
       === CPU Features ===
-      AMX: {{ 'SUPPORTED' if amx_check.rc == 0 else 'NOT AVAILABLE' }}
-      AVX-512: {{ 'SUPPORTED' if avx512_check.rc == 0 else 'NOT AVAILABLE' }}
+      AMX: {{ 'SUPPORTED' if (amx_check is defined and amx_check.rc is defined and amx_check.rc == 0) else 'NOT AVAILABLE' }}
+      AVX-512: {{ 'SUPPORTED' if (avx512_check is defined and avx512_check.rc is defined and avx512_check.rc == 0) else 'NOT AVAILABLE' }}
 
       === Parallelism Strategy ===
       Strategy: {{ optimal_balloon_config.strategy }}
       Tensor Parallel Size: {{ optimal_balloon_config.tensor_parallel_size }}
-      Pipeline Parallel Size: {{ optimal_balloon_config.pipeline_parallel_size }}
       ===================================================================
   tags:
     - install

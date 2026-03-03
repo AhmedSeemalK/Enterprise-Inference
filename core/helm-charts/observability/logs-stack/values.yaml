@@ -1,4 +1,4 @@
-# Copyright (C) 2024-2025 Intel Corporation
+# Copyright (C) 2025-2026 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 otelcol-logs:
   enabled: true
@@ -134,6 +134,10 @@ loki:
             prefix: dnvrdev/loki_index_
             period: 24h
 
+    storage:
+      bucketNames:
+        chunks: loki-chunks
+
     compactor:
       working_directory: /tmp/retention
       compaction_interval: 10m
@@ -185,6 +189,7 @@ loki:
   # Enable minio for storage
   minio:
     enabled: true
+    address: http://logs-stack-minio.observability.svc:9000
 
   ### SELF-LOGGING
   # Warning: THIS Is depreacted will be removed in future versions
